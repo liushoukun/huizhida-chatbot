@@ -796,7 +796,7 @@ flowchart TD
 
     %% 应用样式
     class A inputStyle
-    class B,C processStyle
+    class B processStyle
     class C,H decisionStyle
     class F,G agentStyle
     class D,I,K transferStyle
@@ -1121,41 +1121,41 @@ flowchart TD
 classDiagram
     class IAgentAdapter {
         <<interface>>
-        +initialize(config) Promise~void~
-        +chat(request) Promise~ChatResponse~
-        +chatStream(request) AsyncIterable~ChatChunk~
-        +healthCheck() Promise~boolean~
+        +initialize(config) Promise void
+        +chat(request) Promise ChatResponse
+        +chatStream(request) AsyncIterable ChatChunk
+        +healthCheck() Promise boolean
     }
     
     class LocalAgentAdapter {
         -model: LocalModel
         -faqStore: VectorStore
-        +chat(request) Promise~ChatResponse~
+        +chat(request) Promise ChatResponse
     }
     
     class RemoteAgentAdapter {
         -apiClient: HttpClient
         -config: RemoteConfig
-        +chat(request) Promise~ChatResponse~
+        +chat(request) Promise ChatResponse
     }
     
     class HybridAgentAdapter {
         -localAgent: LocalAgentAdapter
         -remoteAgent: RemoteAgentAdapter
         -router: IntentRouter
-        +chat(request) Promise~ChatResponse~
+        +chat(request) Promise ChatResponse
     }
     
     class OpenAIAdapter {
-        +chat(request) Promise~ChatResponse~
+        +chat(request) Promise ChatResponse
     }
     
     class QwenAdapter {
-        +chat(request) Promise~ChatResponse~
+        +chat(request) Promise ChatResponse
     }
     
     class CozeAdapter {
-        +chat(request) Promise~ChatResponse~
+        +chat(request) Promise ChatResponse
     }
     
     IAgentAdapter <|.. LocalAgentAdapter
@@ -1166,20 +1166,6 @@ classDiagram
     RemoteAgentAdapter <|-- CozeAdapter
     HybridAgentAdapter o-- LocalAgentAdapter
     HybridAgentAdapter o-- RemoteAgentAdapter
-
-    %% 样式定义
-    classDef interfaceStyle fill:#E1F5FE,stroke:#0277BD,stroke-width:3px,color:#000
-    classDef localStyle fill:#E8F5E9,stroke:#388E3C,stroke-width:2px,color:#000
-    classDef remoteStyle fill:#FFF3E0,stroke:#F57C00,stroke-width:2px,color:#000
-    classDef hybridStyle fill:#F3E5F5,stroke:#7B1FA2,stroke-width:2px,color:#000
-    classDef providerStyle fill:#FFF9C4,stroke:#F9A825,stroke-width:2px,color:#000
-
-    %% 应用样式
-    class IAgentAdapter interfaceStyle
-    class LocalAgentAdapter localStyle
-    class RemoteAgentAdapter remoteStyle
-    class HybridAgentAdapter hybridStyle
-    class OpenAIAdapter,QwenAdapter,CozeAdapter providerStyle
 ```
 
 ```mermaid
@@ -1213,22 +1199,6 @@ flowchart TB
     Remote --> RemoteProviders
     Hybrid --> Local
     Hybrid --> Remote
-
-    %% 样式定义
-    classDef interfaceStyle fill:#E1F5FE,stroke:#0277BD,stroke-width:3px,color:#000
-    classDef localStyle fill:#E8F5E9,stroke:#388E3C,stroke-width:2px,color:#000
-    classDef remoteStyle fill:#FFF3E0,stroke:#F57C00,stroke-width:2px,color:#000
-    classDef hybridStyle fill:#F3E5F5,stroke:#7B1FA2,stroke-width:2px,color:#000
-    classDef localProviderStyle fill:#C8E6C9,stroke:#2E7D32,stroke-width:2px,color:#000
-    classDef remoteProviderStyle fill:#FFE0B2,stroke:#E65100,stroke-width:2px,color:#000
-
-    %% 应用样式
-    class Interface interfaceStyle
-    class Local localStyle
-    class Remote remoteStyle
-    class Hybrid hybridStyle
-    class Ollama,LlamaCpp,VLLM localProviderStyle
-    class OpenAI,Qwen,Coze,Dify,CustomAPI remoteProviderStyle
 ```
 
 #### 4.4.2 统一接口定义 (Python)
@@ -2382,33 +2352,6 @@ erDiagram
         varchar sender_type
         bigint processed_by_agent_id FK
         datetime created_at
-    }
-
-    %% 样式定义（ER图使用不同的样式方式）
-    AGENT {
-        fill:#E8F5E9
-        stroke:#388E3C
-        stroke-width:2px
-    }
-    APPLICATION {
-        fill:#FFF3E0
-        stroke:#F57C00
-        stroke-width:2px
-    }
-    CHANNEL {
-        fill:#F3E5F5
-        stroke:#7B1FA2
-        stroke-width:2px
-    }
-    SESSION {
-        fill:#E3F2FD
-        stroke:#1976D2
-        stroke-width:2px
-    }
-    MESSAGE {
-        fill:#E0F2F1
-        stroke:#00796B
-        stroke-width:2px
     }
 ```
 
