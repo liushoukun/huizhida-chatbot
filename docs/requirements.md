@@ -28,7 +28,7 @@
 
 ### 2.2 项目目标
 
-1. **统一接入**：对接多个主流客服平台，将不同格式的消息转换为统一格式
+1. **统一接入**：对接多个主流客服渠道，将不同格式的消息转换为统一格式
 2. **智能处理**：集成多种AI智能体平台，实现智能自动回复
 3. **灵活扩展**：采用插件化架构，方便扩展新的平台和智能体
 4. **人机协作**：支持智能体与人工客服无缝切换
@@ -47,7 +47,7 @@
 | 消息处理器(Processor) | 核心处理组件，负责消息路由和智能体调用 |
 | 会话(Session) | 用户与客服之间的一次完整对话过程 |
 | 应用(Application) | 一个独立的客服服务实例，绑定一个智能体，可配置多个渠道 |
-| 回调(Callback) | 平台主动推送消息到本系统的接口 |
+| 回调(Callback) | 渠道主动推送消息到本系统的接口 |
 
 ---
 
@@ -59,15 +59,15 @@
 
 ```mermaid
 flowchart TB
-    subgraph Clients["客户端平台"]
+    subgraph Clients["客户端渠道"]
         WeChat["企业微信"]
         Taobao["淘宝"]
         Douyin["抖音"]
-        Others["其他平台"]
+        Others["其他渠道"]
     end
 
     subgraph GatewayService["消息网关服务 (Golang)"]
-        subgraph Adapters["平台适配器"]
+        subgraph Adapters["渠道适配器"]
             WeChatAdapter["企微适配器"]
             TaobaoAdapter["淘宝适配器"]
             DouyinAdapter["抖音适配器"]
@@ -190,15 +190,15 @@ flowchart TB
 
 | 服务 | 技术栈 | 核心职责 |
 |------|--------|----------|
-| **消息网关** | Golang (Gin/Fiber) | 平台回调接收、签名验证、消息格式转换、会话记录、消息入队、消息发送、转人工执行 |
+| **消息网关** | Golang (Gin/Fiber) | 渠道回调接收、签名验证、消息格式转换、会话记录、消息入队、消息发送、转人工执行 |
 | **消息处理器** | Python (FastAPI) | 消息消费、规则预判断、智能体调用、AI能力集成（RAG/意图/情绪）、智能体适配器开发 |
-| **管理后台** | PHP Laravel + Filament | 应用管理、平台配置、智能体配置、数据统计、系统监控 |
+| **管理后台** | PHP Laravel + Filament | 应用管理、渠道配置、智能体配置、数据统计、系统监控 |
 
 ### 3.3 技术栈
 
 | 服务 | 技术选型 | 说明 |
 |------|----------|------|
-| **消息网关** | Go + Gin/Fiber | 高并发消息处理，平台回调接收 |
+| **消息网关** | Go + Gin/Fiber | 高并发消息处理，渠道回调接收 |
 | **消息处理器** | Python + FastAPI | AI生态丰富，智能体开发便捷 |
 | **管理后台** | PHP Laravel + Filament | 快速开发管理界面，功能完善 |
 | **消息队列** | Redis Streams / RabbitMQ / Kafka | 服务间消息传递，可配置选择 |
@@ -278,8 +278,8 @@ flowchart LR
 | 队列名 | 方向 | 消息内容 | 说明 |
 |--------|------|----------|------|
 | `incoming_messages` | Gateway → Processor | 统一格式消息 | 待处理的用户消息 |
-| `outgoing_messages` | Processor → Gateway | 回复消息 | 智能体回复，需发送到平台 |
-| `transfer_requests` | Processor → Gateway | 转人工请求 | 需调用平台转人工API |
+| `outgoing_messages` | Processor → Gateway | 回复消息 | 智能体回复，需发送到渠道 |
+| `transfer_requests` | Processor → Gateway | 转人工请求 | 需调用渠道转人工API |
 
 **MQ 抽象接口**：
 
@@ -341,7 +341,7 @@ type KafkaMQ struct { ... }
   "message_id": "msg_001",
   "session_id": "sess_001",
   "app_id": "app_001",
-  "platform": "wecom",
+  "channel": "wecom",
   "content": { "text": "你好" },
   "timestamp": 1705747200000
 }
@@ -350,7 +350,7 @@ type KafkaMQ struct { ... }
 {
   "message_id": "reply_001",
   "session_id": "sess_001",
-  "platform": "wecom",
+  "channel": "wecom",
   "reply": "您好，请问有什么可以帮您？",
   "reply_type": "text"
 }
@@ -358,7 +358,7 @@ type KafkaMQ struct { ... }
 // transfer_requests
 {
   "session_id": "sess_001",
-  "platform": "wecom",
+  "channel": "wecom",
   "reason": "用户请求转人工",
   "source": "rule",
   "priority": "normal"
@@ -371,25 +371,25 @@ type KafkaMQ struct { ... }
 
 ### 4.1 消息网关模块 (Golang)
 
-消息网关是系统的入口服务，使用 **Golang** 开发，负责与各客服平台的直接交互。
+消息网关是系统的入口服务，使用 **Golang** 开发，负责与各客服渠道的直接交互。
 
 #### 4.1.1 核心职责
 
 | 职责 | 说明 |
 |------|------|
-| **平台回调接收** | 接收各平台推送的客服消息 |
-| **签名验证** | 验证平台请求的合法性 |
-| **消息格式转换** | 将平台消息转为统一格式 |
+| **渠道回调接收** | 接收各渠道推送的客服消息 |
+| **签名验证** | 验证渠道请求的合法性 |
+| **消息格式转换** | 将渠道消息转为统一格式 |
 | **会话记录** | 创建/更新会话信息 |
 | **消息入队** | 将待处理消息推入消息队列 |
-| **消息发送** | 消费回复队列，调用平台API发送 |
-| **转人工执行** | 消费转人工队列，调用平台转人工API |
+| **消息发送** | 消费回复队列，调用渠道API发送 |
+| **转人工执行** | 消费转人工队列，调用渠道转人工API |
 
-#### 4.1.2 平台回调接收
+#### 4.1.2 渠道回调接收
 
-**功能描述**：接收各平台推送的客服消息回调
+**功能描述**：接收各渠道推送的客服消息回调
 
-**支持平台**：
+**支持渠道**：
 - 企业微信客服
 - 淘宝/天猫客服
 - 抖音客服
@@ -400,22 +400,22 @@ type KafkaMQ struct { ... }
 **接口规范**：
 
 ```
-POST /api/callback/{platform}/{app_id}
+POST /api/callback/{channel}/{app_id}
 ```
 
 **处理流程**：
 
 ```mermaid
 sequenceDiagram
-    participant P as 客服平台
+    participant P as 客服渠道
     participant G as 消息网关(Go)
     participant Q as 消息队列(MQ)
     participant S as MySQL/Redis
 
-    P->>G: POST /callback/{platform}/{app_id}
+    P->>G: POST /callback/{channel}/{app_id}
     activate G
     G->>G: 验证签名/Token
-    G->>G: 解析平台消息格式
+    G->>G: 解析渠道消息格式
     G->>G: 转换为统一格式
     G->>S: 创建/更新会话
     activate S
@@ -439,15 +439,15 @@ sequenceDiagram
 **Go代码示例**：
 
 ```go
-// 平台回调处理 - Gin框架
+// 渠道回调处理 - Gin框架
 func (h *CallbackHandler) HandleCallback(c *gin.Context) {
-    platform := c.Param("platform")
+    channel := c.Param("channel")
     appID := c.Param("app_id")
     
-    // 1. 获取平台适配器
-    adapter, err := h.adapterFactory.Get(platform)
+    // 1. 获取渠道适配器
+    adapter, err := h.adapterFactory.Get(channel)
     if err != nil {
-        c.JSON(400, gin.H{"error": "unsupported platform"})
+        c.JSON(400, gin.H{"error": "unsupported channel"})
         return
     }
     
@@ -465,7 +465,7 @@ func (h *CallbackHandler) HandleCallback(c *gin.Context) {
         return
     }
     message.AppID = appID
-    message.Platform = platform
+    message.Channel = channel
     
     // 4. 更新会话
     session, err := h.sessionService.GetOrCreate(message)
@@ -481,28 +481,28 @@ func (h *CallbackHandler) HandleCallback(c *gin.Context) {
     // 6. 推入待处理队列 (通过 MQ 接口)
     h.mq.Publish("incoming_messages", message)
     
-    // 7. 快速响应平台
+    // 7. 快速响应渠道
     c.JSON(200, adapter.GetSuccessResponse())
 }
 ```
 
 #### 4.1.3 消息发送（消费回复队列）
 
-消息网关负责消费 `outgoing_messages` 队列，将智能体回复发送到对应平台。
+消息网关负责消费 `outgoing_messages` 队列，将智能体回复发送到对应渠道。
 
 ```mermaid
 sequenceDiagram
     participant Q as 消息队列(MQ)
     participant G as 消息网关(Go)
-    participant P as 客服平台
+    participant P as 客服渠道
     participant S as MySQL
 
     loop 持续消费
         Q->>G: 消费 outgoing_messages
         activate G
-        G->>G: 获取平台适配器
-        G->>G: 转换为平台消息格式
-        G->>P: 调用平台发送API
+        G->>G: 获取渠道适配器
+        G->>G: 转换为渠道消息格式
+        G->>P: 调用渠道发送API
         activate P
         P-->>G: 发送结果
         deactivate P
@@ -528,10 +528,10 @@ func (c *MessageSender) Start(ctx context.Context) {
             return
         case msg := <-msgChan:
             // 获取适配器并发送
-            adapter, _ := c.adapterFactory.Get(msg.Platform)
-            platformMsg := adapter.ConvertToPlatformFormat(msg)
+            adapter, _ := c.adapterFactory.Get(msg.Channel)
+            channelMsg := adapter.ConvertToChannelFormat(msg)
             
-            if err := adapter.SendMessage(platformMsg); err != nil {
+            if err := adapter.SendMessage(channelMsg); err != nil {
                 // 发送失败，重新入队或记录
                 c.handleSendError(msg, err)
             } else {
@@ -558,13 +558,13 @@ func (c *TransferExecutor) Start(ctx context.Context) {
             return
         case req := <-reqChan:
             // 获取适配器
-            adapter, _ := c.adapterFactory.Get(req.Platform)
+            adapter, _ := c.adapterFactory.Get(req.Channel)
             
             // 发送提示消息
             tipMsg := c.config.GetTransferTipMessage()
             adapter.SendMessage(req.SessionID, tipMsg)
             
-            // 调用平台转人工API
+            // 调用渠道转人工API
             if err := adapter.TransferToHuman(req); err != nil {
                 c.handleTransferError(req, err)
             } else {
@@ -586,8 +586,8 @@ func (c *TransferExecutor) Start(ctx context.Context) {
 type UnifiedMessage struct {
     MessageID         string            `json:"message_id"`
     AppID             string            `json:"app_id"`
-    Platform          string            `json:"platform"`
-    PlatformMessageID string            `json:"platform_message_id"`
+    Channel           string            `json:"channel"`
+    ChannelMessageID string            `json:"channel_message_id"`
     SessionID         string            `json:"session_id"`
     User              UserInfo          `json:"user"`
     MessageType       string            `json:"message_type"`
@@ -597,7 +597,7 @@ type UnifiedMessage struct {
 }
 
 type UserInfo struct {
-    PlatformUserID string   `json:"platform_user_id"`
+    ChannelUserID string   `json:"channel_user_id"`
     Nickname       string   `json:"nickname"`
     Avatar         string   `json:"avatar"`
     IsVIP          bool     `json:"is_vip"`
@@ -618,11 +618,11 @@ type MessageContent struct {
 {
   "message_id": "msg_20260120_001",
   "app_id": "app_001",
-  "platform": "wecom",
-  "platform_message_id": "wx_msg_123456",
+  "channel": "wecom",
+  "channel_message_id": "wx_msg_123456",
   "session_id": "sess_001",
   "user": {
-    "platform_user_id": "user_wx_001",
+    "channel_user_id": "user_wx_001",
     "nickname": "张三",
     "avatar": "https://...",
     "is_vip": false,
@@ -702,9 +702,9 @@ stateDiagram-v2
 {
   "session_id": "string",
   "app_id": "string",
-  "platform": "string",
+  "channel": "string",
   "user": {
-    "platform_user_id": "string",
+    "channel_user_id": "string",
     "nickname": "string",
     "avatar": "string",
     "is_vip": false,                // 是否VIP用户
@@ -782,7 +782,7 @@ flowchart TD
     D --> K[执行转人工操作]
     I --> K
     
-    K --> L[调用平台转人工API]
+    K --> L[调用渠道转人工API]
     K --> M[更新会话状态]
     K --> N[发送提示消息]
 
@@ -958,7 +958,7 @@ async def process_message(message: UnifiedMessage, mq: MessageQueue):
     if check_result.action == PreCheckAction.TRANSFER_HUMAN:
         await request_transfer_human(session, TransferRequest(
             session_id=session.id,
-            platform=session.platform,
+            channel=session.channel,
             reason=check_result.reason,
             source="rule"
         ), mq)
@@ -979,7 +979,7 @@ async def process_message(message: UnifiedMessage, mq: MessageQueue):
         if response.should_transfer:
             await request_transfer_human(session, TransferRequest(
                 session_id=session.id,
-                platform=session.platform,
+                channel=session.channel,
                 reason=response.transfer_reason or "agent_suggestion",
                 source="agent"
             ), mq)
@@ -987,7 +987,7 @@ async def process_message(message: UnifiedMessage, mq: MessageQueue):
             # 推入回复队列 (通过 MQ 接口)
             await mq.publish("outgoing_messages", {
                 "session_id": session.id,
-                "platform": session.platform,
+                "channel": session.channel,
                 "reply": response.reply,
                 "reply_type": response.reply_type
             })
@@ -1012,7 +1012,7 @@ from datetime import datetime
 @dataclass
 class TransferRequest:
     session_id: str
-    platform: str
+    channel: str
     reason: str
     source: Literal["rule", "agent"]  # 触发来源
     agent_transfer_reason: Optional[str] = None
@@ -1038,7 +1038,7 @@ async def request_transfer_human(
     # 2. 构建转人工请求
     transfer_data = {
         "session_id": session.id,
-        "platform": session.platform,
+        "channel": session.channel,
         "reason": request.reason,
         "source": request.source,
         "agent_reason": request.agent_transfer_reason,
@@ -1218,7 +1218,7 @@ class AgentType(Enum):
 @dataclass
 class UserInfo:
     """用户信息"""
-    platform_user_id: str
+    channel_user_id: str
     nickname: str
     avatar: Optional[str] = None
     is_vip: bool = False
@@ -1647,7 +1647,7 @@ sequenceDiagram
     participant Factory as AgentFactory
     participant Agent as IAgentAdapter
     participant Transfer as 转人工执行
-    participant Platform as 平台API
+    participant Channel as 渠道API
 
     User->>MP: 用户消息
     activate MP
@@ -1701,14 +1701,14 @@ sequenceDiagram
     
     Transfer->>Transfer: 更新会话状态
     Transfer-->>User: 发送提示消息
-    Transfer->>Platform: 调用平台转人工API
-    activate Platform
-    Platform-->>Transfer: 转接成功
-    deactivate Platform
+    Transfer->>Channel: 调用渠道转人工API
+    activate Channel
+    Channel-->>Transfer: 转接成功
+    deactivate Channel
     deactivate Transfer
     deactivate MP
 
-    Note over User,Platform: 分层协作，职责清晰
+    Note over User,Channel: 分层协作，职责清晰
 ```
 
 **说明**：
@@ -1722,15 +1722,15 @@ sequenceDiagram
 
 #### 4.5.1 消息格式转换
 
-**功能描述**：将智能体回复转换为目标平台的消息格式
+**功能描述**：将智能体回复转换为目标渠道的消息格式
 
 **转换流程**：
 1. 接收统一格式的回复消息
-2. 根据目标平台获取对应适配器
-3. 转换为平台特定格式
-4. 调用平台API发送消息
+2. 根据目标渠道获取对应适配器
+3. 转换为渠道特定格式
+4. 调用渠道API发送消息
 
-#### 4.5.2 平台发送接口
+#### 4.5.2 渠道发送接口
 
 **企业微信发送**：
 - 文本消息
@@ -1794,8 +1794,8 @@ flowchart TD
     J --> L[发送提示消息]
     J --> M{转接模式}
     
-    M -->|队列分配| N[平台分配接口]
-    M -->|指定客服| O[平台指定接口]
+    M -->|队列分配| N[渠道分配接口]
+    M -->|指定客服| O[渠道指定接口]
     
     N --> P[人工客服接入]
     O --> P
@@ -1807,7 +1807,7 @@ flowchart TD
     classDef agentStyle fill:#E8F5E9,stroke:#388E3C,stroke-width:2px,color:#000
     classDef transferStyle fill:#FFEBEE,stroke:#D32F2F,stroke-width:2px,color:#000
     classDef actionStyle fill:#F3E5F5,stroke:#7B1FA2,stroke-width:2px,color:#000
-    classDef platformStyle fill:#E0F2F1,stroke:#00796B,stroke-width:2px,color:#000
+    classDef channelStyle fill:#E0F2F1,stroke:#00796B,stroke-width:2px,color:#000
     classDef successStyle fill:#C8E6C9,stroke:#2E7D32,stroke-width:2px,color:#000
 
     %% 应用样式
@@ -1817,7 +1817,7 @@ flowchart TD
     class F,G agentStyle
     class D,J transferStyle
     class E,I,K,L actionStyle
-    class N,O platformStyle
+    class N,O channelStyle
     class P successStyle
 ```
 
@@ -1846,10 +1846,10 @@ func (e *TransferExecutor) Execute(ctx context.Context, params TransferExecution
     
     // 2. 发送提示消息
     tipMsg := e.config.GetTransferTipMessage()
-    adapter, _ := e.adapterFactory.Get(session.Platform)
+    adapter, _ := e.adapterFactory.Get(session.Channel)
     adapter.SendMessage(session.ID, tipMsg)
     
-    // 3. 调用平台转人工API
+    // 3. 调用渠道转人工API
     if params.Mode == "queue" {
         err = adapter.TransferToQueue(session.ID, params.Priority)
     } else {
@@ -1874,7 +1874,7 @@ func (e *TransferExecutor) Execute(ctx context.Context, params TransferExecution
 }
 ```
 
-#### 4.6.3 各平台转接API
+#### 4.6.3 各渠道转接API
 
 **企业微信**：
 - 接口：转接会话到客服
@@ -1979,8 +1979,8 @@ class ChannelResource extends Resource
                 ->relationship('application', 'app_name')
                 ->required(),
                 
-            Forms\Components\Select::make('platform')
-                ->label('平台类型')
+            Forms\Components\Select::make('channel')
+                ->label('渠道类型')
                 ->options([
                     'wecom' => '企业微信',
                     'taobao' => '淘宝/天猫',
@@ -2005,7 +2005,7 @@ class ChannelResource extends Resource
                     Forms\Components\TextInput::make('config.encoding_aes_key')
                         ->label('加密Key'),
                 ])
-                ->visible(fn ($get) => $get('platform') === 'wecom'),
+                ->visible(fn ($get) => $get('channel') === 'wecom'),
                 
             // 淘宝配置
             Forms\Components\Section::make('淘宝配置')
@@ -2018,7 +2018,7 @@ class ChannelResource extends Resource
                     Forms\Components\TextInput::make('config.session_key')
                         ->label('Session Key'),
                 ])
-                ->visible(fn ($get) => $get('platform') === 'taobao'),
+                ->visible(fn ($get) => $get('channel') === 'taobao'),
         ]);
     }
 }
@@ -2202,11 +2202,11 @@ class StatsOverview extends StatsOverviewWidget
 - 敏感数据：加密存储（API密钥等）
 - 访问控制：基于角色的权限管理
 - 审计日志：操作日志记录
-- 平台验签：验证回调请求合法性
+- 渠道验签：验证回调请求合法性
 
 ### 5.4 扩展性要求
 
-- 新平台接入：实现适配器接口即可
+- 新渠道接入：实现适配器接口即可
 - 新智能体接入：实现智能体接口即可
 - 水平扩展：支持多实例部署
 - 配置热更新：无需重启更新配置
@@ -2312,7 +2312,7 @@ erDiagram
     CHANNEL {
         bigint id PK
         varchar app_id FK
-        varchar platform
+        varchar channel
         json config
         tinyint status
         datetime created_at
@@ -2323,8 +2323,8 @@ erDiagram
         bigint id PK
         varchar session_id UK
         varchar app_id FK
-        varchar platform
-        varchar platform_user_id
+        varchar channel
+        varchar channel_user_id
         varchar user_nickname
         boolean is_vip
         varchar status
@@ -2344,11 +2344,11 @@ erDiagram
         varchar message_id UK
         varchar session_id FK
         varchar app_id FK
-        varchar platform
+        varchar channel
         tinyint direction
         varchar message_type
         json content
-        varchar platform_message_id
+        varchar channel_message_id
         varchar sender_type
         bigint processed_by_agent_id FK
         datetime created_at
@@ -2392,7 +2392,7 @@ erDiagram
 |------|------|------|
 | id | bigint | 主键 |
 | app_id | varchar(32) | 应用ID |
-| platform | varchar(20) | 平台类型 |
+| channel | varchar(20) | 渠道类型 |
 | config | json | 配置信息(加密) |
 | status | tinyint | 状态 |
 | created_at | datetime | 创建时间 |
@@ -2405,8 +2405,8 @@ erDiagram
 | id | bigint | 主键 |
 | session_id | varchar(64) | 会话ID |
 | app_id | varchar(32) | 应用ID |
-| platform | varchar(20) | 平台 |
-| platform_user_id | varchar(64) | 平台用户ID |
+| channel | varchar(20) | 渠道 |
+| channel_user_id | varchar(64) | 渠道用户ID |
 | user_nickname | varchar(100) | 用户昵称 |
 | is_vip | boolean | 是否VIP用户 |
 | status | varchar(20) | 会话状态 |
@@ -2428,11 +2428,11 @@ erDiagram
 | message_id | varchar(64) | 消息ID |
 | session_id | varchar(64) | 会话ID |
 | app_id | varchar(32) | 应用ID |
-| platform | varchar(20) | 平台 |
+| channel | varchar(20) | 渠道 |
 | direction | tinyint | 方向(1:收 2:发) |
 | message_type | varchar(20) | 消息类型 |
 | content | json | 消息内容 |
-| platform_message_id | varchar(64) | 平台消息ID |
+| channel_message_id | varchar(64) | 渠道消息ID |
 | sender_type | varchar(20) | 发送者类型(user/agent/human) |
 | processed_by_agent_id | bigint | 处理智能体ID |
 | created_at | datetime | 创建时间 |
@@ -2672,7 +2672,7 @@ huizhida/                       # 汇智答
 │   ├── cmd/
 │   │   └── main.go
 │   ├── internal/
-│   │   ├── adapter/           # 平台适配器
+│   │   ├── adapter/           # 渠道适配器
 │   │   │   ├── wecom.go
 │   │   │   ├── taobao.go
 │   │   │   └── factory.go
@@ -2740,7 +2740,7 @@ huizhida/                       # 汇智答
 
 ### 9.1 参考文档
 
-**平台对接**：
+**渠道对接**：
 - [企业微信客服API文档](https://developer.work.weixin.qq.com/document/path/94638)
 - [淘宝开放平台文档](https://open.taobao.com/)
 

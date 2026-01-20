@@ -13,9 +13,9 @@
 
 ### 核心特性
 
-- 🚀 **统一接入**：支持企业微信、淘宝、抖音等多个主流客服平台
+- 🚀 **统一接入**：支持企业微信、淘宝、抖音等多个主流客服渠道
 - 🤖 **智能处理**：集成多种 AI 智能体（本地/远程/组合模式）
-- 🔌 **插件化架构**：易于扩展新平台和智能体
+- 🔌 **插件化架构**：易于扩展新渠道和智能体
 - 👥 **人机协作**：支持智能体与人工客服无缝切换
 - 📊 **可视化管理**：提供完善的管理后台进行配置和监控
 - ⚡ **高性能**：支持高并发消息处理，吞吐量 > 1000 msg/s
@@ -26,14 +26,14 @@
 
 ```mermaid
 flowchart TB
-    subgraph Clients["客户端平台"]
+    subgraph Clients["客户端渠道"]
         WeChat["企业微信"]
         Taobao["淘宝"]
         Douyin["抖音"]
     end
 
     subgraph GatewayService["消息网关服务 (Golang)"]
-        Adapters["平台适配器"]
+        Adapters["渠道适配器"]
         Transformer["消息格式转换"]
         MsgSender["消息发送器"]
     end
@@ -74,9 +74,9 @@ flowchart TB
 
 | 服务 | 技术栈 | 核心职责 |
 |------|--------|----------|
-| **消息网关** | Golang (Gin/Fiber) | 平台回调接收、签名验证、消息格式转换、消息发送 |
+| **消息网关** | Golang (Gin/Fiber) | 渠道回调接收、签名验证、消息格式转换、消息发送 |
 | **消息处理器** | Python (FastAPI) | 消息消费、规则预判断、智能体调用、AI能力集成 |
-| **管理后台** | PHP Laravel + Filament | 应用管理、平台配置、智能体配置、数据统计 |
+| **管理后台** | PHP Laravel + Filament | 应用管理、渠道配置、智能体配置、数据统计 |
 
 ## 🛠️ 技术栈
 
@@ -139,7 +139,7 @@ docker-compose logs -f
 1. **创建应用**: 在管理后台创建应用并绑定智能体
 2. **配置渠道**: 为应用添加渠道配置（企业微信、淘宝等）
 3. **配置智能体**: 创建本地/远程/组合智能体
-4. **设置回调**: 在各平台配置回调地址 `http://your-domain/api/callback/{platform}/{app_id}`
+4. **设置回调**: 在各渠道配置回调地址 `http://your-domain/api/callback/{channel}/{app_id}`
 
 ## 📁 项目结构
 
@@ -148,7 +148,7 @@ huizhida-chatbot/
 ├── gateway/                    # 消息网关 (Go)
 │   ├── cmd/
 │   ├── internal/
-│   │   ├── adapter/           # 平台适配器
+│   │   ├── adapter/           # 渠道适配器
 │   │   ├── handler/           # HTTP处理器
 │   │   ├── service/           # 业务服务
 │   │   └── queue/             # 队列操作
@@ -208,10 +208,10 @@ php artisan migrate
 php artisan serve --port=8082
 ```
 
-### 添加新平台适配器
+### 添加新渠道适配器
 
 1. 在 `gateway/internal/adapter/` 创建新的适配器文件
-2. 实现 `PlatformAdapter` 接口
+2. 实现 `ChannelAdapter` 接口
 3. 在 `factory.go` 中注册新适配器
 
 ### 添加新智能体
@@ -232,17 +232,17 @@ php artisan serve --port=8082
 
 - **规则预判断**: 关键词匹配、VIP策略等快速转人工
 - **智能体建议**: 基于置信度、情绪分析等智能判断
-- **统一执行**: 由消息网关统一调用平台转人工 API
+- **统一执行**: 由消息网关统一调用渠道转人工 API
 
 ### 消息处理流程
 
-1. 平台回调 → 消息网关接收
+1. 渠道回调 → 消息网关接收
 2. 格式转换 → 统一消息格式
 3. 消息入队 → 推入待处理队列
 4. 规则预判断 → 快速处理明确请求
 5. 智能体处理 → AI 生成回复
 6. 回复入队 → 推入发送队列
-7. 消息发送 → 调用平台 API 发送
+7. 消息发送 → 调用渠道 API 发送
 
 ## 📈 性能指标
 
@@ -260,7 +260,7 @@ php artisan serve --port=8082
 - HTTPS 加密传输
 - 敏感数据加密存储（API密钥等）
 - 基于角色的权限管理
-- 平台回调签名验证
+- 渠道回调签名验证
 - 操作审计日志
 
 ## 📝 API 文档
@@ -268,10 +268,10 @@ php artisan serve --port=8082
 ### 回调接口
 
 ```
-POST /api/callback/{platform}/{app_id}
+POST /api/callback/{channel}/{app_id}
 ```
 
-支持的平台: `wecom`, `taobao`, `douyin`, `jd`, `pdd`, `webhook`
+支持的渠道: `wecom`, `taobao`, `douyin`, `jd`, `pdd`, `webhook`
 
 ### 管理接口
 
