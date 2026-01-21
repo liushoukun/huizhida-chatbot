@@ -5,6 +5,7 @@ namespace Database\Seeders;
 use App\Models\User;
 // use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
+use RedJasmine\Admin\Domain\Models\Admin;
 
 class DatabaseSeeder extends Seeder
 {
@@ -15,9 +16,17 @@ class DatabaseSeeder extends Seeder
     {
         // User::factory(10)->create();
 
-        User::factory()->create([
-            'name' => 'Test User',
-            'email' => 'test@example.com',
+
+        Admin::factory()->create([
+            'name'     => 'admin',
+            'email'    => 'admin@red-jasmine.top',
+            'password' => 'admin'
         ]);
+        Admin::factory()->create([
+            'name'     => 'service',
+            'email'    => 'service@red-jasmine.top',
+            'password' => 'service'
+        ]);
+
     }
 }
