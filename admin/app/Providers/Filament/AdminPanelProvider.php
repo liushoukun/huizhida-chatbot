@@ -18,6 +18,7 @@ use Illuminate\Routing\Middleware\SubstituteBindings;
 use Illuminate\Session\Middleware\StartSession;
 use Illuminate\View\Middleware\ShareErrorsFromSession;
 use RedJasmine\FilamentAdmin\FilamentAdminPlugin;
+use RedJasmine\FilamentProject\FilamentProjectPlugin;
 use RedJasmine\FilamentSupport\FilamentSupportPlugin;
 
 class AdminPanelProvider extends \RedJasmine\FilamentSupport\Panel\PanelProvider
@@ -43,6 +44,7 @@ class AdminPanelProvider extends \RedJasmine\FilamentSupport\Panel\PanelProvider
             ->plugins([
                 FilamentSupportPlugin::make(),
                 FilamentAdminPlugin::make(),
+                FilamentProjectPlugin::make(),
             ])
              ;
 
