@@ -163,12 +163,12 @@ class CustomAdapter implements AgentAdapterInterface
     {
         // 调用智能体API
         // 返回格式化的响应
-        return new \HuiZhiDa\AgentProcessor\Domain\Data\ChatResponse(
-            reply: '回复内容',
-            replyType: 'text',
-            shouldTransfer: false,
-            confidence: 1.0,
-        );
+        return \HuiZhiDa\AgentProcessor\Domain\Data\ChatResponse::from([
+            'reply' => '回复内容',
+            'replyType' => 'text',
+            'shouldTransfer' => false,
+            'confidence' => 1.0,
+        ]);
     }
 
     public function healthCheck(): bool

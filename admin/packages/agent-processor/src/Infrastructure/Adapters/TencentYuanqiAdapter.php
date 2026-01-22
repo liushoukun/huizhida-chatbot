@@ -5,6 +5,7 @@ namespace HuiZhiDa\AgentProcessor\Infrastructure\Adapters;
 use HuiZhiDa\AgentProcessor\Domain\Contracts\AgentAdapterInterface;
 use HuiZhiDa\AgentProcessor\Domain\Data\ChatRequest;
 use HuiZhiDa\AgentProcessor\Domain\Data\ChatResponse;
+use HuiZhiDa\AgentProcessor\Domain\Data\Message;
 use GuzzleHttp\Client;
 use Illuminate\Support\Facades\Log;
 
@@ -64,7 +65,12 @@ class TencentYuanqiAdapter implements AgentAdapterInterface
         // 添加当前消息
         if (!empty($request->messages)) {
             foreach ($request->messages as $msg) {
-                $content = $msg['content']['text'] ?? $msg['content'] ?? '';
+                $content = '';
+                if ($msg instanceof Message) {
+                    $content = $msg->getText();
+                } else {
+                    $content = $msg['content']['text'] ?? $msg['content'] ?? '';
+                }
                 if (!empty($content)) {
                     $messages[] = ['role' => 'user', 'content' => $content];
                 }
@@ -86,17 +92,17 @@ class TencentYuanqiAdapter implements AgentAdapterInterface
             $reply = $data['choices'][0]['message']['content'] ?? '';
             $shouldTransfer = $this->shouldTransfer($reply, $request);
 
-            return new ChatResponse(
-                reply: $reply,
-                replyType: 'text',
-                shouldTransfer: $shouldTransfer,
-                transferReason: $shouldTransfer ? 'low_confidence' : null,
-                confidence: 0.9,
-                metadata: [
+            return ChatResponse::from([
+                'reply' => $reply,
+                'replyType' => 'text',
+                'shouldTransfer' => $shouldTransfer,
+                'transferReason' => $shouldTransfer ? 'low_confidence' : null,
+                'confidence' => 0.9,
+                'metadata' => [
                     'model' => $model,
                     'provider' => 'tencent_yuanqi',
                 ],
-            );
+            ]);
         } catch (\Exception $e) {
             Log::error('Tencent Yuanqi API error', [
                 'error' => $e->getMessage(),

@@ -2,51 +2,52 @@
 
 namespace HuiZhiDa\AgentProcessor\Domain\Data;
 
+use RedJasmine\Support\Foundation\Data\Data;
+
 /**
  * 聊天请求数据对象
  */
-readonly class ChatRequest
+class ChatRequest extends Data
 {
-    public function __construct(
-        public string $conversationId,
-        public ?string $agentConversationId = null,
-        public array $messages = [],
-        public array $history = [],
-        public array $context = [],
-        public array $userInfo = [],
-        public ?int $timestamp = null,
-    ) {
-    }
+    /**
+     * 会话ID
+     * @var string
+     */
+    public string $conversationId;
 
     /**
-     * 从数组创建实例
+     * 代理会话ID
+     * @var string|null
      */
-    public static function fromArray(array $data): self
-    {
-        return new self(
-            conversationId: $data['conversation_id'] ?? '',
-            agentConversationId: $data['agent_conversation_id'] ?? null,
-            messages: $data['messages'] ?? [],
-            history: $data['history'] ?? [],
-            context: $data['context'] ?? [],
-            userInfo: $data['user_info'] ?? [],
-            timestamp: $data['timestamp'] ?? time(),
-        );
-    }
+    public ?string $agentConversationId = null;
 
     /**
-     * 转换为数组
+     * 消息列表
+     * @var Message[]
      */
-    public function toArray(): array
-    {
-        return [
-            'conversation_id' => $this->conversationId,
-            'agent_conversation_id' => $this->agentConversationId,
-            'messages' => $this->messages,
-            'history' => $this->history,
-            'context' => $this->context,
-            'user_info' => $this->userInfo,
-            'timestamp' => $this->timestamp,
-        ];
-    }
+    public array $messages = [];
+
+    /**
+     * 历史记录
+     * @var array
+     */
+    public array $history = [];
+
+    /**
+     * 上下文信息
+     * @var array
+     */
+    public array $context = [];
+
+    /**
+     * 用户信息
+     * @var array
+     */
+    public array $userInfo = [];
+
+    /**
+     * 时间戳
+     * @var int|null
+     */
+    public ?int $timestamp = null;
 }

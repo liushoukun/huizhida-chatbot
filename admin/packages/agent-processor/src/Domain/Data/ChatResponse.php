@@ -2,54 +2,58 @@
 
 namespace HuiZhiDa\AgentProcessor\Domain\Data;
 
+use RedJasmine\Support\Foundation\Data\Data;
+
 /**
  * 聊天响应数据对象
  */
-readonly class ChatResponse
+class ChatResponse extends Data
 {
-    public function __construct(
-        public string $reply = '',
-        public string $replyType = 'text',
-        public ?array $richContent = null,
-        public bool $shouldTransfer = false,
-        public ?string $transferReason = null,
-        public float $confidence = 1.0,
-        public ?string $agentConversationId = null,
-        public ?array $metadata = null,
-    ) {
-    }
+    /**
+     * 回复内容
+     * @var string
+     */
+    public string $reply = '';
 
     /**
-     * 从数组创建实例
+     * 回复类型
+     * @var string
      */
-    public static function fromArray(array $data): self
-    {
-        return new self(
-            reply: $data['reply'] ?? '',
-            replyType: $data['reply_type'] ?? 'text',
-            richContent: $data['rich_content'] ?? null,
-            shouldTransfer: (bool) ($data['should_transfer'] ?? false),
-            transferReason: $data['transfer_reason'] ?? null,
-            confidence: (float) ($data['confidence'] ?? 1.0),
-            agentConversationId: $data['agent_conversation_id'] ?? null,
-            metadata: $data['metadata'] ?? null,
-        );
-    }
+    public string $replyType = 'text';
 
     /**
-     * 转换为数组
+     * 富文本内容
+     * @var array|null
      */
-    public function toArray(): array
-    {
-        return [
-            'reply' => $this->reply,
-            'reply_type' => $this->replyType,
-            'rich_content' => $this->richContent,
-            'should_transfer' => $this->shouldTransfer,
-            'transfer_reason' => $this->transferReason,
-            'confidence' => $this->confidence,
-            'agent_conversation_id' => $this->agentConversationId,
-            'metadata' => $this->metadata,
-        ];
-    }
+    public ?array $richContent = null;
+
+    /**
+     * 是否应该转接
+     * @var bool
+     */
+    public bool $shouldTransfer = false;
+
+    /**
+     * 转接原因
+     * @var string|null
+     */
+    public ?string $transferReason = null;
+
+    /**
+     * 置信度
+     * @var float
+     */
+    public float $confidence = 1.0;
+
+    /**
+     * 代理会话ID
+     * @var string|null
+     */
+    public ?string $agentConversationId = null;
+
+    /**
+     * 元数据
+     * @var array|null
+     */
+    public ?array $metadata = null;
 }

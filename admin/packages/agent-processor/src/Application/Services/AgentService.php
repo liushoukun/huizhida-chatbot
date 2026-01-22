@@ -2,13 +2,16 @@
 
 namespace HuiZhiDa\AgentProcessor\Application\Services;
 
+use Exception;
 use HuiZhiDa\AgentProcessor\Domain\Contracts\AgentAdapterInterface;
 use HuiZhiDa\AgentProcessor\Domain\Data\ChatRequest;
 use HuiZhiDa\AgentProcessor\Domain\Data\ChatResponse;
+use HuiZhiDa\AgentProcessor\Domain\Data\Message;
 use HuiZhiDa\AgentProcessor\Infrastructure\Adapters\AgentAdapterFactory;
 use HuiZhiDa\Agent\Domain\Models\Agent;
 use HuiZhiDa\Agent\Domain\Repositories\AgentRepositoryInterface;
 use Illuminate\Support\Facades\Log;
+use RuntimeException;
 
 /**
  * 智能体服务
@@ -30,15 +33,16 @@ class AgentService
      * @param  int  $agentId  智能体ID
      *
      * @return array 响应数据
-     * @throws \Exception
+     * @throws Exception
      */
-    public function processMessages(array $messages, array $conversation, int $agentId): array
+    public function processMessages(array $messages, array $conversation, int $agentId) : array
     {
         try {
             // 1. 获取智能体配置
             $agent = $this->agentRepository->find($agentId);
+
             if (!$agent || !$agent->isEnabled()) {
-                throw new \RuntimeException("Agent {$agentId} not found or disabled");
+                throw new RuntimeException("Agent {$agentId} not found or disabled");
             }
 
             // 2. 创建智能体适配器
@@ -48,17 +52,17 @@ class AgentService
             $request = $this->buildChatRequest($messages, $conversation);
 
             // 4. 调用智能体
-            $timeout = config('agent-processor.agent.timeout', 30);
+            $timeout  = config('agent-processor.agent.timeout', 30);
             $response = $this->callWithTimeout($adapter, $request, $timeout);
 
             // 5. 格式化响应
             return $this->formatResponse($response, $agent);
 
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             Log::error('Agent processing failed', [
-                'agent_id' => $agentId,
+                'agent_id'        => $agentId,
                 'conversation_id' => $conversation['conversation_id'] ?? null,
-                'error' => $e->getMessage(),
+                'error'           => $e->getMessage(),
             ]);
 
             // 尝试使用降级智能体
@@ -73,7 +77,7 @@ class AgentService
     /**
      * 使用降级智能体处理
      */
-    protected function processWithFallback(array $messages, array $conversation, int $fallbackAgentId): array
+    protected function processWithFallback(array $messages, array $conversation, int $fallbackAgentId) : array
     {
         Log::info('Using fallback agent', ['fallback_agent_id' => $fallbackAgentId]);
         return $this->processMessages($messages, $conversation, $fallbackAgentId);
@@ -82,10 +86,10 @@ class AgentService
     /**
      * 构建聊天请求
      */
-    protected function buildChatRequest(array $messages, array $conversation): ChatRequest
+    protected function buildChatRequest(array $messages, array $conversation) : ChatRequest
     {
         $firstMessage = $messages[0] ?? [];
-        $context = json_decode($conversation['context'] ?? '{}', true) ?: [];
+        $context      = json_decode($conversation['context'] ?? '{}', true) ?: [];
 
         // 构建消息历史
         $history = [];
@@ -96,33 +100,45 @@ class AgentService
         // 添加当前消息
         foreach ($messages as $message) {
             $history[] = [
-                'role' => 'user',
+                'role'    => 'user',
                 'content' => $this->extractMessageContent($message),
             ];
         }
 
-        return new ChatRequest(
-            conversationId: $conversation['conversation_id'] ?? '',
-            agentConversationId: $conversation['agent_conversation_id'] ?? null,
-            messages: $messages,
-            history: $history,
-            context: $context,
-            userInfo: [
+        // 将 messages 数组转换为 Message DTO 数组
+        $messageDtos = [];
+        foreach ($messages as $message) {
+            $messageDtos[] = is_array($message) ? Message::from($message) : $message;
+        }
+
+        return ChatRequest::from([
+            'conversationId'      => $conversation['conversation_id'] ?? '',
+            'agentConversationId' => $conversation['agent_conversation_id'] ?? null,
+            'messages'            => $messageDtos,
+            'history'             => $history,
+            'context'             => $context,
+            'userInfo'            => [
                 'channel_user_id' => $conversation['channel_user_id'] ?? '',
-                'nickname' => $conversation['user_nickname'] ?? '',
-                'avatar' => $conversation['user_avatar'] ?? '',
-                'is_vip' => (bool) ($conversation['is_vip'] ?? false),
-                'tags' => json_decode($conversation['user_tags'] ?? '[]', true) ?: [],
+                'nickname'        => $conversation['user_nickname'] ?? '',
+                'avatar'          => $conversation['user_avatar'] ?? '',
+                'is_vip'          => (bool) ($conversation['is_vip'] ?? false),
+                'tags'            => json_decode($conversation['user_tags'] ?? '[]', true) ?: [],
             ],
-            timestamp: time(),
-        );
+            'timestamp'           => time(),
+        ]);
     }
 
     /**
      * 提取消息内容
      */
-    protected function extractMessageContent(array $message): string
+    protected function extractMessageContent(array|Message $message) : string
     {
+        // 如果是 Message 对象，使用其 getText 方法
+        if ($message instanceof Message) {
+            return $message->getText();
+        }
+
+        // 如果是数组，按原逻辑处理
         if (isset($message['content']['text'])) {
             return $message['content']['text'];
         }
@@ -135,7 +151,7 @@ class AgentService
     /**
      * 带超时的调用
      */
-    protected function callWithTimeout(AgentAdapterInterface $adapter, ChatRequest $request, int $timeout): ChatResponse
+    protected function callWithTimeout(AgentAdapterInterface $adapter, ChatRequest $request, int $timeout) : ChatResponse
     {
         $startTime = microtime(true);
 
@@ -144,15 +160,15 @@ class AgentService
             $duration = microtime(true) - $startTime;
 
             Log::info('Agent response received', [
-                'duration' => round($duration, 2),
+                'duration'        => round($duration, 2),
                 'conversation_id' => $request->conversationId,
             ]);
 
             return $response;
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             $duration = microtime(true) - $startTime;
             if ($duration >= $timeout) {
-                throw new \RuntimeException("Agent timeout after {$timeout}s");
+                throw new RuntimeException("Agent timeout after {$timeout}s");
             }
             throw $e;
         }
@@ -161,18 +177,18 @@ class AgentService
     /**
      * 格式化响应
      */
-    protected function formatResponse(ChatResponse $response, Agent $agent): array
+    protected function formatResponse(ChatResponse $response, Agent $agent) : array
     {
         return [
-            'reply' => $response->reply,
-            'reply_type' => $response->replyType,
-            'rich_content' => $response->richContent,
-            'should_transfer' => $response->shouldTransfer,
-            'transfer_reason' => $response->transferReason,
-            'confidence' => $response->confidence,
-            'processed_by' => $agent->name ?? 'unknown',
+            'reply'                 => $response->reply,
+            'reply_type'            => $response->replyType,
+            'rich_content'          => $response->richContent,
+            'should_transfer'       => $response->shouldTransfer,
+            'transfer_reason'       => $response->transferReason,
+            'confidence'            => $response->confidence,
+            'processed_by'          => $agent->name ?? 'unknown',
             'agent_conversation_id' => $response->agentConversationId,
-            'metadata' => $response->metadata,
+            'metadata'              => $response->metadata,
         ];
     }
 }
