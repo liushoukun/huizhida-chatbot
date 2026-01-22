@@ -5,6 +5,7 @@ namespace HuiZhiDa\Channel\Domain\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use HuiZhiDa\Agent\Domain\Models\Agent;
 use HuiZhiDa\Channel\Domain\Models\Enums\ChannelStatus;
 use HuiZhiDa\Channel\Domain\Models\Enums\ChannelType;
 use RedJasmine\Project\Domain\Models\Project;
@@ -22,6 +23,7 @@ class Channel extends Model implements OperatorInterface
 
     protected $fillable = [
         'app_id',
+        'agent_id',
         'channel',
         'config',
         'status',
@@ -95,5 +97,13 @@ class Channel extends Model implements OperatorInterface
     public function app() : BelongsTo
     {
         return $this->belongsTo(Project::class,'app_id','id');
+    }
+
+    /**
+     * 获取绑定的智能体
+     */
+    public function agent(): BelongsTo
+    {
+        return $this->belongsTo(Agent::class, 'agent_id');
     }
 }

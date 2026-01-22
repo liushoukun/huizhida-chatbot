@@ -19,6 +19,7 @@ class ChannelTransformer implements TransformerInterface
         }
 
         $model->app_id = $data->appId;
+        $model->agent_id = $data->agentId;
         $model->channel = $data->channel;
         $model->config = $data->config;
         $model->status = $data->status;

@@ -10,7 +10,8 @@ use RedJasmine\Support\Helpers\Enums\EnumCast;
 class ChannelData extends Data
 {
     public int $appId;
-    
+    public ?int $agentId = null;
+
     #[EnumCast(ChannelType::class)]
     public ChannelType $channel;
     

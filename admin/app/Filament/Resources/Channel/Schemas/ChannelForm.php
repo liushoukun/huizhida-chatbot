@@ -63,6 +63,14 @@ class ChannelForm
                         ->helperText('所属应用的ID')
                     ->dehydrateStateUsing(fn ($state) => (string)$state),
 
+                    Select::make('agent_id')
+                        ->relationship('agent', 'name')
+                        ->label('绑定的智能体')
+                        ->nullable()
+                        ->searchable()
+                        ->preload()
+                        ->helperText('选择此渠道转发消息的智能体，不同渠道可以绑定不同的智能体'),
+
                     Select::make('channel')
                         ->label('渠道类型')
                         ->options(fn () => app(ChannelTypeManager::class)->options())

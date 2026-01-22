@@ -55,7 +55,23 @@ class ChannelTable
                 ->copyable()
                 ->searchable()
                 ->sortable()
+                ->weight('bold')
+                ->toggleable(isToggledHiddenByDefault: true),
+
+            TextColumn::make('app.name')
+                ->label('应用名称')
+
+                ->searchable()
+                ->sortable()
                 ->weight('bold'),
+
+            TextColumn::make('agent.name')
+                ->label('智能体名称')
+
+                ->searchable()
+                ->sortable()
+                ->placeholder('未绑定')
+                ->formatStateUsing(fn ($state) => $state ?? '未绑定'),
 
             TextColumn::make('channel')
                 ->label('渠道类型')
