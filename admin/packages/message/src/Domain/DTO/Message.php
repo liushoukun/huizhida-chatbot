@@ -24,16 +24,22 @@ class Message extends Data
     public ?UserInfo $user = null;
 
     /**
-     * 消息ID
-     * @var string
+     * 内部会话ID
+     * @var ?string
      */
-    public string $messageId;
+    public ?string $conversationId;
 
-    // 会话ID
-    public string $conversationId;
+    /**
+     * 内部对话ID
+     * @var string|null
+     */
+    public ?string $chatId;
 
-    // 对话ID
-    public string $chatId;
+    /**
+     * 内部消息ID
+     * @var ?string
+     */
+    public ?string $messageId;
 
     /**
      * 消息类型
