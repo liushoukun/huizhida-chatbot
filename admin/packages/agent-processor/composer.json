@@ -1,0 +1,47 @@
+{
+    "name": "huizhida/agent-processor",
+    "description": "HuiZhiDa Agent Processor Package",
+    "type": "library",
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "HuiZhiDa Team",
+            "email": "team@huizhida.com"
+        }
+    ],
+    "require": {
+        "php": "^8.2",
+        "laravel/framework": "^12.0",
+        "illuminate/support": "^12.0",
+        "illuminate/queue": "^12.0",
+        "illuminate/redis": "^12.0",
+        "guzzlehttp/guzzle": "^7.0",
+        "huizhida/gateway": "*",
+        "huizhida/agent": "*"
+    },
+    "require-dev": {
+
+    },
+    "autoload": {
+        "psr-4": {
+            "HuiZhiDa\\AgentProcessor\\": "src/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "HuiZhiDa\\AgentProcessor\\Tests\\": "tests/"
+        }
+    },
+    "extra": {
+        "laravel": {
+            "providers": [
+                "HuiZhiDa\\AgentProcessor\\AgentProcessorServiceProvider"
+            ]
+        },
+        "branch-alias": {
+            "dev-master": "1.0.x-dev",
+            "dev-main": "1.0.x-dev",
+            "dev-develop": "1.0.x-dev"
+        }
+    }
+}

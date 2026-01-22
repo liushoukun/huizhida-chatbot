@@ -46,7 +46,7 @@
 | 组合智能体(Hybrid Agent) | 组合本地+远程的智能体实现，本地分类后路由到不同处理器 |
 | 消息处理器(Processor) | 核心处理组件，负责消息路由和智能体调用 |
 | 会话(Conversation) | 用户与客服之间的一次完整对话过程 |
-| 应用(Application) | 一个独立的客服服务实例，绑定一个智能体，可配置多个渠道 |
+| 应用(Application) | 一个独立的客服服务实例，可配置多个渠道，每个渠道可绑定不同的智能体 |
 | 回调(Callback) | 渠道主动推送消息到本系统的接口 |
 
 ---
@@ -1044,8 +1044,9 @@ async def process_conversation_messages(
         redis_client.zremrangebyscore(key, '-inf', max_score)
         return
     
-    # 5. 获取应用绑定的智能体
-    agent_config = await agent_repository.get_by_id(app_config.agent_id)
+    # 5. 获取渠道绑定的智能体
+    channel_config = await channel_repository.get_by_id(conversation.channel_id)
+    agent_config = await agent_repository.get_by_id(channel_config.agent_id)
     agent = AgentFactory.create(agent_config)
     await agent.initialize(agent_config)
     
@@ -1715,13 +1716,13 @@ class AgentFactory:
 
 
 # 使用示例
-async def get_agent_for_app(app_id: str) -> IAgentAdapter:
-    """获取应用绑定的智能体"""
-    # 从数据库获取应用配置
-    app = await application_repository.get_by_app_id(app_id)
+async def get_agent_for_channel(channel_id: str) -> IAgentAdapter:
+    """获取渠道绑定的智能体"""
+    # 从数据库获取渠道配置
+    channel = await channel_repository.get_by_id(channel_id)
     
-    # 获取应用绑定的智能体配置
-    agent_config = await agent_repository.get_by_id(app.agent_id)
+    # 获取渠道绑定的智能体配置
+    agent_config = await agent_repository.get_by_id(channel.agent_id)
     
     # 创建智能体实例
     agent = AgentFactory.create(agent_config)
@@ -2371,9 +2372,10 @@ GET /api/admin/conversations/{conversation_id}/messages  # 会话消息记录
 
 ```mermaid
 erDiagram
-    AGENT ||--o{ APPLICATION : serves
+    AGENT ||--o{ CHANNEL : serves
     APPLICATION ||--o{ CHANNEL : has
     APPLICATION ||--o{ CONVERSATION : has
+    CHANNEL ||--o{ CONVERSATION : has
     CONVERSATION ||--o{ MESSAGE : contains
 
     AGENT {
@@ -2395,7 +2397,6 @@ erDiagram
         varchar app_name
         varchar app_secret
         text description
-        bigint agent_id FK
         tinyint status
         datetime created_at
         datetime updated_at
@@ -2403,7 +2404,8 @@ erDiagram
 
     CHANNEL {
         bigint id PK
-        varchar app_id FK
+        bigint app_id FK
+        bigint agent_id FK
         varchar channel
         json config
         tinyint status
@@ -2414,7 +2416,8 @@ erDiagram
     CONVERSATION {
         bigint id PK
         varchar conversation_id UK
-        varchar app_id FK
+        bigint app_id FK
+        bigint channel_id FK
         varchar channel
         varchar channel_user_id
         varchar user_nickname

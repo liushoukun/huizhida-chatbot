@@ -103,7 +103,7 @@ class RedisQueue implements MessageQueueInterface
      */
     public function getConversationMessages(string $conversationId, float $maxScore = null): array
     {
-        $key = "conversation:{$conversationId}:messages";
+        $key = "conversation:messages:{$conversationId}";
         
         try {
             if ($maxScore !== null) {
