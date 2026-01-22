@@ -31,14 +31,14 @@ class Channel extends Model implements OperatorInterface
 
     protected $casts = [
         'config' => 'array',
-        'channel' => ChannelType::class,
+        //'channel' => ChannelType::class,
         'status' => ChannelStatus::class,
     ];
 
     /**
      * 业务方法：启用渠道
      */
-    public function enable(): bool
+    public function enable() : bool
     {
         if ($this->status === ChannelStatus::DISABLED) {
             $this->update(['status' => ChannelStatus::ENABLED]);
@@ -50,7 +50,7 @@ class Channel extends Model implements OperatorInterface
     /**
      * 业务方法：禁用渠道
      */
-    public function disable(): bool
+    public function disable() : bool
     {
         if ($this->status === ChannelStatus::ENABLED) {
             $this->update(['status' => ChannelStatus::DISABLED]);
@@ -62,7 +62,7 @@ class Channel extends Model implements OperatorInterface
     /**
      * 检查是否启用
      */
-    public function isEnabled(): bool
+    public function isEnabled() : bool
     {
         return $this->status === ChannelStatus::ENABLED;
     }
@@ -70,7 +70,7 @@ class Channel extends Model implements OperatorInterface
     /**
      * 检查是否禁用
      */
-    public function isDisabled(): bool
+    public function isDisabled() : bool
     {
         return $this->status === ChannelStatus::DISABLED;
     }
@@ -78,31 +78,35 @@ class Channel extends Model implements OperatorInterface
     /**
      * 检查渠道类型
      */
-    public function isWecom(): bool
+    public function isWecom() : bool
     {
         return $this->channel === ChannelType::WECOM;
     }
 
-    public function isTaobao(): bool
+    public function isTaobao() : bool
     {
         return $this->channel === ChannelType::TAOBAO;
     }
 
-    public function isDouyin(): bool
+    public function isDouyin() : bool
     {
         return $this->channel === ChannelType::DOUYIN;
     }
 
+    public function isApi() : bool
+    {
+        return $this->channel === ChannelType::API;
+    }
 
     public function app() : BelongsTo
     {
-        return $this->belongsTo(Project::class,'app_id','id');
+        return $this->belongsTo(Project::class, 'app_id', 'id');
     }
 
     /**
      * 获取绑定的智能体
      */
-    public function agent(): BelongsTo
+    public function agent() : BelongsTo
     {
         return $this->belongsTo(Agent::class, 'agent_id');
     }

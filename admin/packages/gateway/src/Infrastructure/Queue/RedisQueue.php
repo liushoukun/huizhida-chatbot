@@ -21,6 +21,7 @@ class RedisQueue implements MessageQueueInterface
         $data = is_string($message) ? $message : json_encode($message);
         
         try {
+
             Redis::connection($this->connection)->lpush($queue, $data);
         } catch (\Exception $e) {
             Log::error('Queue publish failed', [
@@ -67,5 +68,85 @@ class RedisQueue implements MessageQueueInterface
         // Redis 列表队列不支持 NACK
         // 可以记录日志或推送到失败队列
         Log::warning('Message nacked', ['message' => $message]);
+    }
+
+    /**
+     * 添加消息到会话的ZSET中
+     * 
+     * @param string $conversationId 会话ID
+     * @param mixed $message 消息数据
+     * @param float $score 分数（时间戳）
+     */
+    public function addToConversationZset(string $conversationId, mixed $message, float $score = null): void
+    {
+        $key = "conversation:{$conversationId}:messages";
+        $data = is_string($message) ? $message : json_encode($message);
+        $score = $score ?? microtime(true);
+        
+        try {
+            Redis::connection($this->connection)->zadd($key, $score, $data);
+        } catch (\Exception $e) {
+            Log::error('Add message to conversation zset failed', [
+                'conversation_id' => $conversationId,
+                'error' => $e->getMessage(),
+            ]);
+            throw $e;
+        }
+    }
+
+    /**
+     * 获取会话中所有未处理的消息
+     * 
+     * @param string $conversationId 会话ID
+     * @param float $maxScore 最大分数（用于获取指定时间之前的消息）
+     * @return array 消息数组
+     */
+    public function getConversationMessages(string $conversationId, float $maxScore = null): array
+    {
+        $key = "conversation:{$conversationId}:messages";
+        
+        try {
+            if ($maxScore !== null) {
+                $messages = Redis::connection($this->connection)->zrangebyscore($key, '-inf', $maxScore);
+            } else {
+                $messages = Redis::connection($this->connection)->zrange($key, 0, -1);
+            }
+            
+            $result = [];
+            foreach ($messages as $message) {
+                $decoded = json_decode($message, true);
+                $result[] = $decoded !== null ? $decoded : $message;
+            }
+            
+            return $result;
+        } catch (\Exception $e) {
+            Log::error('Get conversation messages failed', [
+                'conversation_id' => $conversationId,
+                'error' => $e->getMessage(),
+            ]);
+            throw $e;
+        }
+    }
+
+    /**
+     * 从会话ZSET中移除消息
+     * 
+     * @param string $conversationId 会话ID
+     * @param float $maxScore 最大分数（移除指定时间之前的消息）
+     * @return int 移除的消息数量
+     */
+    public function removeConversationMessages(string $conversationId, float $maxScore): int
+    {
+        $key = "conversation:{$conversationId}:messages";
+        
+        try {
+            return Redis::connection($this->connection)->zremrangebyscore($key, '-inf', $maxScore);
+        } catch (\Exception $e) {
+            Log::error('Remove conversation messages failed', [
+                'conversation_id' => $conversationId,
+                'error' => $e->getMessage(),
+            ]);
+            throw $e;
+        }
     }
 }

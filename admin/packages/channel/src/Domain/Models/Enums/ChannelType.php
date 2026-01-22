@@ -14,6 +14,7 @@ enum ChannelType: string
     case JD = 'jd';
     case PDD = 'pdd';
     case WEBHOOK = 'webhook';
+    case API = 'api';
 
     public static function labels(): array
     {
@@ -24,6 +25,7 @@ enum ChannelType: string
             self::JD->value => '京东',
             self::PDD->value => '拼多多',
             self::WEBHOOK->value => '自定义Webhook',
+            self::API->value => 'API渠道',
         ];
     }
 
@@ -36,6 +38,7 @@ enum ChannelType: string
             self::JD->value => 'red',
             self::PDD->value => 'pink',
             self::WEBHOOK->value => 'gray',
+            self::API->value => 'blue',
         ];
     }
 
@@ -48,6 +51,7 @@ enum ChannelType: string
             self::JD->value => 'heroicon-o-shopping-cart',
             self::PDD->value => 'heroicon-o-tag',
             self::WEBHOOK->value => 'heroicon-o-link',
+            self::API->value => 'heroicon-o-code-bracket',
         ];
     }
 }

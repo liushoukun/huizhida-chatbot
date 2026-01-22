@@ -15,7 +15,7 @@ class ChannelTypeManager extends EnumManager
      */
     protected const DRIVERS = [
         'wecom' => WecomChannelType::class,
-
+        'api' => ApiChannelType::class,
     ];
 
 }

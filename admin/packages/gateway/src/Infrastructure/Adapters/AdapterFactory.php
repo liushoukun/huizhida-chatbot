@@ -13,6 +13,7 @@ class AdapterFactory
     {
         // 注册默认适配器
         $this->register('wecom', WecomAdapter::class);
+        $this->register('api', ApiAdapter::class);
     }
 
     /**

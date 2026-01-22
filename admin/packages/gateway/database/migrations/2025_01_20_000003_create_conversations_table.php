@@ -14,9 +14,10 @@ return new class extends Migration
             $table->string('channel_conversation_id', 128)->nullable()->index()->comment('渠道会话ID（渠道方提供）');
             
             // 渠道信息
-            $table->string('channel_type', 20)->index()->comment('渠道类型: wecom, taobao, douyin等');
+            $table->unsignedBigInteger('app_id')->index()->comment('应用ID');
             $table->unsignedBigInteger('channel_id')->nullable()->index()->comment('渠道ID（关联channels表）');
-            $table->string('app_id', 32)->index()->comment('应用ID');
+            $table->string('channel_type', 32)->index()->comment('渠道类型: wecom, taobao, douyin等');
+
             
             // 渠道用户信息
             $table->string('channel_user_id', 128)->index()->comment('渠道用户ID');

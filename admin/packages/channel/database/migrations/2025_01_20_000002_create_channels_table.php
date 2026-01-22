@@ -14,7 +14,7 @@ return new class extends Migration {
     {
         Schema::create('channels', function (Blueprint $table) {
             $table->id();
-            $table->string('app_id', 32)->comment('应用ID');
+            $table->unsignedBigInteger('app_id')->comment('应用ID');
             $table->string('channel', 20)->default(ChannelType::WEBHOOK->value)->comment('渠道类型');
             $table->json('config')->nullable()->comment('配置信息(加密)');
             $table->tinyInteger('status')->default(ChannelStatus::ENABLED->value)->comment('状态');

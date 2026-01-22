@@ -277,9 +277,16 @@ flowchart LR
 
 | 队列名 | 方向 | 消息内容 | 说明 |
 |--------|------|----------|------|
-| `incoming_messages` | Gateway → Processor | 统一格式消息 | 待处理的用户消息 |
+| `conversation_events` | Gateway → Processor | 会话事件消息 | 包含会话ID，触发批量处理 |
+| `incoming_messages` | Gateway → Processor | 统一格式消息 | 待处理的用户消息（已废弃，改用conversation_events） |
 | `outgoing_messages` | Processor → Gateway | 回复消息 | 智能体回复，需发送到渠道 |
 | `transfer_requests` | Processor → Gateway | 转人工请求 | 需调用渠道转人工API |
+
+**Redis ZSET存储**：
+
+| Key格式 | 数据结构 | 说明 |
+|---------|----------|------|
+| `conversation:messages:{conversation_id}` | ZSET | 会话待处理消息集合，score为时间戳，value为消息JSON |
 
 **MQ 抽象接口**：
 
@@ -405,10 +412,18 @@ POST /api/callback/{channel}/{app_id}
 
 **处理流程**：
 
+消息回调处理采用**两步处理机制**，优化连续消息的处理效率：
+
+1. **第一步**：将消息推送到以会话ID为key的Redis ZSET中，表示该会话有待处理消息
+2. **第二步**：推送事件消息到队列（包含会话ID），触发消息处理器批量处理该会话的所有未处理消息
+
+这样当用户连续发送多条消息时，消息处理器只需要处理一次，一次性获取该会话的所有未处理消息并统一发送到智能体。
+
 ```mermaid
 sequenceDiagram
     participant P as 客服渠道
     participant G as 消息网关(Go)
+    participant R as Redis ZSET
     participant Q as 消息队列(MQ)
     participant S as MySQL/Redis
 
@@ -425,15 +440,25 @@ sequenceDiagram
     activate S
     S-->>G: 保存成功
     deactivate S
-    G->>Q: 推入 incoming_messages 队列
+    
+    Note over G,R: 第一步：推送到会话ZSET
+    G->>R: ZADD conversation:{id}:messages<br/>(消息数据, 时间戳)
+    activate R
+    R-->>G: 添加成功
+    deactivate R
+    
+    Note over G,Q: 第二步：推送事件消息
+    G->>Q: 推入 conversation_events 队列<br/>(type, conversation_id)
     activate Q
     Q-->>G: 入队成功
     deactivate Q
+    
     G-->>P: 200 OK (快速响应)
     deactivate G
 
     Note over P,G: 快速响应，异步处理
-    Note over G,Q: 消息队列解耦
+    Note over G,R: 会话消息聚合
+    Note over G,Q: 事件触发批量处理
 ```
 
 **Go代码示例**：
@@ -478,10 +503,21 @@ func (h *CallbackHandler) HandleCallback(c *gin.Context) {
     // 5. 保存消息记录
     h.messageService.Save(message)
     
-    // 6. 推入待处理队列 (通过 MQ 接口)
-    h.mq.Publish("incoming_messages", message)
+    // 6. 第一步：将消息推送到以会话ID为key的Redis ZSET中
+    key := fmt.Sprintf("conversation:messages:%s", conversation.ID)
+    messageData, _ := json.Marshal(message)
+    score := float64(time.Now().UnixNano()) / 1e9 // 微秒时间戳
+    redis.ZAdd(key, score, messageData)
     
-    // 7. 快速响应渠道
+    // 7. 第二步：推送事件消息到队列，包含会话ID
+    eventMessage := map[string]interface{}{
+        "type": "conversation_message",
+        "conversation_id": conversation.ID,
+        "timestamp": time.Now().Unix(),
+    }
+    h.mq.Publish("conversation_events", eventMessage)
+    
+    // 8. 快速响应渠道
     c.JSON(200, adapter.GetSuccessResponse())
 }
 ```
@@ -869,38 +905,46 @@ def pre_check(
 
 #### 4.3.4 处理流程
 
+消息处理器消费 `conversation_events` 队列中的事件消息，获取会话ID后，一次性从Redis ZSET中获取该会话的所有未处理消息，统一发送到智能体处理。这样用户连续发送多条消息时，只需要处理一次即可。
+
 ```mermaid
 flowchart TD
-    A[从MQ消费消息] --> B[获取/创建会话上下文]
-    B --> C[规则预判断 preCheck]
+    A[从MQ消费conversation_events] --> B[获取会话ID]
+    B --> C[从Redis ZSET获取会话所有未处理消息]
+    C --> D{是否有未处理消息?}
+    D -->|无| E[跳过处理]
+    D -->|有| F[批量获取消息列表]
+    F --> G[获取/创建会话上下文]
+    G --> H[规则预判断 preCheck]
     
-    C --> D{预判断结果}
+    H --> I{预判断结果}
     
-    D -->|skip| E[跳过,等待人工]
-    D -->|transfer_human| F[推入转人工队列]
-    D -->|call_agent| G[获取智能体实例]
+    I -->|skip| J[跳过,等待人工]
+    I -->|transfer_human| K[推入转人工队列]
+    I -->|call_agent| L[获取智能体实例]
     
-    G --> H[AgentFactory.create]
-    H --> I[agent.chat]
+    L --> M[AgentFactory.create]
+    M --> N[agent.chat<br/>批量处理所有消息]
     
-    I --> J{调用结果}
+    N --> O{调用结果}
     
-    J -->|成功| K{检查 should_transfer}
-    J -->|失败/超时| L[获取降级智能体]
+    O -->|成功| P{检查 should_transfer}
+    O -->|失败/超时| Q[获取降级智能体]
     
-    K -->|true| F
-    K -->|false| M[推入回复队列]
+    P -->|true| K
+    P -->|false| R[推入回复队列]
     
-    L --> N[fallbackAgent.chat]
-    N --> O{降级结果}
-    O -->|成功| K
-    O -->|失败| F
+    Q --> S[fallbackAgent.chat]
+    S --> T{降级结果}
+    T -->|成功| P
+    T -->|失败| K
     
-    M --> P[outgoing_messages]
-    F --> Q[transfer_requests]
+    R --> U[outgoing_messages]
+    K --> V[transfer_requests]
     
-    P --> R[更新会话状态]
-    Q --> R
+    U --> W[移除已处理消息<br/>从Redis ZSET]
+    V --> W
+    W --> X[更新会话状态]
 
     %% 样式定义
     classDef inputStyle fill:#E3F2FD,stroke:#1976D2,stroke-width:2px,color:#000
@@ -925,34 +969,67 @@ flowchart TD
 
 ```python
 import asyncio
+import redis
 from app.mq import MessageQueue  # MQ 抽象接口
 
-async def message_consumer(mq: MessageQueue):
-    """消息消费主循环"""
-    # 订阅 incoming_messages 队列
-    async for message_data in mq.subscribe("incoming_messages"):
+async def conversation_event_consumer(mq: MessageQueue, redis_client: redis.Redis):
+    """会话事件消费主循环"""
+    # 订阅 conversation_events 队列
+    async for event_data in mq.subscribe("conversation_events"):
         try:
-            message = UnifiedMessage.parse_raw(message_data)
+            event = json.loads(event_data)
+            conversation_id = event.get("conversation_id")
             
-            # 处理消息
-            await process_message(message, mq)
+            if not conversation_id:
+                continue
+            
+            # 批量处理会话中的所有未处理消息
+            await process_conversation_messages(conversation_id, mq, redis_client)
             
             # 确认消费
-            await mq.ack(message_data)
+            await mq.ack(event_data)
             
         except Exception as e:
-            logger.error(f"消息处理异常: {e}")
-            await mq.nack(message_data)  # 消费失败，重新入队
+            logger.error(f"会话事件处理异常: {e}")
+            await mq.nack(event_data)  # 消费失败，重新入队
 
-async def process_message(message: UnifiedMessage, mq: MessageQueue):
-    """处理单条消息"""
-    # 1. 获取会话上下文
-    conversation = await conversation_service.get_or_create(message)
+async def process_conversation_messages(
+    conversation_id: str, 
+    mq: MessageQueue, 
+    redis_client: redis.Redis
+):
+    """批量处理会话中的所有未处理消息"""
+    # 1. 从Redis ZSET获取该会话的所有未处理消息
+    key = f"conversation:messages:{conversation_id}"
+    messages_data = redis_client.zrange(key, 0, -1)
     
-    # 2. 规则预判断
-    check_result = pre_check(message, conversation, app_config)
+    if not messages_data:
+        return  # 没有未处理消息，跳过
+    
+    # 2. 解析消息列表
+    messages = []
+    for msg_data in messages_data:
+        try:
+            message = UnifiedMessage.parse_raw(msg_data)
+            messages.append(message)
+        except Exception as e:
+            logger.error(f"解析消息失败: {e}")
+            continue
+    
+    if not messages:
+        return
+    
+    # 3. 获取会话上下文（使用第一条消息）
+    first_message = messages[0]
+    conversation = await conversation_service.get_or_create(first_message)
+    
+    # 4. 规则预判断（基于第一条消息）
+    check_result = pre_check(first_message, conversation, app_config)
     
     if check_result.action == PreCheckAction.SKIP:
+        # 移除已处理的消息
+        max_score = time.time()
+        redis_client.zremrangebyscore(key, '-inf', max_score)
         return  # 跳过，等待人工
     
     if check_result.action == PreCheckAction.TRANSFER_HUMAN:
@@ -962,20 +1039,27 @@ async def process_message(message: UnifiedMessage, mq: MessageQueue):
             reason=check_result.reason,
             source="rule"
         ), mq)
+        # 移除已处理的消息
+        max_score = time.time()
+        redis_client.zremrangebyscore(key, '-inf', max_score)
         return
     
-    # 3. 获取应用绑定的智能体
+    # 5. 获取应用绑定的智能体
     agent_config = await agent_repository.get_by_id(app_config.agent_id)
     agent = AgentFactory.create(agent_config)
     await agent.initialize(agent_config)
     
     try:
+        # 6. 批量处理所有消息，统一发送到智能体
+        # 构建包含所有消息的聊天请求
+        chat_request = build_batch_chat_request(messages, conversation)
+        
         response = await asyncio.wait_for(
-            agent.chat(build_chat_request(message, conversation)),
+            agent.chat(chat_request),
             timeout=app_config.agent_timeout
         )
         
-        # 4. 处理响应
+        # 7. 处理响应
         if response.should_transfer:
             await request_transfer_human(conversation, TransferRequest(
                 conversation_id=conversation.id,
@@ -992,12 +1076,20 @@ async def process_message(message: UnifiedMessage, mq: MessageQueue):
                 "reply_type": response.reply_type
             })
         
-        # 5. 更新会话
+        # 8. 移除已处理的消息（从Redis ZSET中删除）
+        max_score = time.time()
+        removed_count = redis_client.zremrangebyscore(key, '-inf', max_score)
+        logger.info(f"会话 {conversation_id} 处理完成，移除 {removed_count} 条消息")
+        
+        # 9. 更新会话
         await conversation_service.update(conversation.id, {"updated_at": datetime.now()})
         
     except asyncio.TimeoutError:
         # 超时降级处理
         await handle_agent_timeout(conversation, mq)
+        # 移除已处理的消息
+        max_score = time.time()
+        redis_client.zremrangebyscore(key, '-inf', max_score)
 ```
 
 #### 4.3.5 转人工处理

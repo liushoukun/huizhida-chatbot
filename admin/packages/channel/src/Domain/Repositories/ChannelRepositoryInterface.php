@@ -5,8 +5,12 @@ namespace HuiZhiDa\Channel\Domain\Repositories;
 use Illuminate\Database\Eloquent\Collection;
 use HuiZhiDa\Channel\Domain\Models\Channel;
 use HuiZhiDa\Channel\Domain\Models\Enums\ChannelType;
+use Illuminate\Database\Eloquent\Model;
 use RedJasmine\Support\Domain\Repositories\RepositoryInterface;
 
+/**
+ * @method Channel find(mixed $id)
+ */
 interface ChannelRepositoryInterface extends RepositoryInterface
 {
     /**

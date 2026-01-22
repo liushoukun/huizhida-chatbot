@@ -35,9 +35,10 @@ return [
     */
     'queue' => [
         'type' => env('GATEWAY_QUEUE_TYPE', 'redis'), // redis, rabbitmq, kafka
-        'connection' => env('GATEWAY_QUEUE_CONNECTION', 'redis'),
+        'connection' => env('GATEWAY_QUEUE_CONNECTION', 'default'),
         'incoming_queue' => env('GATEWAY_INCOMING_QUEUE', 'incoming_messages'),
         'outgoing_queue' => env('GATEWAY_OUTGOING_QUEUE', 'outgoing_messages'),
         'transfer_queue' => env('GATEWAY_TRANSFER_QUEUE', 'transfer_requests'),
+        'conversation_event_queue' => env('GATEWAY_CONVERSATION_EVENT_QUEUE', 'conversation_events'),
     ],
 ];
