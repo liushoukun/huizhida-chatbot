@@ -6,8 +6,6 @@ use HuiZhiDa\Message\Domain\DTO\Contents\Content;
 use HuiZhiDa\Message\Domain\Enums\ContentType;
 use HuiZhiDa\Message\Domain\Enums\MessageType;
 use RedJasmine\Support\Foundation\Data\Data;
-use Spatie\LaravelData\Attributes\WithCast;
-use Spatie\LaravelData\Casts\EnumCast;
 
 /**
  * 核心消息DTO
@@ -16,7 +14,6 @@ use Spatie\LaravelData\Casts\EnumCast;
  */
 class Message extends Data
 {
-
     /**
      * 用户信息
      * @var UserInfo|null
@@ -25,38 +22,37 @@ class Message extends Data
 
     /**
      * 内部会话ID
-     * @var ?string
+     * @var string|null
      */
-    public ?string $conversationId;
+    public ?string $conversationId = null;
 
     /**
      * 内部对话ID
      * @var string|null
      */
-    public ?string $chatId;
+    public ?string $chatId = null;
 
     /**
      * 内部消息ID
-     * @var ?string
+     * @var string|null
      */
-    public ?string $messageId;
+    public ?string $messageId = null;
 
     /**
      * 消息类型
      * @var MessageType
      */
-    #[WithCast(EnumCast::class, MessageType::class)]
     public MessageType $type = MessageType::Question;
 
     /**
      * 消息内容类型
      * @var ContentType
      */
-    #[WithCast(EnumCast::class, ContentType::class)]
-    public ContentType $contentType;
+    public ContentType $contentType = ContentType::Text;
+
     /**
      * 消息内容对象
-     * @var mixed|null
+     * @var Content|null
      */
     public ?Content $content = null;
 
@@ -72,5 +68,11 @@ class Message extends Data
      */
     public ?string $rawData = null;
 
-
+    /**
+     * 构造函数
+     */
+    public function __construct()
+    {
+        $this->timestamp = time();
+    }
 }

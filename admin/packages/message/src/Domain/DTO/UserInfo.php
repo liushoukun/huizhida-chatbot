@@ -2,7 +2,10 @@
 
 namespace HuiZhiDa\Message\Domain\DTO;
 
+use HuiZhiDa\Message\Domain\Enums\UserType;
 use RedJasmine\Support\Foundation\Data\Data;
+use Spatie\LaravelData\Attributes\WithCast;
+use Spatie\LaravelData\Casts\EnumCast;
 
 /**
  * 用户信息DTO
@@ -12,9 +15,10 @@ class UserInfo extends Data
 
     /**
      * 用户类型
-     * @var string
+     * @var UserType
      */
-    public string $type;
+    #[WithCast(EnumCast::class, UserType::class)]
+    public UserType $type = UserType::User;
 
     /**
      * 用户ID
@@ -24,13 +28,13 @@ class UserInfo extends Data
 
     /**
      * 昵称
-     * @var ?string
+     * @var string|null
      */
-    public ?string $nickname = '';
+    public ?string $nickname = null;
 
     /**
      * 头像
-     * @var ?string
+     * @var string|null
      */
     public ?string $avatar = null;
 

@@ -2,20 +2,34 @@
 
 namespace HuiZhiDa\Message\Domain\DTO;
 
+/**
+ * 渠道消息DTO
+ *
+ * 继承自核心Message，添加渠道相关的特定字段
+ */
 class ChannelMessage extends Message
 {
     /**
      * 渠道ID
-     * @var string
+     * @var string|null
      */
-    public string $channelId;
+    public ?string $channelId = null;
 
-    // 渠道会话Id
-    public string $channelConversationId;
-    // 渠道 chat id
-    public string $channelChatId;
-    // 渠道消息id
-    public string $channelMessageId;
+    /**
+     * 渠道会话ID
+     * @var string|null
+     */
+    public ?string $channelConversationId = null;
 
+    /**
+     * 渠道聊天ID
+     * @var string|null
+     */
+    public ?string $channelChatId = null;
 
+    /**
+     * 渠道消息ID
+     * @var string|null
+     */
+    public ?string $channelMessageId = null;
 }
