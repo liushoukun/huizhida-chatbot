@@ -45,7 +45,7 @@
 | 远程智能体(Remote Agent) | 基于远程API的智能体实现，如OpenAI、通义千问、Coze |
 | 组合智能体(Hybrid Agent) | 组合本地+远程的智能体实现，本地分类后路由到不同处理器 |
 | 消息处理器(Processor) | 核心处理组件，负责消息路由和智能体调用 |
-| 会话(Session) | 用户与客服之间的一次完整对话过程 |
+| 会话(Conversation) | 用户与客服之间的一次完整对话过程 |
 | 应用(Application) | 一个独立的客服服务实例，绑定一个智能体，可配置多个渠道 |
 | 回调(Callback) | 渠道主动推送消息到本系统的接口 |
 
@@ -74,7 +74,7 @@ flowchart TB
             GenericAdapter["通用适配器"]
         end
         Transformer["消息格式转换"]
-        SessionWriter["会话记录"]
+        ConversationWriter["会话记录"]
         MsgSender["消息发送器"]
     end
 
@@ -136,8 +136,8 @@ flowchart TB
 
     %% 网关内部流程
     Adapters --> Transformer
-    Transformer --> SessionWriter
-    SessionWriter --> InQueue
+    Transformer --> ConversationWriter
+    ConversationWriter --> InQueue
 
     %% 队列到处理器
     InQueue --> Processor
@@ -178,7 +178,7 @@ flowchart TB
 
     %% 应用样式
     class WeChat,Taobao,Douyin,Others clientStyle
-    class WeChatAdapter,TaobaoAdapter,DouyinAdapter,GenericAdapter,Transformer,SessionWriter,MsgSender gatewayStyle
+    class WeChatAdapter,TaobaoAdapter,DouyinAdapter,GenericAdapter,Transformer,ConversationWriter,MsgSender gatewayStyle
     class InQueue,OutQueue,TransferQueue queueStyle
     class Processor,PreCheck,LocalAgent,RemoteAgent,HybridAgent,AgentInterface,RAG,Intent,Emotion processorStyle
     class Filament,AppMgr,ConfigMgr,StatsMgr adminStyle
@@ -339,7 +339,7 @@ type KafkaMQ struct { ... }
 // incoming_messages
 {
   "message_id": "msg_001",
-  "session_id": "sess_001",
+  "conversation_id": "conv_001",
   "app_id": "app_001",
   "channel": "wecom",
   "content": { "text": "你好" },
@@ -349,7 +349,7 @@ type KafkaMQ struct { ... }
 // outgoing_messages
 {
   "message_id": "reply_001",
-  "session_id": "sess_001",
+  "conversation_id": "conv_001",
   "channel": "wecom",
   "reply": "您好，请问有什么可以帮您？",
   "reply_type": "text"
@@ -357,7 +357,7 @@ type KafkaMQ struct { ... }
 
 // transfer_requests
 {
-  "session_id": "sess_001",
+  "conversation_id": "conv_001",
   "channel": "wecom",
   "reason": "用户请求转人工",
   "source": "rule",
@@ -468,12 +468,12 @@ func (h *CallbackHandler) HandleCallback(c *gin.Context) {
     message.Channel = channel
     
     // 4. 更新会话
-    session, err := h.sessionService.GetOrCreate(message)
+    conversation, err := h.conversationService.GetOrCreate(message)
     if err != nil {
-        c.JSON(500, gin.H{"error": "session error"})
+        c.JSON(500, gin.H{"error": "conversation error"})
         return
     }
-    message.SessionID = session.ID
+    message.ConversationID = conversation.ID
     
     // 5. 保存消息记录
     h.messageService.Save(message)
@@ -562,7 +562,7 @@ func (c *TransferExecutor) Start(ctx context.Context) {
             
             // 发送提示消息
             tipMsg := c.config.GetTransferTipMessage()
-            adapter.SendMessage(req.SessionID, tipMsg)
+            adapter.SendMessage(req.ConversationID, tipMsg)
             
             // 调用渠道转人工API
             if err := adapter.TransferToHuman(req); err != nil {
@@ -572,7 +572,7 @@ func (c *TransferExecutor) Start(ctx context.Context) {
             }
             
             // 更新会话状态
-            c.sessionService.UpdateStatus(req.SessionID, "pending_human", req.Reason)
+            c.conversationService.UpdateStatus(req.ConversationID, "pending_human", req.Reason)
         }
     }
 }
@@ -588,7 +588,7 @@ type UnifiedMessage struct {
     AppID             string            `json:"app_id"`
     Channel           string            `json:"channel"`
     ChannelMessageID string            `json:"channel_message_id"`
-    SessionID         string            `json:"session_id"`
+    ConversationID    string            `json:"conversation_id"`
     User              UserInfo          `json:"user"`
     MessageType       string            `json:"message_type"`
     Content           MessageContent    `json:"content"`
@@ -620,7 +620,7 @@ type MessageContent struct {
   "app_id": "app_001",
   "channel": "wecom",
   "channel_message_id": "wx_msg_123456",
-  "session_id": "sess_001",
+  "conversation_id": "conv_001",
   "user": {
     "channel_user_id": "user_wx_001",
     "nickname": "张三",
@@ -700,7 +700,7 @@ stateDiagram-v2
 
 ```json
 {
-  "session_id": "string",
+  "conversation_id": "string",
   "app_id": "string",
   "channel": "string",
   "user": {
@@ -831,13 +831,13 @@ class PreCheckResult:
 
 def pre_check(
     message: UnifiedMessage, 
-    session: Session, 
+    conversation: Conversation, 
     config: AppConfig
 ) -> PreCheckResult:
     """规则预判断"""
     
     # 1. 会话已转人工，跳过智能体
-    if session.status == "transferred":
+    if conversation.status == "transferred":
         return PreCheckResult(PreCheckAction.SKIP, "already_transferred")
     
     # 2. 关键词匹配，直接转人工
@@ -847,7 +847,7 @@ def pre_check(
         return PreCheckResult(PreCheckAction.TRANSFER_HUMAN, "keyword_match")
     
     # 3. VIP用户直接转人工策略（可配置）
-    if session.is_vip and config.vip_direct_transfer:
+    if conversation.is_vip and config.vip_direct_transfer:
         return PreCheckResult(PreCheckAction.TRANSFER_HUMAN, "vip_policy")
     
     # 4. 正常调用智能体
@@ -947,18 +947,18 @@ async def message_consumer(mq: MessageQueue):
 async def process_message(message: UnifiedMessage, mq: MessageQueue):
     """处理单条消息"""
     # 1. 获取会话上下文
-    session = await session_service.get_or_create(message)
+    conversation = await conversation_service.get_or_create(message)
     
     # 2. 规则预判断
-    check_result = pre_check(message, session, app_config)
+    check_result = pre_check(message, conversation, app_config)
     
     if check_result.action == PreCheckAction.SKIP:
         return  # 跳过，等待人工
     
     if check_result.action == PreCheckAction.TRANSFER_HUMAN:
-        await request_transfer_human(session, TransferRequest(
-            session_id=session.id,
-            channel=session.channel,
+        await request_transfer_human(conversation, TransferRequest(
+            conversation_id=conversation.id,
+            channel=conversation.channel,
             reason=check_result.reason,
             source="rule"
         ), mq)
@@ -971,33 +971,33 @@ async def process_message(message: UnifiedMessage, mq: MessageQueue):
     
     try:
         response = await asyncio.wait_for(
-            agent.chat(build_chat_request(message, session)),
+            agent.chat(build_chat_request(message, conversation)),
             timeout=app_config.agent_timeout
         )
         
         # 4. 处理响应
         if response.should_transfer:
-            await request_transfer_human(session, TransferRequest(
-                session_id=session.id,
-                channel=session.channel,
+            await request_transfer_human(conversation, TransferRequest(
+                conversation_id=conversation.id,
+                channel=conversation.channel,
                 reason=response.transfer_reason or "agent_suggestion",
                 source="agent"
             ), mq)
         else:
             # 推入回复队列 (通过 MQ 接口)
             await mq.publish("outgoing_messages", {
-                "session_id": session.id,
-                "channel": session.channel,
+                "conversation_id": conversation.id,
+                "channel": conversation.channel,
                 "reply": response.reply,
                 "reply_type": response.reply_type
             })
         
         # 5. 更新会话
-        await session_service.update(session.id, {"updated_at": datetime.now()})
+        await conversation_service.update(conversation.id, {"updated_at": datetime.now()})
         
     except asyncio.TimeoutError:
         # 超时降级处理
-        await handle_agent_timeout(session, mq)
+        await handle_agent_timeout(conversation, mq)
 ```
 
 #### 4.3.5 转人工处理
@@ -1011,7 +1011,7 @@ from datetime import datetime
 
 @dataclass
 class TransferRequest:
-    session_id: str
+    conversation_id: str
     channel: str
     reason: str
     source: Literal["rule", "agent"]  # 触发来源
@@ -1019,7 +1019,7 @@ class TransferRequest:
     priority: Literal["high", "normal", "low"] = "normal"
 
 async def request_transfer_human(
-    session: Session,
+    conversation: Conversation,
     request: TransferRequest,
     mq: MessageQueue
 ) -> None:
@@ -1027,8 +1027,8 @@ async def request_transfer_human(
     请求转人工 - 推入队列，由消息网关执行
     """
     # 1. 更新会话状态
-    await session_manager.update(
-        session.id,
+    await conversation_manager.update(
+        conversation.id,
         status="pending_human",
         transfer_reason=request.reason,
         transfer_source=request.source,
@@ -1037,13 +1037,13 @@ async def request_transfer_human(
     
     # 2. 构建转人工请求
     transfer_data = {
-        "session_id": session.id,
-        "channel": session.channel,
+        "conversation_id": conversation.id,
+        "channel": conversation.channel,
         "reason": request.reason,
         "source": request.source,
         "agent_reason": request.agent_transfer_reason,
-        "priority": request.priority if not session.is_vip else "high",
-        "context": session.context,
+        "priority": request.priority if not conversation.is_vip else "high",
+        "context": conversation.context,
         "timestamp": datetime.now().isoformat()
     }
     
@@ -1234,7 +1234,7 @@ class MessageContent:
 @dataclass
 class ChatRequest:
     """聊天请求"""
-    session_id: str
+    conversation_id: str
     message_type: str                    # text|image|voice|...
     content: MessageContent
     history: List[Dict[str, Any]]        # 对话历史
@@ -1828,7 +1828,7 @@ flowchart TD
 ```go
 // 消息网关中的转人工执行器 (Go)
 type TransferExecution struct {
-    SessionID        string `json:"session_id"`
+    ConversationID    string `json:"conversation_id"`
     Source           string `json:"source"`            // rule | agent
     Reason           string `json:"reason"`
     AgentReason      string `json:"agent_reason,omitempty"`
@@ -1839,28 +1839,28 @@ type TransferExecution struct {
 
 func (e *TransferExecutor) Execute(ctx context.Context, params TransferExecution) error {
     // 1. 获取会话信息
-    session, err := e.sessionService.Get(params.SessionID)
+    conversation, err := e.conversationService.Get(params.ConversationID)
     if err != nil {
         return err
     }
     
     // 2. 发送提示消息
     tipMsg := e.config.GetTransferTipMessage()
-    adapter, _ := e.adapterFactory.Get(session.Channel)
-    adapter.SendMessage(session.ID, tipMsg)
+    adapter, _ := e.adapterFactory.Get(conversation.Channel)
+    adapter.SendMessage(conversation.ID, tipMsg)
     
     // 3. 调用渠道转人工API
     if params.Mode == "queue" {
-        err = adapter.TransferToQueue(session.ID, params.Priority)
+        err = adapter.TransferToQueue(conversation.ID, params.Priority)
     } else {
-        err = adapter.TransferToSpecific(session.ID, params.SpecificServicer, params.Priority)
+        err = adapter.TransferToSpecific(conversation.ID, params.SpecificServicer, params.Priority)
     }
     if err != nil {
         return err
     }
     
     // 4. 更新会话状态
-    e.sessionService.Update(params.SessionID, map[string]interface{}{
+    e.conversationService.Update(params.ConversationID, map[string]interface{}{
         "status":          "pending_human",
         "transfer_reason": params.Reason,
         "transfer_source": params.Source,
@@ -2147,7 +2147,7 @@ class StatsOverview extends StatsOverviewWidget
                 ->color('success')
                 ->chart([7, 3, 4, 5, 6, 3, 5, 8]),
                 
-            Stat::make('活跃会话', $this->getActiveSessionCount())
+            Stat::make('活跃会话', $this->getActiveConversationCount())
                 ->description('当前在线')
                 ->color('primary'),
                 
@@ -2265,10 +2265,10 @@ DELETE /api/admin/agents/{id}                       # 删除智能体
 ```
 GET /api/admin/stats/overview                       # 总览统计
 GET /api/admin/stats/messages                       # 消息统计
-GET /api/admin/stats/sessions                       # 会话统计
-GET /api/admin/sessions                             # 会话列表
-GET /api/admin/sessions/{session_id}                # 会话详情
-GET /api/admin/sessions/{session_id}/messages       # 会话消息记录
+GET /api/admin/stats/conversations                  # 会话统计
+GET /api/admin/conversations                        # 会话列表
+GET /api/admin/conversations/{conversation_id}      # 会话详情
+GET /api/admin/conversations/{conversation_id}/messages  # 会话消息记录
 ```
 
 ---
@@ -2281,8 +2281,8 @@ GET /api/admin/sessions/{session_id}/messages       # 会话消息记录
 erDiagram
     AGENT ||--o{ APPLICATION : serves
     APPLICATION ||--o{ CHANNEL : has
-    APPLICATION ||--o{ SESSION : has
-    SESSION ||--o{ MESSAGE : contains
+    APPLICATION ||--o{ CONVERSATION : has
+    CONVERSATION ||--o{ MESSAGE : contains
 
     AGENT {
         bigint id PK
@@ -2319,9 +2319,9 @@ erDiagram
         datetime updated_at
     }
 
-    SESSION {
+    CONVERSATION {
         bigint id PK
-        varchar session_id UK
+        varchar conversation_id UK
         varchar app_id FK
         varchar channel
         varchar channel_user_id
@@ -2342,7 +2342,7 @@ erDiagram
     MESSAGE {
         bigint id PK
         varchar message_id UK
-        varchar session_id FK
+        varchar conversation_id FK
         varchar app_id FK
         varchar channel
         tinyint direction
@@ -2398,12 +2398,12 @@ erDiagram
 | created_at | datetime | 创建时间 |
 | updated_at | datetime | 更新时间 |
 
-#### 会话表 (sessions)
+#### 会话表 (conversations)
 
 | 字段 | 类型 | 说明 |
 |------|------|------|
 | id | bigint | 主键 |
-| session_id | varchar(64) | 会话ID |
+| conversation_id | varchar(64) | 会话ID |
 | app_id | varchar(32) | 应用ID |
 | channel | varchar(20) | 渠道 |
 | channel_user_id | varchar(64) | 渠道用户ID |
@@ -2426,7 +2426,7 @@ erDiagram
 |------|------|------|
 | id | bigint | 主键 |
 | message_id | varchar(64) | 消息ID |
-| session_id | varchar(64) | 会话ID |
+| conversation_id | varchar(64) | 会话ID |
 | app_id | varchar(32) | 应用ID |
 | channel | varchar(20) | 渠道 |
 | direction | tinyint | 方向(1:收 2:发) |
