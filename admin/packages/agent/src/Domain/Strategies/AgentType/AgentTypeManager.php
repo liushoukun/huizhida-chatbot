@@ -15,6 +15,7 @@ class AgentTypeManager extends EnumManager
      */
     protected const DRIVERS = [
         'tencent_yuanqi' => TencentYuanqiAgentType::class,
+        'coze' => CozeAgentType::class,
     ];
 
 }
