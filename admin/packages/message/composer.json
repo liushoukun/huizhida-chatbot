@@ -1,6 +1,6 @@
 {
-    "name": "huizhida/gateway",
-    "description": "HuiZhiDa Gateway Package",
+    "name": "huizhida/message",
+    "description": "HuiZhiDa Message Core DTO Package",
     "type": "library",
     "license": "MIT",
     "authors": [
@@ -11,29 +11,25 @@
     ],
     "require": {
         "php": "^8.2",
-        "laravel/framework": "^12.0",
-        "illuminate/support": "^12.0",
-        "illuminate/queue": "^12.0",
-        "huizhida/message": "*",
-        "illuminate/redis": "^12.0"
+        "red-jasmine/support": "^1.0"
     },
-    "require-dev": {
+    "require-dev": [
 
-    },
+    ],
     "autoload": {
         "psr-4": {
-            "HuiZhiDa\\Gateway\\": "src/"
+            "HuiZhiDa\\Message\\": "src/"
         }
     },
     "autoload-dev": {
         "psr-4": {
-            "HuiZhiDa\\Gateway\\Tests\\": "tests/"
+            "HuiZhiDa\\Message\\Tests\\": "tests/"
         }
     },
     "extra": {
         "laravel": {
             "providers": [
-                "HuiZhiDa\\Gateway\\GatewayServiceProvider"
+                "HuiZhiDa\\Message\\MessageServiceProvider"
             ]
         },
         "branch-alias": {
