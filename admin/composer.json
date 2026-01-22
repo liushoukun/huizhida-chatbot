@@ -12,6 +12,8 @@
         "laravel/tinker": "^2.10.1",
         "livewire/flux": "^2.9.0",
         "overtrue/laravel-wechat": "^7.2",
+        "huizhida/channel": "^1.0",
+        "huizhida/agent": "^1.0",
         "red-jasmine/filament-project": "^1.0",
         "red-jasmine/filament-admin": "^1.0"
     },
@@ -108,6 +110,13 @@
         {
             "type": "path",
             "url": "../../../red-jasmine/develop/framework/packages/*",
+            "options": {
+                "symlink": true
+            }
+        },
+        {
+            "type": "path",
+            "url": "./packages/*",
             "options": {
                 "symlink": true
             }

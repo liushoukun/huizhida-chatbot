@@ -1,0 +1,40 @@
+{
+    "name": "huizhida/agent",
+    "description": "HuiZhiDa Agent Domain Package",
+    "type": "library",
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "HuiZhiDa Team",
+            "email": "team@huizhida.com"
+        }
+    ],
+    "require": {
+        "red-jasmine/support": "^1.0"
+    },
+    "require-dev": {
+
+    },
+    "autoload": {
+        "psr-4": {
+            "HuiZhiDa\\Agent\\": "src/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "HuiZhiDa\\Agent\\Tests\\": "tests/"
+        }
+    },
+    "extra": {
+        "laravel": {
+            "providers": [
+                "HuiZhiDa\\Agent\\AgentServiceProvider"
+            ]
+        },
+        "branch-alias": {
+            "dev-master": "1.0.x-dev",
+            "dev-main": "1.0.x-dev",
+            "dev-develop": "1.0.x-dev"
+        }
+    }
+}
