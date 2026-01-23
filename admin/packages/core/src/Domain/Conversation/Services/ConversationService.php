@@ -3,8 +3,10 @@
 namespace HuiZhiDa\Core\Domain\Conversation\Services;
 
 use HuiZhiDa\Core\Domain\Conversation\Contracts\ConversationQueueInterface;
+use HuiZhiDa\Core\Domain\Conversation\DTO\ConversationData;
 use HuiZhiDa\Core\Domain\Conversation\DTO\ConversationEvent;
 use HuiZhiDa\Core\Domain\Conversation\DTO\Message;
+use HuiZhiDa\Core\Domain\Conversation\Models\Conversation;
 use HuiZhiDa\Core\Domain\Conversation\Services\CommonService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -26,6 +28,8 @@ class ConversationService extends CommonService
     public function triggerEvent(ConversationEvent $conversationEvent) : void
     {
         try {
+
+            $this->mq->recordLastEvent($conversationEvent);
             $this->mq->publish($conversationEvent->queue, $conversationEvent);
         } catch (Exception $e) {
             Log::error('Publish conversation event failed', $conversationEvent->toArray());
@@ -130,13 +134,22 @@ class ConversationService extends CommonService
     /**
      * 获取会话
      */
-    public function get(string $conversationId) : ?array
+    public function get(string $conversationId) : ?ConversationData
     {
-        $conversation = DB::table('conversations')
-                          ->where('conversation_id', $conversationId)
-                          ->first();
+        $model = Conversation::where('conversation_id', $conversationId)->firstOrFail();
 
-        return $conversation ? (array) $conversation : null;
+        return $model ? ConversationData::from([
+            'conversationId'        => $model->conversation_id,
+            'agent_conversation_id' => $model->agent_conversation_id,
+            'channelId'             => $model->channel_id,
+            'appId'                 => $model->app_id,
+            'user'                  => [
+                'type'     => $model->user_type,
+                'id'       => $model->user_id,
+                'nickname' => $model->user_nickname,
+                'avatar'   => $model->user_avatar,
+            ],
+        ]) : null;
     }
 
     /**

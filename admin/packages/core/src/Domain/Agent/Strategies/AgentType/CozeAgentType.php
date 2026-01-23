@@ -47,7 +47,7 @@ class CozeAgentType implements AgentTypeInterface
                 ->label('Bot ID')
                 ->required()
                 ->helperText('Coze 智能体 ID，从空间/机器人页 URL 的 bot 参数获取'),
-            TextInput::make('config.pat_token')
+            TextInput::make('config.token')
                 ->label('PAT 令牌')
                 ->required()
                 ->password()

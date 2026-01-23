@@ -36,4 +36,6 @@ interface MessageRepositoryInterface
      * @return ChannelMessage[]
      */
     public function getPendingMessages(string $conversationId) : array;
+
+    public function removePendingMessages(string $conversationId) : void;
 }

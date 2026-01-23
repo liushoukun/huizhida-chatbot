@@ -50,7 +50,7 @@ class MessageService extends CommonService
                 'app_id'             => $message->appId ?? null,
                 'message_type'       => $message->messageType->value,
                 'content_type'       => $message->contentType->value,
-                'content'            => $contentData,
+                'content'            => json_encode($contentData),
                 'raw_data'           => $message->rawData,
                 'sender_type'        => $message->sender?->type->value ?? 'user',
                 'sender_id'          => $message->sender?->id ?? '',

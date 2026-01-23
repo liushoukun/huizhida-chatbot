@@ -8,6 +8,12 @@ use RedJasmine\Support\Foundation\Data\Data;
 
 interface ConversationQueueInterface
 {
+
+    // 记录最后一次事件ID ,用户防抖处理
+    public function isLastEvent(ConversationEvent $event) : bool;
+
+    public function recordLastEvent(ConversationEvent $event) : void;
+
     /**
      * 发布会话MQ
      */

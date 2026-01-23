@@ -9,6 +9,9 @@ use HuiZhiDa\AgentProcessor\Domain\Data\ChatResponse;
 use HuiZhiDa\AgentProcessor\Domain\Data\Message;
 use HuiZhiDa\AgentProcessor\Infrastructure\Utils\StreamResponseParser;
 use GuzzleHttp\Client;
+use HuiZhiDa\Core\Domain\Conversation\DTO\AgentMessage;
+use HuiZhiDa\Core\Domain\Conversation\Enums\ContentType;
+use HuiZhiDa\Core\Domain\Conversation\Enums\MessageType;
 use Illuminate\Support\Facades\Log;
 use InvalidArgumentException;
 use RuntimeException;
@@ -53,6 +56,9 @@ class CozeAdapter implements AgentAdapterInterface
         if (empty($botId)) {
             throw new InvalidArgumentException('Coze bot_id is required');
         }
+
+        $chatResponse = new ChatResponse();
+        // 1、创建会话
         // 获取会话 如果没有会话先创建会话
         // 优先使用 agent_conversation_id，如果没有则使用 conversation_id
         $agentConversationId = $request->agentConversationId;
@@ -75,29 +81,26 @@ class CozeAdapter implements AgentAdapterInterface
 
         }
 
-        // 构建消息内容
-        $content  = '';
-        $messages = [];
-        foreach ($request->messages as $msg) {
-            $messages[] = [
-                'role'         => 'user',
-                'content'      => $msg->getText(),
-                'content_type' => 'text',
-            ];
-        }
+        $chatResponse->agentConversationId = $agentConversationId;
 
 
+        // 2、发起对话
         try {
-
+            foreach ($request->messages as $msg) {
+                $messages[] = [
+                    'role'         => 'user',
+                    'content'      => $msg->content['text'] ?? '',
+                    'content_type' => 'text',
+                ];
+            }
             // 发起对话
             $response = $this->client->post('v3/chat?conversation_id='.$agentConversationId, [
                 'json' => [
                     'bot_id'              => $botId,
-                    'user_id'             => 'user_id',// TODO 需要替换
+                    'user_id'             => $request->user->getID(),// TODO 需要替换
                     'additional_messages' => $messages,
                     'stream'              => false,
                 ],
-                // 'stream' => true, // 启用流式响应
             ]);
 
             // 流式读取响应
@@ -106,6 +109,10 @@ class CozeAdapter implements AgentAdapterInterface
             $chatId = $chatResponseData['data']['id'];
 
             $queryIndex = 0;
+
+
+            $agentMessages = [];
+
             while (true) {
                 sleep(2);
                 $queryIndex++;
@@ -134,7 +141,6 @@ class CozeAdapter implements AgentAdapterInterface
                 ];
 
                 if (in_array($chatRetrieveResponseData['data']['status'], $finalStatusList)) {
-                    $chatResponse       = $chatRetrieveResponseData['data'];
                     $chatRetrieveStatus = $chatRetrieveResponseData['data']['status'];
                     break;
                 }
@@ -142,8 +148,7 @@ class CozeAdapter implements AgentAdapterInterface
                     throw new RuntimeException("Coze API error: Query timeout");
                 }
             }
-
-            // 如果回复完成 ,查询结果
+            // 3.  获取回复结果
             if ($chatRetrieveStatus === 'completed') {
                 $chatResultResponse     = $this->client->post('v3/chat/message/list', [
                     'query' => [
@@ -154,35 +159,34 @@ class CozeAdapter implements AgentAdapterInterface
                 $chatResultResponseData = json_decode($chatResultResponse->getBody()->getContents(), true);
 
 
-                $messages = $chatResultResponseData['data'] ?? [];
-                $message  = collect($messages)->filter(function ($message) {
+                $responseMessages = collect($chatResultResponseData['data'] ?? [])->filter(function ($message) {
                     return $message['role'] === 'assistant'
                            && $message['type'] === 'answer';
-                })
-                                              ->values()->first();
+                })->values();
+
+                foreach ($responseMessages as $responseMessage) {
+                    // TODO 解析Message 根据类型解析
+                    // 如果有媒体对象 需要解析媒体对象
+                    $agentMessage              = new AgentMessage();
+                    $agentMessage->messageType = MessageType::Answer;
+                    $agentMessage->setContentData(ContentType::Text, [
+                        'text' => $responseMessage['content'] ?? '',
+                    ]);
+
+                    $agentMessages[] = $agentMessage;
+                }
 
             }
 
+            $agentConversationId = $message['conversation_id'] ?? $agentConversationId;
 
-            $reply                  = $message['content'] ?? '';
-            $returnedConversationId = $message['conversation_id'] ?? $agentConversationId;
+            $chatResponse->messages            = $agentMessages;
+            $chatResponse->conversationId      = $request->conversationId;
+            $chatResponse->agentConversationId = $agentConversationId;
 
-            $shouldTransfer = false;
-
-            return ChatResponse::from([
-                'reply'               => $reply,
-                'replyType'           => 'text',
-                'shouldTransfer'      => $shouldTransfer,
-                'transferReason'      => $shouldTransfer ? 'low_confidence' : null,
-                'confidence'          => 0.9,
-                'agentConversationId' => $returnedConversationId,
-                'metadata'            => [
-                    'provider' => 'coze',
-                    'bot_id'   => $botId,
-                ],
-            ]);
+            return $chatResponse;
         } catch (Exception $e) {
-            throw $e;
+
             Log::error('Coze API error', [
                 'error'  => $e->getMessage(),
                 'config' => $this->config,

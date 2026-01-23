@@ -3,7 +3,12 @@
 namespace App\Console\Commands;
 
 use HuiZhiDa\AgentProcessor\Application\Services\AgentService;
+use HuiZhiDa\Core\Application\Services\ConversationApplicationService;
+use HuiZhiDa\Core\Domain\Conversation\DTO\ChannelMessage;
+use HuiZhiDa\Core\Domain\Conversation\DTO\ConversationData;
+use HuiZhiDa\Core\Domain\Conversation\Enums\ContentType;
 use Illuminate\Console\Command;
+use RedJasmine\Support\Domain\Data\UserData;
 
 class AgentTest extends Command
 {
@@ -26,21 +31,30 @@ class AgentTest extends Command
      */
     public function handle()
     {
-        $this->agentService = app(AgentService::class);
 
-        $messages     = [
-            [
-                'content' => [
-                    'text' => '你好呀'
-                ],
-            ]
+        $conversationApplicationService = app(ConversationApplicationService::class);
+
+        $message = $conversationApplicationService->getPendingMessages('f3c13f68-f39b-4174-b88d-7439f8af0d1a');
+        dd($message);
+        $this->agentService     = app(AgentService::class);
+        $channelMessage         = new ChannelMessage();
+        $channelMessage->sender = UserData::from(['type' => 'user', 'id' => '1111']);
+        $channelMessage->setContentData(ContentType::Text, [
+            'text' => '你好',
+        ]);
+        $messages = [
+            $channelMessage
         ];
-        $conversation = [
-            'conversation_id'       => 'api_xxx_669636041366265080',
-            'agent_conversation_id' => null,
-        ];
-        $agentId      = '669636864175210494';
-        $response     = $this->agentService->processMessages($messages, $conversation, $agentId);
-        dd($response);
+
+        $conversation                 = new ConversationData();
+        $conversation->conversationId = 'api_xxx_66963604136626508o9';
+        $conversation->user           = UserData::from(['type' => 'user', 'id' => '1111']);
+
+        $agentId = '670019755161256034';
+
+        $response = $this->agentService->processMessages($messages, $conversation, $agentId);
+
+
+
     }
 }

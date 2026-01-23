@@ -20,11 +20,15 @@ class MessageRepository implements MessageRepositoryInterface
      */
     public function getPendingMessages(string $conversationId) : array
     {
-        $key      = $this->generatePendingMessagesKey($conversationId);
-        $messages = Redis::connection($this->getRedisConnection())
-                         ->zrange($key, 0, -1);
-
-        return ChannelMessage::collect($messages);
+        // TODO 获取一定时间内的数据
+        $key             = $this->generatePendingMessagesKey($conversationId);
+        $messages        = Redis::connection($this->getRedisConnection())
+                                ->zrange($key, 0, -1);
+        $channelMessages = [];
+        foreach ($messages as $messageJson) {
+            $channelMessages[] = ChannelMessage::from(json_decode($messageJson, true));
+        }
+        return $channelMessages;
     }
 
     protected function getRedisConnection() : string
@@ -40,6 +44,19 @@ class MessageRepository implements MessageRepositoryInterface
 
         $redisConnection = config('gateway.redis.connection', 'default');
         Redis::connection($redisConnection)->zadd($key, $score, $messageData);
+    }
+
+    /**
+     * 移除待处理消息
+     *
+     * @param  string  $conversationId
+     *
+     * @return void
+     */
+    public function removePendingMessages(string $conversationId) : void
+    {
+        $key = $this->generatePendingMessagesKey($conversationId);
+        Redis::connection($this->getRedisConnection())->del($key);
     }
 
     /**

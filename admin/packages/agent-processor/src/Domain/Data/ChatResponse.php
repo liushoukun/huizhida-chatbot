@@ -2,6 +2,7 @@
 
 namespace HuiZhiDa\AgentProcessor\Domain\Data;
 
+use HuiZhiDa\Core\Domain\Conversation\DTO\AgentMessage;
 use RedJasmine\Support\Foundation\Data\Data;
 
 /**
@@ -10,22 +11,22 @@ use RedJasmine\Support\Foundation\Data\Data;
 class ChatResponse extends Data
 {
     /**
-     * 回复内容
+     * 会话ID
      * @var string
      */
-    public string $reply = '';
+    public string $conversationId;
 
     /**
-     * 回复类型
-     * @var string
+     * 代理会话ID
+     * @var string|null
      */
-    public string $replyType = 'text';
+    public ?string $agentConversationId = null;
 
     /**
-     * 富文本内容
-     * @var array|null
+     * 消息列表
+     * @var AgentMessage[]
      */
-    public ?array $richContent = null;
+    public array $messages = [];
 
     /**
      * 是否应该转接
@@ -45,11 +46,6 @@ class ChatResponse extends Data
      */
     public float $confidence = 1.0;
 
-    /**
-     * 代理会话ID
-     * @var string|null
-     */
-    public ?string $agentConversationId = null;
 
     /**
      * 元数据

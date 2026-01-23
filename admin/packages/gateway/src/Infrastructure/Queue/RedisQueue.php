@@ -6,6 +6,7 @@ use Exception;
 use HuiZhiDa\Core\Domain\Conversation\DTO\ConversationEvent;
 use HuiZhiDa\Core\Domain\Conversation\Enums\ConversationQueueType;
 use HuiZhiDa\Core\Domain\Conversation\Services\CommonService;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Redis;
 use Illuminate\Support\Facades\Log;
 use HuiZhiDa\Core\Domain\Conversation\Contracts\ConversationQueueInterface;
@@ -22,6 +23,28 @@ class RedisQueue implements ConversationQueueInterface
         $this->connection    = $config['connection'] ?? 'default';
         $this->commonService = app(CommonService::class);
     }
+
+    /**
+     * 判断当前事件是否为会话的最后一个事件
+     *
+     * @param  ConversationEvent  $event
+     *
+     * @return bool
+     */
+    public function isLastEvent(ConversationEvent $event) : bool
+    {
+        $key = "conversations:events:{$event->queue->value}:{$event->conversationId}";
+        return Redis::get($key) === $event->id;
+    }
+
+
+    public function recordLastEvent(ConversationEvent $event) : void
+    {
+        $key = "conversations:events:{$event->queue->value}:{$event->conversationId}";
+
+        Redis::setex($key, 60 * 60 * 24, $event->id);
+    }
+
 
     public function publish(ConversationQueueType $queueType, Data $message) : void
     {

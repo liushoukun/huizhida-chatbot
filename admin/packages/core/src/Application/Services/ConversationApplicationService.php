@@ -39,4 +39,9 @@ class ConversationApplicationService extends ApplicationService
     }
 
 
+    public function removePendingMessages(string $conversationId) : null
+    {
+        return $this->messageRepository->removePendingMessages($conversationId);
+    }
+
 }

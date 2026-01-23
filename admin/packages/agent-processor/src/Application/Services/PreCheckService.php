@@ -3,6 +3,8 @@
 namespace HuiZhiDa\AgentProcessor\Application\Services;
 
 use HuiZhiDa\Core\Domain\Conversation\DTO\ChannelMessage;
+use HuiZhiDa\Core\Domain\Conversation\DTO\ConversationData;
+use HuiZhiDa\Core\Domain\Conversation\Enums\ConversationStatus;
 use Illuminate\Support\Facades\Log;
 
 /**
@@ -30,11 +32,11 @@ class PreCheckService
      * 执行预校验
      *
      * @param  ChannelMessage[]  $messages  消息组数据
-     * @param  array  $conversation  会话数据
+     * @param  ConversationData  $conversation  会话数据
      *
-     * @return array ['action' => string, 'reason' => string|null, 'strategy' => string|null]
+     * @return CheckResult
      */
-    public function check(array $messages, array $conversation) : array
+    public function check(array $messages, ConversationData $conversation) : CheckResult
     {
         // 1. 检测是否需要跳过
         $skipResult = $this->checkSkip($conversation);
@@ -48,35 +50,37 @@ class PreCheckService
             return $transferResult;
         }
 
-        // 3. 最后返回调用智能体
-        return [
-            'action' => self::ACTION_CALL_AGENT,
-            'reason' => null,
-            'strategy' => null,
-        ];
+        return CheckResult::from([
+            'actionType' => ActionType::Continue
+        ]);
+
     }
 
     /**
      * 检测是否需要跳过
      *
-     * @param  array  $conversation  会话数据
+     * @param  ConversationData  $conversation  会话数据
      *
      * @return array|null ['action' => string, 'reason' => string] 如果需要跳过则返回结果，否则返回null
      */
-    protected function checkSkip(array $conversation) : ?array
+    protected function checkSkip(ConversationData $conversation) : ?CheckResult
     {
-        // 检查会话是否已转人工
-        if (isset($conversation['status']) && in_array($conversation['status'], ['transferred', 'pending_human'])) {
+
+        if (in_array($conversation->status, [
+            ConversationStatus::HumanQueuing,
+            ConversationStatus::Human,
+            ConversationStatus::Closed,
+        ])) {
+
             Log::info('PreCheck: Conversation already transferred', [
-                'conversation_id' => $conversation['conversation_id'] ?? null,
-                'status'          => $conversation['status'],
+                'conversation_id' => $conversation->conversationId,
+                'status'          => $conversation->status,
             ]);
-            return [
-                'action' => self::ACTION_SKIP,
-                'reason' => 'already_transferred',
-                'strategy' => null,
-            ];
+            return CheckResult::from([
+                'actionType' => ActionType::Ignore
+            ]);
         }
+
 
         return null;
     }
@@ -85,11 +89,11 @@ class PreCheckService
      * 检测是否需要转人工（匹配转人工内部不同策略）
      *
      * @param  ChannelMessage[]  $messages  消息组数据
-     * @param  array  $conversation  会话数据
+     * @param  ConversationData  $conversation  会话数据
      *
      * @return array|null ['action' => string, 'reason' => string, 'strategy' => string] 如果需要转人工则返回结果，否则返回null
      */
-    protected function checkTransferHuman(array $messages, array $conversation) : ?array
+    protected function checkTransferHuman(array $messages, ConversationData $conversation) : ?CheckResult
     {
         // 策略1: 关键词匹配转人工
         $keywordResult = $this->checkTransferByKeyword($messages, $conversation);
@@ -97,11 +101,6 @@ class PreCheckService
             return $keywordResult;
         }
 
-        // 策略2: VIP用户直接转人工策略（可配置）
-        $vipResult = $this->checkTransferByVip($conversation);
-        if ($vipResult !== null) {
-            return $vipResult;
-        }
 
         // 可以在这里添加更多转人工策略
         // 策略3: 其他策略...
@@ -113,11 +112,11 @@ class PreCheckService
      * 策略1: 关键词匹配转人工
      *
      * @param  ChannelMessage[]  $messages  消息组数据
-     * @param  array  $conversation  会话数据
+     * @param  ConversationData  $conversation  会话数据
      *
      * @return array|null
      */
-    protected function checkTransferByKeyword(array $messages, array $conversation) : ?array
+    protected function checkTransferByKeyword(array $messages, ConversationData $conversation) : ?CheckResult
     {
         // 遍历消息组，检查是否有转人工关键词
         foreach ($messages as $message) {
@@ -127,39 +126,16 @@ class PreCheckService
                     'conversation_id' => $conversation['conversation_id'] ?? null,
                     'text'            => $text,
                 ]);
-                return [
-                    'action' => self::ACTION_TRANSFER_HUMAN,
-                    'reason' => 'keyword_match',
-                    'strategy' => 'keyword',
-                ];
+
+                return CheckResult::from([
+                    'actionType' => ActionType::TransferHuman
+                ]);
             }
         }
 
         return null;
     }
 
-    /**
-     * 策略2: VIP用户直接转人工策略
-     *
-     * @param  array  $conversation  会话数据
-     *
-     * @return array|null
-     */
-    protected function checkTransferByVip(array $conversation) : ?array
-    {
-        if (isset($conversation['is_vip']) && $conversation['is_vip'] && $this->vipDirectTransfer) {
-            Log::info('PreCheck: VIP direct transfer', [
-                'conversation_id' => $conversation['conversation_id'] ?? null,
-            ]);
-            return [
-                'action' => self::ACTION_TRANSFER_HUMAN,
-                'reason' => 'vip_policy',
-                'strategy' => 'vip',
-            ];
-        }
-
-        return null;
-    }
 
     /**
      * 从消息中提取文本内容

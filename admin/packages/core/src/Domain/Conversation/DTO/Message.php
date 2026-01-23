@@ -5,6 +5,7 @@ namespace HuiZhiDa\Core\Domain\Conversation\DTO;
 use HuiZhiDa\Core\Domain\Conversation\DTO\Contents\Content;
 use HuiZhiDa\Core\Domain\Conversation\Enums\ContentType;
 use HuiZhiDa\Core\Domain\Conversation\Enums\MessageType;
+use RedJasmine\Support\Domain\Contracts\UserInterface;
 use RedJasmine\Support\Foundation\Data\Data;
 
 /**
@@ -15,11 +16,8 @@ use RedJasmine\Support\Foundation\Data\Data;
  */
 class Message extends Data
 {
-    /**
-     * 发送者
-     * @var UserInfo|null
-     */
-    public ?UserInfo $sender = null;
+
+    public ?UserInterface $sender = null;
 
 
     /**
@@ -78,7 +76,7 @@ class Message extends Data
     }
 
 
-    public function setContentData(ContentType $contentType, ?array $content = null):static
+    public function setContentData(ContentType $contentType, ?array $content = null) : static
     {
         $this->content = $content;
         // TODO 根据类型验证

@@ -66,7 +66,13 @@ class ProcessConversationEventsCommand extends Command
 
                 $this->info("收到事件: ".json_encode($eventData, JSON_UNESCAPED_UNICODE));
                 $event = ConversationEvent::from($eventData);
-                // 会话枷锁, 一个会话只需要一个消费者处理 TODO
+
+                // 防抖处理，只处理最后一次
+                if (!$this->messageQueue->isLastEvent($event)) {
+                    $this->info("非最后一次事件，忽略");
+                    return;
+                }
+
                 // 处理会话事件
                 $this->processorService->processConversationEvent($event);
 

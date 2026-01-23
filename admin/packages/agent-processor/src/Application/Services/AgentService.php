@@ -10,6 +10,8 @@ use HuiZhiDa\AgentProcessor\Domain\Data\Message;
 use HuiZhiDa\AgentProcessor\Infrastructure\Adapters\AgentAdapterFactory;
 use HuiZhiDa\Core\Domain\Agent\Models\Agent;
 use HuiZhiDa\Core\Domain\Agent\Repositories\AgentRepositoryInterface;
+use HuiZhiDa\Core\Domain\Conversation\DTO\ChannelMessage;
+use HuiZhiDa\Core\Domain\Conversation\DTO\ConversationData;
 use Illuminate\Support\Facades\Log;
 use RuntimeException;
 
@@ -28,15 +30,16 @@ class AgentService
     /**
      * 调用智能体处理消息
      *
-     * @param  array  $messages  消息列表
-     * @param  array  $conversation  会话数据
+     * @param  ChannelMessage[]  $messages  消息列表
+     * @param  ConversationData  $conversation  会话数据
      * @param  int  $agentId  智能体ID
      *
-     * @return array 响应数据
+     * @return ChatResponse 响应数据
      * @throws Exception
      */
-    public function processMessages(array $messages, array $conversation, int $agentId) : array
+    public function processMessages(array $messages, ConversationData $conversation, int $agentId) : ChatResponse
     {
+
         try {
             // 1. 获取智能体配置
             $agent = $this->agentRepository->find($agentId);
@@ -45,6 +48,7 @@ class AgentService
                 throw new RuntimeException("Agent {$agentId} not found or disabled");
             }
 
+
             // 2. 创建智能体适配器
             $adapter = $this->adapterFactory->create($agent);
 
@@ -52,16 +56,19 @@ class AgentService
             $request = $this->buildChatRequest($messages, $conversation);
 
             // 4. 调用智能体
-            $timeout  = config('agent-processor.agent.timeout', 30);
-            $response = $this->callWithTimeout($adapter, $request, $timeout);
+            $timeout = config('agent-processor.agent.timeout', 30);
 
-            // 5. 格式化响应
-            return $this->formatResponse($response, $agent);
+            // 5. 格式化响应，返回数据
+            return $this->callWithTimeout($adapter, $request, $timeout);
+
+
+            return $response;
 
         } catch (Exception $e) {
+            throw $e;
             Log::error('Agent processing failed', [
                 'agent_id'        => $agentId,
-                'conversation_id' => $conversation['conversation_id'] ?? null,
+                'conversation_id' => $conversation->conversationId,
                 'error'           => $e->getMessage(),
             ]);
 
@@ -70,7 +77,7 @@ class AgentService
                 return $this->processWithFallback($messages, $conversation, $agent->fallback_agent_id);
             }
 
-            throw $e;
+
         }
     }
 
@@ -84,48 +91,22 @@ class AgentService
     }
 
     /**
-     * 构建聊天请求
+     *
+     * @param  array  $messages
+     * @param  ConversationData  $conversation
+     *
+     * @return ChatRequest
      */
-    protected function buildChatRequest(array $messages, array $conversation) : ChatRequest
+    protected function buildChatRequest(array $messages, ConversationData $conversation) : ChatRequest
     {
-        $firstMessage = $messages[0] ?? [];
-        $context      = json_decode($conversation['context'] ?? '{}', true) ?: [];
 
-        // 构建消息历史
-        $history = [];
-        if (isset($context['history'])) {
-            $history = $context['history'];
-        }
+        $chatRequest = new ChatRequest();
 
-        // 添加当前消息
-        foreach ($messages as $message) {
-            $history[] = [
-                'role'    => 'user',
-                'content' => $this->extractMessageContent($message),
-            ];
-        }
-
-        // 将 messages 数组转换为 Message DTO 数组
-        $messageDtos = [];
-        foreach ($messages as $message) {
-            $messageDtos[] = is_array($message) ? Message::from($message) : $message;
-        }
-
-        return ChatRequest::from([
-            'conversationId'      => $conversation['conversation_id'] ?? '',
-            'agentConversationId' => $conversation['agent_conversation_id'] ?? null,
-            'messages'            => $messageDtos,
-            'history'             => $history,
-            'context'             => $context,
-            'userInfo'            => [
-                'channel_user_id' => $conversation['channel_user_id'] ?? '',
-                'nickname'        => $conversation['user_nickname'] ?? '',
-                'avatar'          => $conversation['user_avatar'] ?? '',
-                'is_vip'          => (bool) ($conversation['is_vip'] ?? false),
-                'tags'            => json_decode($conversation['user_tags'] ?? '[]', true) ?: [],
-            ],
-            'timestamp'           => time(),
-        ]);
+        $chatRequest->conversationId      = $conversation->conversationId;
+        $chatRequest->agentConversationId = $conversation->agentConversationId;
+        $chatRequest->messages            = $messages;
+        $chatRequest->user                = $conversation->user;
+        return $chatRequest;
     }
 
     /**
@@ -158,6 +139,7 @@ class AgentService
         try {
             $response = $adapter->chat($request);
             $duration = microtime(true) - $startTime;
+
 
             Log::info('Agent response received', [
                 'duration'        => round($duration, 2),

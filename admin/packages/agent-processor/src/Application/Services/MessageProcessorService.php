@@ -3,8 +3,11 @@
 namespace HuiZhiDa\AgentProcessor\Application\Services;
 
 use Exception;
+use HuiZhiDa\AgentProcessor\Domain\Data\ChatResponse;
 use HuiZhiDa\Core\Application\Services\ConversationApplicationService;
 use HuiZhiDa\Core\Domain\Conversation\Contracts\ConversationQueueInterface;
+use HuiZhiDa\Core\Domain\Conversation\DTO\ConversationData;
+use HuiZhiDa\Core\Domain\Conversation\Enums\ConversationQueueType;
 use HuiZhiDa\Core\Domain\Conversation\Services\ConversationService;
 use HuiZhiDa\Core\Domain\Conversation\Services\MessageService;
 use HuiZhiDa\Gateway\Infrastructure\Queue\RedisQueue;
@@ -40,10 +43,13 @@ class MessageProcessorService
     {
 
 
+
+        // 每个会话加锁
         $conversationId = $event->conversationId;
 
         try {
-            // 1. 从Redis ZSET获取会话的所有未处理消息
+            // 1. 获取未处理消息
+            // 按当前时间去获取 未处理消息 TODO
             $messages = $this->conversationApplicationService->getPendingMessages($event->conversationId);
 
 
@@ -55,22 +61,24 @@ class MessageProcessorService
             // 2. 获取会话信息
             $conversation = $this->conversationService->get($conversationId);
 
+
             if (!$conversation) {
                 Log::warning('Conversation not found', ['conversation_id' => $conversationId]);
                 return;
             }
 
+
             // 3. 规则预判断（传入消息组）
             $checkResult = $this->preCheckService->check($messages, $conversation);
 
-
-            if ($checkResult['action'] === PreCheckService::ACTION_SKIP) {
+            // 忽略消息
+            if ($checkResult->actionType === ActionType::Ignore) {
                 // 跳过处理，移除消息
                 $this->removeProcessedMessages($conversationId);
                 return;
             }
 
-            if ($checkResult['action'] === PreCheckService::ACTION_TRANSFER_HUMAN) {
+            if ($checkResult->actionType === ActionType::TransferHuman) {
                 // 转人工，推入转人工队列
                 $this->requestTransferHuman($conversation, $checkResult['reason'], 'rule');
                 $this->removeProcessedMessages($conversationId);
@@ -78,9 +86,9 @@ class MessageProcessorService
             }
 
             // 4. 获取渠道绑定的智能体
-            $channelId = $conversation['channel_id'] ?? null;
 
-            if (!$channelId) {
+            $channelId = $conversation->channelId;
+            if (!$conversation->channelId) {
                 Log::warning('Conversation missing channel_id', ['conversation_id' => $conversationId]);
                 $this->requestTransferHuman($conversation, 'no_channel_id', 'rule');
                 $this->removeProcessedMessages($conversationId);
@@ -88,8 +96,6 @@ class MessageProcessorService
             }
 
             $agentId = $this->getAgentIdForChannel($channelId);
-
-
 
             if (!$agentId) {
                 Log::warning('No agent found for channel', ['channel_id' => $channelId, 'conversation_id' => $conversationId]);
@@ -100,20 +106,12 @@ class MessageProcessorService
 
             // 5. 调用智能体处理消息
             try {
-                $response = $this->agentService->processMessages($messages, $conversation, $agentId);
+                $chatResponse = $this->agentService->processMessages($messages, $conversation, $agentId);
 
-                // 6. 处理响应
-                if ($response['should_transfer'] ?? false) {
-                    // 智能体建议转人工
-                    $this->requestTransferHuman(
-                        $conversation,
-                        $response['transfer_reason'] ?? 'agent_suggestion',
-                        'agent'
-                    );
-                } else {
-                    // 推入回复队列
-                    $this->publishReply($conversation, $response);
-                }
+                // TODO 根据智能体消息，确认是否需要转人工
+
+
+                $this->publishReply($conversation, $chatResponse);
 
                 // 7. 移除已处理的消息
                 $this->removeProcessedMessages($conversationId);
@@ -152,47 +150,13 @@ class MessageProcessorService
         }
     }
 
-    /**
-     * 获取未处理的消息
-     */
-    protected function getUnprocessedMessages(string $conversationId) : array
-    {
-        if ($this->messageQueue instanceof RedisQueue) {
-            return $this->messageQueue->getConversationMessages($conversationId);
-        }
-
-        // 降级处理：直接从Redis读取
-        $key      = config('agent-processor.redis.conversation_messages_prefix', 'conversation:messages:').$conversationId;
-        $messages = Redis::connection(config('agent-processor.redis.connection', 'default'))
-                         ->zrange($key, 0, -1);
-
-        $result = [];
-        foreach ($messages as $message) {
-            $decoded = json_decode($message, true);
-            if ($decoded !== null) {
-                $result[] = $decoded;
-            }
-        }
-
-        return $result;
-    }
 
     /**
      * 移除已处理的消息
      */
     protected function removeProcessedMessages(string $conversationId) : void
     {
-        $maxScore = microtime(true);
-
-        if ($this->messageQueue instanceof RedisQueue) {
-            $this->messageQueue->removeConversationMessages($conversationId, $maxScore);
-            return;
-        }
-
-        // 降级处理：直接从Redis删除
-        $key = config('agent-processor.redis.conversation_messages_prefix', 'conversation:messages:').$conversationId;
-        Redis::connection(config('agent-processor.redis.connection', 'default'))
-             ->zremrangebyscore($key, '-inf', $maxScore);
+        $this->conversationApplicationService->removePendingMessages($conversationId);
     }
 
     /**
@@ -242,26 +206,14 @@ class MessageProcessorService
     /**
      * 发布回复消息
      */
-    protected function publishReply(array $conversation, array $response) : void
+    protected function publishReply(ConversationData $conversation, ChatResponse $chatResponse) : void
     {
-        $conversationId = $conversation['conversation_id'] ?? '';
-        $channel        = $conversation['channel_type'] ?? '';
 
-        $replyData = [
-            'conversation_id' => $conversationId,
-            'channel'         => $channel,
-            'reply'           => $response['reply'] ?? '',
-            'reply_type'      => $response['reply_type'] ?? 'text',
-            'rich_content'    => $response['rich_content'] ?? null,
-            'timestamp'       => time(),
-        ];
 
-        $queue = config('agent-processor.queue.outgoing_messages_queue', 'outgoing_messages');
-        $this->messageQueue->publish($queue, $replyData);
+        $this->messageQueue->publish(ConversationQueueType::Sending, $chatResponse);
 
         Log::info('Reply published', [
-            'conversation_id' => $conversationId,
-            'reply_type'      => $replyData['reply_type'],
+            'conversation_id' => $conversation->conversationId,
         ]);
     }
 }

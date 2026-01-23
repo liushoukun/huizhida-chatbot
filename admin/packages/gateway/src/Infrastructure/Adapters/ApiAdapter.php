@@ -3,18 +3,19 @@
 namespace HuiZhiDa\Gateway\Infrastructure\Adapters;
 
 use Exception;
+use HuiZhiDa\Core\Domain\Conversation\DTO\ChannelMessage;
+use HuiZhiDa\Core\Domain\Conversation\DTO\Contents\ImageContent;
+use HuiZhiDa\Core\Domain\Conversation\DTO\Contents\TextContent;
+use HuiZhiDa\Core\Domain\Conversation\Enums\ContentType;
+use HuiZhiDa\Core\Domain\Conversation\Enums\MessageType;
+use HuiZhiDa\Core\Domain\Conversation\Enums\UserType;
+use HuiZhiDa\Gateway\Domain\Contracts\ChannelAdapterInterface;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
-use HuiZhiDa\Gateway\Domain\Contracts\ChannelAdapterInterface;
-use HuiZhiDa\Core\Domain\Conversation\DTO\ChannelMessage;
-use HuiZhiDa\Core\Domain\Conversation\DTO\UserInfo;
-use HuiZhiDa\Core\Domain\Conversation\DTO\Contents\TextContent;
-use HuiZhiDa\Core\Domain\Conversation\DTO\Contents\ImageContent;
-use HuiZhiDa\Core\Domain\Conversation\Enums\MessageType;
-use HuiZhiDa\Core\Domain\Conversation\Enums\ContentType;
-use HuiZhiDa\Core\Domain\Conversation\Enums\UserType;
+use Illuminate\Support\Str;
 use InvalidArgumentException;
+use RedJasmine\Support\Domain\Data\UserData;
 use RuntimeException;
 
 class ApiAdapter implements ChannelAdapterInterface
@@ -81,13 +82,12 @@ class ApiAdapter implements ChannelAdapterInterface
 
 
         // 解析用户信息
-        $message->sender = new UserInfo();
-        $userData        = is_array($data['user']) ? $data['user'] : [];
 
-        $message->sender->type     = UserType::User;
-        $message->sender->id       = $userData['id'] ?? $userData['user_id'] ?? $userData['channel_user_id'] ?? '';
-        $message->sender->nickname = $userData['nickname'] ?? $userData['name'] ?? null;
-        $message->sender->avatar   = $userData['avatar'] ?? null;
+        $message->sender = UserData::from($data['user'] ?? [
+            'type' => 'guest',
+            'id'   => Str::uuid(),
+        ]);
+       
 
         // 解析消息内容
         $contentData      = $data['content'] ?? $data;

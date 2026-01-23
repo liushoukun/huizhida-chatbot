@@ -2,15 +2,15 @@
 
 namespace HuiZhiDa\Gateway\Infrastructure\Adapters;
 
-use Illuminate\Http\Request;
-use HuiZhiDa\Gateway\Domain\Contracts\ChannelAdapterInterface;
 use HuiZhiDa\Core\Domain\Conversation\DTO\ChannelMessage;
-use HuiZhiDa\Core\Domain\Conversation\DTO\UserInfo;
-use HuiZhiDa\Core\Domain\Conversation\DTO\Contents\TextContent;
 use HuiZhiDa\Core\Domain\Conversation\DTO\Contents\ImageContent;
-use HuiZhiDa\Core\Domain\Conversation\Enums\MessageType;
+use HuiZhiDa\Core\Domain\Conversation\DTO\Contents\TextContent;
 use HuiZhiDa\Core\Domain\Conversation\Enums\ContentType;
+use HuiZhiDa\Core\Domain\Conversation\Enums\MessageType;
 use HuiZhiDa\Core\Domain\Conversation\Enums\UserType;
+use HuiZhiDa\Gateway\Domain\Contracts\ChannelAdapterInterface;
+use Illuminate\Http\Request;
+use RedJasmine\Support\Domain\Data\UserData;
 
 class WecomAdapter implements ChannelAdapterInterface
 {
@@ -45,8 +45,8 @@ class WecomAdapter implements ChannelAdapterInterface
         $message->rawData          = $rawData;
 
         // 解析用户信息
-        $message->sender           = new UserInfo();
-        $message->sender->type     = UserType::User;
+        $message->sender           = new UserData();
+        $message->sender->type     = UserType::User->value;
         $message->sender->id       = $data['FromUserName'] ?? '';
         $message->sender->nickname = $data['NickName'] ?? '';
 

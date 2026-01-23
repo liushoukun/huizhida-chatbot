@@ -2,6 +2,8 @@
 
 namespace HuiZhiDa\AgentProcessor\Domain\Data;
 
+use HuiZhiDa\Core\Domain\Conversation\DTO\ChannelMessage;
+use RedJasmine\Support\Domain\Contracts\UserInterface;
 use RedJasmine\Support\Foundation\Data\Data;
 
 /**
@@ -23,27 +25,15 @@ class ChatRequest extends Data
 
     /**
      * 消息列表
-     * @var Message[]
+     * @var ChannelMessage[]
      */
     public array $messages = [];
 
     /**
-     * 历史记录
-     * @var array
-     */
-    public array $history = [];
-
-    /**
-     * 上下文信息
-     * @var array
-     */
-    public array $context = [];
-
-    /**
      * 用户信息
-     * @var array
+     * @var UserInterface
      */
-    public array $userInfo = [];
+    public UserInterface $user;
 
     /**
      * 时间戳
