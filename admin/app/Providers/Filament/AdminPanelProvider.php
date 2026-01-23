@@ -17,6 +17,7 @@ use Illuminate\Foundation\Http\Middleware\VerifyCsrfToken;
 use Illuminate\Routing\Middleware\SubstituteBindings;
 use Illuminate\Session\Middleware\StartSession;
 use Illuminate\View\Middleware\ShareErrorsFromSession;
+use HuiZhiDa\Filament\FilamentPlugin;
 use RedJasmine\FilamentAdmin\FilamentAdminPlugin;
 use RedJasmine\FilamentProject\FilamentProjectPlugin;
 use RedJasmine\FilamentSupport\FilamentSupportPlugin;
@@ -45,6 +46,7 @@ class AdminPanelProvider extends \RedJasmine\FilamentSupport\Panel\PanelProvider
                 FilamentSupportPlugin::make(),
                 FilamentAdminPlugin::make(),
                 FilamentProjectPlugin::make(),
+                FilamentPlugin::make(),
             ])
              ;
 

@@ -1,6 +1,6 @@
 {
-    "name": "huizhida/agent-processor",
-    "description": "HuiZhiDa Agent Processor Package",
+    "name": "huizhida/filament",
+    "description": "HuiZhiDa Filament Resources Package",
     "type": "library",
     "license": "MIT",
     "authors": [
@@ -11,32 +11,30 @@
     ],
     "require": {
         "php": "^8.2",
-        "laravel/framework": "^12.0",
-        "illuminate/support": "^12.0",
-        "illuminate/queue": "^12.0",
-        "illuminate/redis": "^12.0",
-        "guzzlehttp/guzzle": "^7.0",
-        "huizhida/message": "*",
-        "huizhida/gateway": "*",
-        "huizhida/core": "*"
+        "filament/filament": "^4.0",
+        "huizhida/core": "^1.0",
+        "red-jasmine/filament-project": "^1.0",
+        "red-jasmine/filament-admin": "^1.0",
+        "red-jasmine/filament-support": "^1.0",
+        "spatie/laravel-package-tools": "^1.9"
     },
     "require-dev": {
 
     },
     "autoload": {
         "psr-4": {
-            "HuiZhiDa\\AgentProcessor\\": "src/"
+            "HuiZhiDa\\Filament\\": "src/"
         }
     },
     "autoload-dev": {
         "psr-4": {
-            "HuiZhiDa\\AgentProcessor\\Tests\\": "tests/"
+            "HuiZhiDa\\Filament\\Tests\\": "tests/"
         }
     },
     "extra": {
         "laravel": {
             "providers": [
-                "HuiZhiDa\\AgentProcessor\\AgentProcessorServiceProvider"
+                "HuiZhiDa\\Filament\\FilamentServiceProvider"
             ]
         },
         "branch-alias": {

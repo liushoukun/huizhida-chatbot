@@ -3,7 +3,7 @@
 namespace HuiZhiDa\Gateway\Http\Controllers;
 
 use Exception;
-use HuiZhiDa\Channel\Domain\Repositories\ChannelRepositoryInterface;
+use HuiZhiDa\Core\Domain\Channel\Repositories\ChannelRepositoryInterface;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Log;

@@ -9,7 +9,7 @@ use HuiZhiDa\AgentProcessor\Infrastructure\Adapters\AgentAdapterFactory;
 use HuiZhiDa\Gateway\Domain\Contracts\MessageQueueInterface;
 use HuiZhiDa\Gateway\Infrastructure\Queue\RedisQueue;
 use HuiZhiDa\Gateway\Application\Services\ConversationService;
-use HuiZhiDa\Agent\Domain\Repositories\AgentRepositoryInterface;
+use HuiZhiDa\Core\Domain\Agent\Repositories\AgentRepositoryInterface;
 use Illuminate\Support\ServiceProvider;
 
 class AgentProcessorServiceProvider extends ServiceProvider

@@ -8,8 +8,8 @@ use HuiZhiDa\AgentProcessor\Domain\Data\ChatRequest;
 use HuiZhiDa\AgentProcessor\Domain\Data\ChatResponse;
 use HuiZhiDa\AgentProcessor\Domain\Data\Message;
 use HuiZhiDa\AgentProcessor\Infrastructure\Adapters\AgentAdapterFactory;
-use HuiZhiDa\Agent\Domain\Models\Agent;
-use HuiZhiDa\Agent\Domain\Repositories\AgentRepositoryInterface;
+use HuiZhiDa\Core\Domain\Agent\Models\Agent;
+use HuiZhiDa\Core\Domain\Agent\Repositories\AgentRepositoryInterface;
 use Illuminate\Support\Facades\Log;
 use RuntimeException;
 
