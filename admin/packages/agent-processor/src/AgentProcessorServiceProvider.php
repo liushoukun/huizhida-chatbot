@@ -8,7 +8,7 @@ use HuiZhiDa\AgentProcessor\Application\Services\PreCheckService;
 use HuiZhiDa\AgentProcessor\Infrastructure\Adapters\AgentAdapterFactory;
 use HuiZhiDa\Gateway\Domain\Contracts\MessageQueueInterface;
 use HuiZhiDa\Gateway\Infrastructure\Queue\RedisQueue;
-use HuiZhiDa\Gateway\Application\Services\ConversationService;
+use HuiZhiDa\Gateway\Domain\Services\ConversationService;
 use HuiZhiDa\Core\Domain\Agent\Repositories\AgentRepositoryInterface;
 use Illuminate\Support\ServiceProvider;
 

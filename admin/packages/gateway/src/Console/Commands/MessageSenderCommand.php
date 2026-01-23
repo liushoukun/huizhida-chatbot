@@ -5,8 +5,8 @@ namespace HuiZhiDa\Gateway\Console\Commands;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Log;
 use HuiZhiDa\Gateway\Infrastructure\Adapters\AdapterFactory;
-use HuiZhiDa\Gateway\Application\Services\MessageService;
-use HuiZhiDa\Gateway\Domain\Contracts\MessageQueueInterface;
+use HuiZhiDa\Gateway\Domain\Services\MessageService;
+use HuiZhiDa\Message\Domain\Contracts\MessageQueueInterface;
 use HuiZhiDa\Message\Domain\DTO\ChannelMessage;
 use HuiZhiDa\Message\Domain\Enums\MessageType;
 

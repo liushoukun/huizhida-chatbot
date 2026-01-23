@@ -2,7 +2,7 @@
 
 namespace HuiZhiDa\Gateway\Domain\Services;
 
-use HuiZhiDa\Gateway\Domain\Contracts\MessageQueueInterface;
+use HuiZhiDa\Message\Domain\Contracts\MessageQueueInterface;
 use HuiZhiDa\Message\Domain\DTO\ConversationEvent;
 use HuiZhiDa\Message\Domain\Services\CommonService;
 use Illuminate\Support\Facades\DB;

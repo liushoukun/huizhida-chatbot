@@ -4,12 +4,11 @@ namespace HuiZhiDa\Gateway;
 
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Facades\Route;
-use HuiZhiDa\Gateway\Domain\Contracts\ChannelAdapterInterface;
-use HuiZhiDa\Gateway\Domain\Contracts\MessageQueueInterface;
+use HuiZhiDa\Message\Domain\Contracts\MessageQueueInterface;
 use HuiZhiDa\Gateway\Infrastructure\Adapters\AdapterFactory;
 use HuiZhiDa\Gateway\Infrastructure\Queue\RedisQueue;
-use HuiZhiDa\Gateway\Application\Services\ConversationService;
-use HuiZhiDa\Gateway\Application\Services\MessageService;
+use HuiZhiDa\Gateway\Domain\Services\ConversationService;
+use HuiZhiDa\Gateway\Domain\Services\MessageService;
 
 class GatewayServiceProvider extends ServiceProvider
 {

@@ -6,8 +6,8 @@ use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\DB;
 use HuiZhiDa\Gateway\Infrastructure\Adapters\AdapterFactory;
-use HuiZhiDa\Gateway\Application\Services\ConversationService;
-use HuiZhiDa\Gateway\Domain\Contracts\MessageQueueInterface;
+use HuiZhiDa\Gateway\Domain\Services\ConversationService;
+use HuiZhiDa\Message\Domain\Contracts\MessageQueueInterface;
 use HuiZhiDa\Message\Domain\Enums\ConversationStatus;
 
 class TransferExecutorCommand extends Command

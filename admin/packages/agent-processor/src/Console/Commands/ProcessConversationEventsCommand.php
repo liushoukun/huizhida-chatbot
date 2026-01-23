@@ -2,8 +2,11 @@
 
 namespace HuiZhiDa\AgentProcessor\Console\Commands;
 
+use Exception;
 use HuiZhiDa\AgentProcessor\Application\Services\MessageProcessorService;
-use HuiZhiDa\Gateway\Domain\Contracts\MessageQueueInterface;
+use HuiZhiDa\Message\Domain\Contracts\MessageQueueInterface;
+use HuiZhiDa\Message\Domain\DTO\ConversationEvent;
+use HuiZhiDa\Message\Domain\Services\CommonService;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Log;
 
@@ -30,9 +33,10 @@ class ProcessConversationEventsCommand extends Command
     protected $description = '消费会话事件队列，处理未处理消息';
 
     protected int $processedCount = 0;
-    protected int $maxJobs = 0;
+    protected int $maxJobs        = 0;
 
     public function __construct(
+        protected CommonService $commonService,
         protected MessageQueueInterface $messageQueue,
         protected MessageProcessorService $processorService
     ) {
@@ -42,26 +46,28 @@ class ProcessConversationEventsCommand extends Command
     /**
      * Execute the console command.
      */
-    public function handle(): int
+    public function handle() : int
     {
-        $queue = $this->option('queue') ?? config('agent-processor.queue.conversation_events_queue', 'conversation_events');
-        $timeout = (int) $this->option('timeout');
+        $queue = $this->commonService->getEventKey(ConversationEvent::$processing);
+
+        $timeout       = (int) $this->option('timeout');
         $this->maxJobs = (int) $this->option('max-jobs');
 
         $this->info("开始消费队列: {$queue}");
         $this->info("阻塞超时: {$timeout}秒");
 
         // 订阅队列
-        $this->messageQueue->subscribe($queue, function ($event) use ($queue) {
+        $this->messageQueue->subscribe($queue, function ($eventData) use ($queue) {
             try {
-                $this->info("收到事件: " . json_encode($event, JSON_UNESCAPED_UNICODE));
-                
+
+                $this->info("收到事件: ".json_encode($eventData, JSON_UNESCAPED_UNICODE));
+                $event = ConversationEvent::from($eventData);
                 // 处理会话事件
                 $this->processorService->processConversationEvent($event);
-                
+
                 // 确认消息
                 $this->messageQueue->ack($event);
-                
+
                 $this->processedCount++;
                 $this->info("处理完成，已处理: {$this->processedCount} 个事件");
 
@@ -71,14 +77,14 @@ class ProcessConversationEventsCommand extends Command
                     exit(0);
                 }
 
-            } catch (\Exception $e) {
-                $this->error("处理事件失败: " . $e->getMessage());
+            } catch (Exception $e) {
+                $this->error("处理事件失败: ".$e->getMessage());
                 Log::error('Process conversation event failed', [
                     'event' => $event,
                     'error' => $e->getMessage(),
                     'trace' => $e->getTraceAsString(),
                 ]);
-                
+
                 // 拒绝消息，重新入队
                 $this->messageQueue->nack($event);
             }

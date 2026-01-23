@@ -1,6 +1,6 @@
 <?php
 
-namespace HuiZhiDa\Gateway\Domain\Contracts;
+namespace HuiZhiDa\Message\Domain\Contracts;
 
 interface MessageQueueInterface
 {

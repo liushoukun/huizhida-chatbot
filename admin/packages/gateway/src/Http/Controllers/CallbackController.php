@@ -6,7 +6,6 @@ use Exception;
 use HuiZhiDa\Core\Domain\Channel\Repositories\ChannelRepositoryInterface;
 use HuiZhiDa\Gateway\Domain\Services\ConversationService;
 use HuiZhiDa\Gateway\Domain\Services\MessageService;
-use HuiZhiDa\Gateway\Domain\Contracts\MessageQueueInterface;
 use HuiZhiDa\Gateway\Infrastructure\Adapters\AdapterFactory;
 use HuiZhiDa\Message\Domain\DTO\ConversationEvent;
 use Illuminate\Http\JsonResponse;
@@ -20,7 +19,6 @@ class CallbackController
         protected AdapterFactory $adapterFactory,
         protected ConversationService $conversationService,
         protected MessageService $messageService,
-        protected MessageQueueInterface $mq,
         protected ChannelRepositoryInterface $channelRepository,
     ) {
     }

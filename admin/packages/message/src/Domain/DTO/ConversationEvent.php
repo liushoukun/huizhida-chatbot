@@ -10,6 +10,8 @@ use RedJasmine\Support\Foundation\Data\Data;
 class ConversationEvent extends Data
 {
 
+    public static string $processing = 'processing';
+
 
     public function __construct(string $conversationId)
     {
@@ -23,5 +25,10 @@ class ConversationEvent extends Data
     public string $conversationId;
 
     public int $timestamp;
+
+
+    public ?int $channelId = null;
+
+    public ?int $agentId = null;
 
 }
