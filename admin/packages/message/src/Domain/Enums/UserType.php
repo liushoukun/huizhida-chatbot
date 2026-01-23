@@ -10,10 +10,20 @@ enum UserType: string
 
     case User = 'user';
 
-    case Assistant = 'assistant';
+    case Agent = 'agent';
 
     // 员工
-    case Employee = 'employee';
+    case Human = 'human';
+
+
+    public static function labels() : array
+    {
+        return [
+            self::User->value  => '用户',
+            self::Agent->value => '智能体',
+            self::Human->value => '人工',
+        ];
+    }
 
 
 }

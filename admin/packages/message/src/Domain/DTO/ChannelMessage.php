@@ -10,6 +10,12 @@ namespace HuiZhiDa\Message\Domain\DTO;
 class ChannelMessage extends Message
 {
     /**
+     * 应用ID
+     * @var int|null
+     */
+    public ?int $appId = null;
+
+    /**
      * 渠道ID
      * @var string|null
      */

@@ -10,22 +10,23 @@ use RedJasmine\Support\Foundation\Data\Data;
 /**
  * 核心消息DTO
  *
- * 这是消息的核心数据结构，用于在不同包之间传递消息数据
+ *  接受渠道或者智能体的消息，先有 外部ID 存储后 得到内部消息ID
+ *  把处理器 把消息转发给 渠道或者 智能体，有内部消息ID,发送给外部
  */
 class Message extends Data
 {
     /**
-     * 用户信息
+     * 发送者
      * @var UserInfo|null
      */
-    public ?UserInfo $user = null;
+    public ?UserInfo $sender = null;
+
 
     /**
      * 内部会话ID
      * @var string|null
      */
     public ?string $conversationId = null;
-
     /**
      * 内部对话ID
      * @var string|null
@@ -42,7 +43,7 @@ class Message extends Data
      * 消息类型
      * @var MessageType
      */
-    public MessageType $type = MessageType::Question;
+    public MessageType $messageType = MessageType::Question;
 
     /**
      * 消息内容类型

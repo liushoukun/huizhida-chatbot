@@ -46,13 +46,8 @@ class GatewayServiceProvider extends ServiceProvider
             __DIR__ . '/../config/gateway.php' => config_path('gateway.php'),
         ], 'gateway-config');
 
-        // 发布数据库迁移
-        $this->publishes([
-            __DIR__ . '/../database/migrations' => database_path('migrations'),
-        ], 'gateway-migrations');
 
-        // 加载数据库迁移
-        $this->loadMigrationsFrom(__DIR__ . '/../database/migrations');
+
 
         // 加载路由
         $this->loadRoutes();

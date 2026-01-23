@@ -7,9 +7,13 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use HuiZhiDa\Gateway\Domain\Contracts\ChannelAdapterInterface;
-use HuiZhiDa\Gateway\Domain\Models\Message;
-use HuiZhiDa\Gateway\Domain\Models\UserInfo;
-use HuiZhiDa\Gateway\Domain\Models\MessageContent;
+use HuiZhiDa\Message\Domain\DTO\ChannelMessage;
+use HuiZhiDa\Message\Domain\DTO\UserInfo;
+use HuiZhiDa\Message\Domain\DTO\Contents\TextContent;
+use HuiZhiDa\Message\Domain\DTO\Contents\ImageContent;
+use HuiZhiDa\Message\Domain\Enums\MessageType;
+use HuiZhiDa\Message\Domain\Enums\ContentType;
+use HuiZhiDa\Message\Domain\Enums\UserType;
 use InvalidArgumentException;
 use RuntimeException;
 
@@ -57,60 +61,56 @@ class ApiAdapter implements ChannelAdapterInterface
         return hash_equals($expectedSignature, $signature);
     }
 
-    public function parseMessage(string $rawData) : Message
+    public function parseMessage(Request $request) : ChannelMessage
     {
-        $data = json_decode($rawData, true);
+        $rawData = $request->getContent();
+        $data    = json_decode($request->getContent(), true);
 
         if (json_last_error() !== JSON_ERROR_NONE) {
             throw new InvalidArgumentException('Invalid JSON format: '.json_last_error_msg());
         }
 
-        $message                   = Message::createIncoming();
-        $message->messageId        = $data['message_id'] ?? uniqid('api_msg_', true);
-        $message->channelMessageId = $data['message_id'] ?? $message->messageId;
-        $message->messageType      = $this->mapMessageType($data['msgtype'] ??  'text');
-        $message->timestamp        = $data['timestamp'] ?? time();
-        $message->rawData          = $rawData;
+        $message                        = new ChannelMessage();
+        $message->channelConversationId = $data['conversation_id'] ?? uniqid('api_msg_', true);
+        $message->channelChatId         = $data['chat_id'] ?? uniqid('api_msg_', true);
+        $message->channelMessageId      = $data['message_id'] ?? uniqid('api_msg_', true);
+        $message->messageType           = $this->mapMessageType($data['message_type']);
+        $message->contentType           = $this->mapContentType($data['content_type']);
+        $message->timestamp             = $data['timestamp'] ?? time();
+        $message->rawData               = $rawData;
+
 
         // 解析用户信息
-        $message->user = new UserInfo();
-        $userData                     = is_array($data['user']) ? $data['user'] : [];
+        $message->sender = new UserInfo();
+        $userData        = is_array($data['user']) ? $data['user'] : [];
 
-        $message->user->channelUserId = $userData['id'] ?? $userData['user_id'] ?? $userData['channel_user_id'] ?? '';
-        $message->user->nickname      = $userData['nickname'] ?? $userData['name'] ?? '';
-        $message->user->avatar        = $userData['avatar'] ?? '';
-        $message->user->isVip         = $userData['is_vip'] ?? false;
-        $message->user->tags          = $userData['tags'] ?? [];
+        $message->sender->type     = UserType::User;
+        $message->sender->id       = $userData['id'] ?? $userData['user_id'] ?? $userData['channel_user_id'] ?? '';
+        $message->sender->nickname = $userData['nickname'] ?? $userData['name'] ?? null;
+        $message->sender->avatar   = $userData['avatar'] ?? null;
 
         // 解析消息内容
-        $message->content = new MessageContent();
-        $contentData      = $data['content'] ?? $data;
+        $contentData = $data['content'] ?? $data;
+        $contentType = $message->contentType;
 
-        if (isset($contentData['text'])) {
-
-            $message->content->text = $contentData['text'];
-        }
-
-        if (isset($contentData['media_url']) || isset($contentData['mediaUrl'])) {
-            $message->content->mediaUrl  = $contentData['media_url'] ?? $contentData['mediaUrl'];
-            $message->content->mediaType = $contentData['media_type'] ?? $contentData['mediaType'] ?? $message->messageType;
-        }
-
-        // 保存额外数据
-        $message->content->extra = $contentData['extra'] ?? [];
-        if (isset($data['conversation_id'])) {
-            $message->channelConversationId = $data['conversation_id'];
+        if ($contentType === ContentType::Text) {
+            $content          = new TextContent();
+            $content->content = $contentData['text'] ?? $contentData['content'] ?? '';
+            $message->content = $content;
+        } elseif ($contentType === ContentType::Image) {
+            $content          = new ImageContent();
+            $content->url     = $contentData['media_url'] ?? $contentData['mediaUrl'] ?? $contentData['url'] ?? '';
+            $content->width   = $contentData['width'] ?? null;
+            $content->height  = $contentData['height'] ?? null;
+            $content->format  = $contentData['format'] ?? null;
+            $message->content = $content;
         }
 
         return $message;
     }
 
-    public function convertToChannelFormat(Message $message) : array
+    public function convertToChannelFormat(ChannelMessage $message) : array
     {
-        if (!$message->isOutgoing()) {
-            throw new InvalidArgumentException('Message must be outgoing type');
-        }
-
         $data = [
             'message_id' => $message->messageId,
             'timestamp'  => $message->timestamp,
@@ -120,28 +120,34 @@ class ApiAdapter implements ChannelAdapterInterface
             $data['conversation_id'] = $message->conversationId;
         }
 
-        if ($message->replyType === 'text') {
+        if ($message->contentType === ContentType::Text && $message->content instanceof TextContent) {
             $data['content'] = [
                 'type' => 'text',
-                'text' => $message->reply,
+                'text' => $message->content->content,
             ];
-        } elseif ($message->replyType === 'rich' && !empty($message->richContent)) {
+        } elseif ($message->contentType === ContentType::Image && $message->content instanceof ImageContent) {
             $data['content'] = [
-                'type' => 'rich',
-                'data' => $message->richContent,
+                'type' => 'image',
+                'url'  => $message->content->url,
             ];
+            if ($message->content->width) {
+                $data['content']['width'] = $message->content->width;
+            }
+            if ($message->content->height) {
+                $data['content']['height'] = $message->content->height;
+            }
         } else {
             // 默认文本消息
             $data['content'] = [
                 'type' => 'text',
-                'text' => $message->reply ?? '',
+                'text' => '',
             ];
         }
 
         return $data;
     }
 
-    public function sendMessage(Message $message) : void
+    public function sendMessage(ChannelMessage $message) : void
     {
         $apiUrl = $this->config['api_url'] ?? '';
 
@@ -253,22 +259,43 @@ class ApiAdapter implements ChannelAdapterInterface
     /**
      * 映射消息类型
      */
-    protected function mapMessageType(string $type) : string
+    protected function mapMessageType(string $type) : MessageType
     {
         $map = [
-            'text'     => Message::TYPE_TEXT,
-            'image'    => Message::TYPE_IMAGE,
-            'voice'    => Message::TYPE_VOICE,
-            'video'    => Message::TYPE_VIDEO,
-            'file'     => Message::TYPE_FILE,
-            'link'     => Message::TYPE_LINK,
-            'location' => Message::TYPE_LOCATION,
-            'event'    => Message::TYPE_EVENT,
-            'rich'     => Message::TYPE_RICH,
+            'text'         => MessageType::Question,
+            'image'        => MessageType::Question,
+            'voice'        => MessageType::Question,
+            'video'        => MessageType::Question,
+            'file'         => MessageType::Question,
+            'link'         => MessageType::Question,
+            'location'     => MessageType::Question,
+            'event'        => MessageType::Event,
+            'answer'       => MessageType::Answer,
+            'notification' => MessageType::Notification,
+            'tip'          => MessageType::Tip,
         ];
 
-        return $map[strtolower($type)] ?? Message::TYPE_TEXT;
+        return $map[strtolower($type)] ?? MessageType::Question;
     }
+
+    /**
+     * 映射内容类型
+     */
+    protected function mapContentType(string $type) : ContentType
+    {
+        $map = [
+            'text'  => ContentType::Text,
+            'image' => ContentType::Image,
+            'voice' => ContentType::Voice,
+            'video' => ContentType::Video,
+            'file'  => ContentType::File,
+            'card'  => ContentType::Card,
+            'event' => ContentType::Event,
+        ];
+
+        return $map[strtolower($type)] ?? ContentType::Text;
+    }
+
 
     /**
      * 发送 API 请求（用于转接等操作）

@@ -20,5 +20,16 @@ enum MessageType: string
     // 提示
     case Tip = 'tip';
 
+    public static function labels() : array
+    {
+        return [
+            self::Question->value     => '提前',
+            self::Answer->value       => '提示',
+            self::Event->value        => '事件',
+            self::Notification->value => '通知',
+            self::Tip->value          => '提示',
+        ];
+    }
+
 
 }

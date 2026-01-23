@@ -7,7 +7,8 @@ use Illuminate\Support\Facades\Log;
 use HuiZhiDa\Gateway\Infrastructure\Adapters\AdapterFactory;
 use HuiZhiDa\Gateway\Application\Services\MessageService;
 use HuiZhiDa\Gateway\Domain\Contracts\MessageQueueInterface;
-use HuiZhiDa\Gateway\Domain\Models\Message;
+use HuiZhiDa\Message\Domain\DTO\ChannelMessage;
+use HuiZhiDa\Message\Domain\Enums\MessageType;
 
 class MessageSenderCommand extends Command
 {
@@ -38,23 +39,27 @@ class MessageSenderCommand extends Command
     protected function handleMessage(array $data): void
     {
         try {
-            $message = Message::fromArray($data);
+            // 从数组创建ChannelMessage（使用Data类的from方法）
+            $message = ChannelMessage::from($data);
 
-            if (!$message->isOutgoing()) {
-                throw new \InvalidArgumentException('Message must be outgoing type');
+            // 验证消息类型（发送的消息应该是Answer类型）
+            if ($message->messageType !== MessageType::Answer) {
+                throw new \InvalidArgumentException('Message must be Answer type for sending');
             }
 
             // 获取渠道适配器
-            // TODO: 从数据库获取渠道配置
+            // TODO: 从数据库获取渠道配置，需要根据channelId获取
             $channelConfig = [];
-            $adapter = $this->adapterFactory->get($message->channel, $channelConfig);
+            // 需要从channelId获取channel类型
+            $channel = $this->getChannelType($message->channelId);
+            $adapter = $this->adapterFactory->get($channel, $channelConfig);
 
             // 发送消息
             $adapter->sendMessage($message);
 
             // 更新消息状态
             try {
-                $this->messageService->updateStatus($message->messageId, 'sent');
+                $this->messageService->updateStatus($message->messageId ?? '', 'sent');
             } catch (\Exception $e) {
                 Log::warning('Update message status failed', [
                     'message_id' => $message->messageId,
@@ -65,7 +70,7 @@ class MessageSenderCommand extends Command
             $this->info('Message sent successfully', [
                 'message_id' => $message->messageId,
                 'conversation_id' => $message->conversationId,
-                'channel' => $message->channel,
+                'channel_id' => $message->channelId,
             ]);
         } catch (\Exception $e) {
             Log::error('Handle message failed', [
@@ -74,5 +79,15 @@ class MessageSenderCommand extends Command
             ]);
             $this->mq->nack($data);
         }
+    }
+
+    /**
+     * 根据channelId获取channel类型
+     * TODO: 从数据库查询
+     */
+    protected function getChannelType(?string $channelId): string
+    {
+        // TODO: 从数据库查询channels表获取channel类型
+        return 'api'; // 默认返回api
     }
 }

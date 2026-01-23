@@ -4,14 +4,14 @@ namespace HuiZhiDa\Gateway\Http\Controllers;
 
 use Exception;
 use HuiZhiDa\Core\Domain\Channel\Repositories\ChannelRepositoryInterface;
-use Illuminate\Http\Request;
-use Illuminate\Http\JsonResponse;
-use Illuminate\Support\Facades\Log;
-use HuiZhiDa\Gateway\Infrastructure\Adapters\AdapterFactory;
-use HuiZhiDa\Gateway\Application\Services\ConversationService;
-use HuiZhiDa\Gateway\Application\Services\MessageService;
+use HuiZhiDa\Gateway\Domain\Services\ConversationService;
+use HuiZhiDa\Gateway\Domain\Services\MessageService;
 use HuiZhiDa\Gateway\Domain\Contracts\MessageQueueInterface;
-use Illuminate\Support\Facades\Redis;
+use HuiZhiDa\Gateway\Infrastructure\Adapters\AdapterFactory;
+use HuiZhiDa\Message\Domain\DTO\ConversationEvent;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 use InvalidArgumentException;
 
 class CallbackController
@@ -45,18 +45,17 @@ class CallbackController
                 return response()->json(['error' => 'invalid signature'], 403);
             }
 
-            // 3. 读取请求体
-            $rawData = $request->getContent();
-
             // 4. 解析并转换消息
-            $message            = $adapter->parseMessage($rawData);
+            $message = $adapter->parseMessage($request);
+
+            // 设置渠道和应用信息
             $message->appId     = $channelModel->app_id;
-            $message->channelId = $channelModel->id;
-            $message->channel   = $channelModel->channel;
-
+            $message->channelId = (string) $channelModel->id;
+            // 如果没有渠道会话ID 把渠道会话ID
+            $message->channelConversationId = $message->channelConversationId ?? null;
             // 5. 获取或创建会话
-            $conversation            = $this->conversationService->getOrCreate($message);
-
+            $conversation = $this->conversationService->getOrCreate($message);
+            // 获取 系统会话ID
             $message->conversationId = $conversation['conversation_id'];
 
             // 6. 保存消息记录
@@ -67,41 +66,12 @@ class CallbackController
                 // 继续处理，不返回错误
             }
 
-            // 7. 第一步：将消息推送到以会话ID为key的Redis ZSET中
-            try {
-                $key = "conversation:messages:{$conversation['conversation_id']}";
-                $messageData = json_encode($message->toArray());
-                $score = microtime(true);
+            // 7. 存储会话待处理消息：将消息推送到以会话ID为key的Redis ZSET中
+            $this->messageService->savePendingMessage($message->conversationId, $message);
 
-                $redisConnection = config('gateway.redis.connection', 'default');
-                Redis::connection($redisConnection)->zadd($key, $score, $messageData);
-            } catch (Exception $e) {
-                throw $e;
-                Log::error('Add message to conversation zset failed', [
-                    'conversation_id' => $conversation['conversation_id'],
-                    'error' => $e->getMessage(),
-                ]);
-                // 继续处理，不返回错误
-            }
 
             // 8. 第二步：推送事件消息到队列，包含会话ID
-            $eventQueueName = config('gateway.queue.conversation_event_queue', 'conversation_events');
-            $eventMessage = [
-                'type' => 'conversation_message',
-                'conversation_id' => $conversation['conversation_id'],
-                'timestamp' => time(),
-            ];
-            
-            try {
-                $this->mq->publish($eventQueueName, $eventMessage);
-            } catch (Exception $e) {
-                Log::error('Publish conversation event failed', [
-                    'conversation_id' => $conversation['conversation_id'],
-                    'error' => $e->getMessage(),
-                ]);
-                // 继续处理，不返回错误
-            }
-
+            $this->conversationService->triggerEvent(new ConversationEvent($message->conversationId));
             // 9. 快速响应渠道
             $response = $adapter->getSuccessResponse();
 
@@ -122,6 +92,7 @@ class CallbackController
             ]);
             return response()->json(['error' => 'unsupported channel'], 400);
         } catch (Exception $e) {
+            throw $e;
             Log::error('Callback processing failed', [
                 'channel'    => $channel,
                 'channel_id' => $id,

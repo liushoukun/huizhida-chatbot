@@ -3,7 +3,7 @@
 namespace HuiZhiDa\Gateway\Domain\Contracts;
 
 use Illuminate\Http\Request;
-use HuiZhiDa\Gateway\Domain\Models\Message;
+use HuiZhiDa\Message\Domain\DTO\ChannelMessage;
 
 interface ChannelAdapterInterface
 {
@@ -15,17 +15,17 @@ interface ChannelAdapterInterface
     /**
      * 解析渠道消息格式，转换为统一格式
      */
-    public function parseMessage(string $rawData): Message;
+    public function parseMessage(Request $request): ChannelMessage;
 
     /**
      * 将统一格式转换为渠道格式
      */
-    public function convertToChannelFormat(Message $message): array;
+    public function convertToChannelFormat(ChannelMessage $message): array;
 
     /**
      * 发送消息到渠道
      */
-    public function sendMessage(Message $message): void;
+    public function sendMessage(ChannelMessage $message): void;
 
     /**
      * 转接到客服队列

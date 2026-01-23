@@ -4,10 +4,11 @@ namespace HuiZhiDa\Gateway\Console\Commands;
 
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\DB;
 use HuiZhiDa\Gateway\Infrastructure\Adapters\AdapterFactory;
 use HuiZhiDa\Gateway\Application\Services\ConversationService;
 use HuiZhiDa\Gateway\Domain\Contracts\MessageQueueInterface;
-use HuiZhiDa\Gateway\Domain\Models\Message;
+use HuiZhiDa\Message\Domain\Enums\ConversationStatus;
 
 class TransferExecutorCommand extends Command
 {
@@ -38,38 +39,61 @@ class TransferExecutorCommand extends Command
     protected function handleTransfer(array $data): void
     {
         try {
-            $message = Message::fromArray($data);
+            $conversationId = $data['conversation_id'] ?? null;
+            $reason = $data['reason'] ?? null;
+            $source = $data['source'] ?? null;
+            $mode = $data['mode'] ?? 'queue';
+            $specificServicer = $data['specific_servicer'] ?? null;
+            $priority = $data['priority'] ?? 'normal';
 
-            if (!$message->isTransfer()) {
-                throw new \InvalidArgumentException('Message must be transfer type');
+            if (!$conversationId) {
+                throw new \InvalidArgumentException('Conversation ID is required');
+            }
+
+            // 获取会话信息以获取channel_id
+            $conversation = $this->conversationService->get($conversationId);
+            if (!$conversation) {
+                throw new \InvalidArgumentException('Conversation not found');
             }
 
             // 更新会话状态
+            $status = $mode === 'specific' ? ConversationStatus::Human->value : ConversationStatus::Human_queuing->value;
             $this->conversationService->updateStatus(
-                $message->conversationId,
-                'pending_human',
-                $message->reason,
-                $message->source
+                $conversationId,
+                $status,
+                $reason,
+                $source
             );
 
             // 获取渠道适配器
-            $channelConfig = [];
-            $adapter = $this->adapterFactory->get($message->channel, $channelConfig);
+            $channelId = $conversation['channel_id'] ?? null;
+            if (!$channelId) {
+                throw new \InvalidArgumentException('Channel ID not found in conversation');
+            }
+
+            // 从数据库获取channel信息
+            $channel = DB::table('channels')->where('id', $channelId)->first();
+            if (!$channel) {
+                throw new \InvalidArgumentException('Channel not found');
+            }
+
+            $channelConfig = $channel->config ?? [];
+            $adapter = $this->adapterFactory->get($channel->channel, $channelConfig);
 
             // 执行转接
-            if ($message->mode === 'specific' && $message->specificServicer) {
+            if ($mode === 'specific' && $specificServicer) {
                 $adapter->transferToSpecific(
-                    $message->conversationId,
-                    $message->specificServicer,
-                    $message->priority ?? 'normal'
+                    $conversationId,
+                    $specificServicer,
+                    $priority
                 );
             } else {
-                $adapter->transferToQueue($message->conversationId, $message->priority ?? 'normal');
+                $adapter->transferToQueue($conversationId, $priority);
             }
 
             $this->info('Transfer executed successfully', [
-                'conversation_id' => $message->conversationId,
-                'channel' => $message->channel,
+                'conversation_id' => $conversationId,
+                'channel' => $channel->channel,
             ]);
         } catch (\Exception $e) {
             Log::error('Handle transfer failed', [
