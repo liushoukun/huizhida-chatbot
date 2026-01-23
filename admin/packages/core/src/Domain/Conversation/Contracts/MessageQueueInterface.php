@@ -1,6 +1,6 @@
 <?php
 
-namespace HuiZhiDa\Core\Domain\Message\Contracts;
+namespace HuiZhiDa\Core\Domain\Conversation\Contracts;
 
 interface MessageQueueInterface
 {

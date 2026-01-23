@@ -1,10 +1,10 @@
 <?php
 
-namespace HuiZhiDa\Core\Domain\Message\DTO;
+namespace HuiZhiDa\Core\Domain\Conversation\DTO;
 
-use HuiZhiDa\Core\Domain\Message\DTO\Contents\Content;
-use HuiZhiDa\Core\Domain\Message\Enums\ContentType;
-use HuiZhiDa\Core\Domain\Message\Enums\MessageType;
+use HuiZhiDa\Core\Domain\Conversation\DTO\Contents\Content;
+use HuiZhiDa\Core\Domain\Conversation\Enums\ContentType;
+use HuiZhiDa\Core\Domain\Conversation\Enums\MessageType;
 use RedJasmine\Support\Foundation\Data\Data;
 
 /**

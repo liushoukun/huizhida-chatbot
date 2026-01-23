@@ -4,11 +4,9 @@ namespace HuiZhiDa\Gateway;
 
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Facades\Route;
-use HuiZhiDa\Core\Domain\Message\Contracts\MessageQueueInterface;
+use HuiZhiDa\Core\Domain\Conversation\Contracts\MessageQueueInterface;
 use HuiZhiDa\Gateway\Infrastructure\Adapters\AdapterFactory;
 use HuiZhiDa\Gateway\Infrastructure\Queue\RedisQueue;
-use HuiZhiDa\Gateway\Domain\Services\ConversationService;
-use HuiZhiDa\Gateway\Domain\Services\MessageService;
 
 class GatewayServiceProvider extends ServiceProvider
 {
@@ -29,10 +27,6 @@ class GatewayServiceProvider extends ServiceProvider
             $config = config('gateway.queue');
             return new RedisQueue($config);
         });
-
-        // 注册服务
-        $this->app->singleton(ConversationService::class);
-        $this->app->singleton(MessageService::class);
     }
 
     /**

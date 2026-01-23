@@ -1,13 +1,13 @@
 <?php
 
-namespace HuiZhiDa\Gateway\Domain\Services;
+namespace HuiZhiDa\Core\Domain\Conversation\Services;
 
 use Exception;
-use HuiZhiDa\Core\Domain\Message\Services\CommonService;
+use HuiZhiDa\Core\Domain\Conversation\Services\CommonService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
-use HuiZhiDa\Core\Domain\Message\DTO\Message;
-use HuiZhiDa\Core\Domain\Message\DTO\ChannelMessage;
+use HuiZhiDa\Core\Domain\Conversation\DTO\Message;
+use HuiZhiDa\Core\Domain\Conversation\DTO\ChannelMessage;
 use Illuminate\Support\Facades\Redis;
 use InvalidArgumentException;
 use ReflectionException;

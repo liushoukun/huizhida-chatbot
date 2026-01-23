@@ -3,7 +3,7 @@
 namespace HuiZhiDa\Gateway\Domain\Contracts;
 
 use Illuminate\Http\Request;
-use HuiZhiDa\Core\Domain\Message\DTO\ChannelMessage;
+use HuiZhiDa\Core\Domain\Conversation\DTO\ChannelMessage;
 
 interface ChannelAdapterInterface
 {

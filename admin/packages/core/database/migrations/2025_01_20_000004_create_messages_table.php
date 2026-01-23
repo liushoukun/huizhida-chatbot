@@ -1,8 +1,8 @@
 <?php
 
-use HuiZhiDa\Core\Domain\Message\Enums\ContentType;
-use HuiZhiDa\Core\Domain\Message\Enums\MessageType;
-use HuiZhiDa\Core\Domain\Message\Enums\UserType;
+use HuiZhiDa\Core\Domain\Conversation\Enums\ContentType;
+use HuiZhiDa\Core\Domain\Conversation\Enums\MessageType;
+use HuiZhiDa\Core\Domain\Conversation\Enums\UserType;
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;

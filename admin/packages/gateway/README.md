@@ -160,9 +160,7 @@ Domain/
       └── MessageContent
 
 Application/
-  └── Services/          # 应用服务
-      ├── ConversationService
-      └── MessageService
+  └── Services/          # 应用服务（已迁移到 core 包）
 
 Infrastructure/
   ├── Adapters/          # 渠道适配器实现

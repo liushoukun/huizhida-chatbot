@@ -1,6 +1,6 @@
 <?php
 
-namespace HuiZhiDa\Core\Domain\Message\Services;
+namespace HuiZhiDa\Core\Domain\Conversation\Services;
 
 class CommonService
 {

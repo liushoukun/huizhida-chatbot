@@ -5,10 +5,10 @@ namespace HuiZhiDa\Gateway\Console\Commands;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Log;
 use HuiZhiDa\Gateway\Infrastructure\Adapters\AdapterFactory;
-use HuiZhiDa\Gateway\Domain\Services\MessageService;
-use HuiZhiDa\Core\Domain\Message\Contracts\MessageQueueInterface;
-use HuiZhiDa\Core\Domain\Message\DTO\ChannelMessage;
-use HuiZhiDa\Core\Domain\Message\Enums\MessageType;
+use HuiZhiDa\Core\Domain\Conversation\Services\MessageService;
+use HuiZhiDa\Core\Domain\Conversation\Contracts\MessageQueueInterface;
+use HuiZhiDa\Core\Domain\Conversation\DTO\ChannelMessage;
+use HuiZhiDa\Core\Domain\Conversation\Enums\MessageType;
 
 class MessageSenderCommand extends Command
 {

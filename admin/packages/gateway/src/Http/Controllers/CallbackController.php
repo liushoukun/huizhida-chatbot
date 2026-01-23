@@ -4,10 +4,10 @@ namespace HuiZhiDa\Gateway\Http\Controllers;
 
 use Exception;
 use HuiZhiDa\Core\Domain\Channel\Repositories\ChannelRepositoryInterface;
-use HuiZhiDa\Gateway\Domain\Services\ConversationService;
-use HuiZhiDa\Gateway\Domain\Services\MessageService;
+use HuiZhiDa\Core\Domain\Conversation\Services\ConversationService;
+use HuiZhiDa\Core\Domain\Conversation\Services\MessageService;
 use HuiZhiDa\Gateway\Infrastructure\Adapters\AdapterFactory;
-use HuiZhiDa\Core\Domain\Message\DTO\ConversationEvent;
+use HuiZhiDa\Core\Domain\Conversation\DTO\ConversationEvent;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;

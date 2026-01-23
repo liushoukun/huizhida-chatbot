@@ -1,16 +1,18 @@
 <?php
 
-namespace HuiZhiDa\Gateway\Domain\Services;
+namespace HuiZhiDa\Core\Domain\Conversation\Services;
 
-use HuiZhiDa\Core\Domain\Message\Contracts\MessageQueueInterface;
-use HuiZhiDa\Core\Domain\Message\DTO\ConversationEvent;
-use HuiZhiDa\Core\Domain\Message\Services\CommonService;
+use HuiZhiDa\Core\Domain\Conversation\Contracts\MessageQueueInterface;
+use HuiZhiDa\Core\Domain\Conversation\DTO\ConversationEvent;
+use HuiZhiDa\Core\Domain\Conversation\DTO\Message;
+use HuiZhiDa\Core\Domain\Conversation\Services\CommonService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
-use HuiZhiDa\Core\Domain\Message\DTO\ChannelMessage;
-use HuiZhiDa\Core\Domain\Message\Enums\ConversationStatus;
+use HuiZhiDa\Core\Domain\Conversation\DTO\ChannelMessage;
+use HuiZhiDa\Core\Domain\Conversation\Enums\ConversationStatus;
 use Illuminate\Support\Str;
 use InvalidArgumentException;
+use Exception;
 
 class ConversationService
 {
@@ -24,7 +26,6 @@ class ConversationService
     // 触发事件 等待处理
     public function triggerEvent(ConversationEvent $conversationEvent) : void
     {
-
         $eventQueueName = $this->commonService->getEventKey($conversationEvent->event);
         try {
             $this->mq->publish($eventQueueName, $conversationEvent->toJson());
@@ -36,6 +37,17 @@ class ConversationService
 
     }
 
+    /**
+     * 获取未处理的消息
+     *
+     * @param  string  $conversationId
+     *
+     * @return Message[]
+     */
+    public function getUnprocessedMessages(string $conversationId) : array
+    {
+        return  [];
+    }
 
     /**
      * 获取或创建会话

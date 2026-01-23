@@ -7,6 +7,8 @@ use HuiZhiDa\Core\Domain\Agent\Repositories\AgentRepositoryInterface;
 use HuiZhiDa\Core\Infrastructure\Repositories\AgentRepository;
 use HuiZhiDa\Core\Domain\Channel\Repositories\ChannelRepositoryInterface;
 use HuiZhiDa\Core\Infrastructure\Repositories\ChannelRepository;
+use HuiZhiDa\Core\Domain\Conversation\Services\ConversationService;
+use HuiZhiDa\Core\Domain\Conversation\Services\MessageService;
 
 class CoreServiceProvider extends ServiceProvider
 {
@@ -26,6 +28,12 @@ class CoreServiceProvider extends ServiceProvider
         
         // 注册 Channel 仓库实现
         $this->app->bind(ChannelRepositoryInterface::class, ChannelRepository::class);
+        
+        // 注册 Conversation 服务
+        $this->app->singleton(ConversationService::class);
+        
+        // 注册 Message 服务
+        $this->app->singleton(MessageService::class);
     }
 
     /**

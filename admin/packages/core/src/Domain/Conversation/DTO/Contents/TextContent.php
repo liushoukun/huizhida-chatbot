@@ -1,6 +1,6 @@
 <?php
 
-namespace HuiZhiDa\Core\Domain\Message\DTO\Contents;
+namespace HuiZhiDa\Core\Domain\Conversation\DTO\Contents;
 
 /**
  * 文本内容DTO

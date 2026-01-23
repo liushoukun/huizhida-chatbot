@@ -3,10 +3,11 @@
 namespace HuiZhiDa\AgentProcessor\Application\Services;
 
 use Exception;
-use HuiZhiDa\Core\Domain\Message\Contracts\MessageQueueInterface;
-use HuiZhiDa\Gateway\Domain\Services\ConversationService;
+use HuiZhiDa\Core\Domain\Conversation\Contracts\MessageQueueInterface;
+use HuiZhiDa\Core\Domain\Conversation\Services\ConversationService;
+use HuiZhiDa\Core\Domain\Conversation\Services\MessageService;
 use HuiZhiDa\Gateway\Infrastructure\Queue\RedisQueue;
-use HuiZhiDa\Core\Domain\Message\DTO\ConversationEvent;
+use HuiZhiDa\Core\Domain\Conversation\DTO\ConversationEvent;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Redis;
@@ -19,6 +20,7 @@ class MessageProcessorService
 {
     public function __construct(
         protected MessageQueueInterface $messageQueue,
+
         protected ConversationService $conversationService,
         protected PreCheckService $preCheckService,
         protected AgentService $agentService
