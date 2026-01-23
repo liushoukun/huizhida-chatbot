@@ -1,6 +1,6 @@
 <?php
 
-namespace HuiZhiDa\Message\Domain\DTO\Contents;
+namespace HuiZhiDa\Core\Domain\Message\DTO\Contents;
 
 use RedJasmine\Support\Foundation\Data\Data;
 

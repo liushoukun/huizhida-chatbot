@@ -4,7 +4,7 @@ namespace HuiZhiDa\Gateway\Infrastructure\Queue;
 
 use Illuminate\Support\Facades\Redis;
 use Illuminate\Support\Facades\Log;
-use HuiZhiDa\Message\Domain\Contracts\MessageQueueInterface;
+use HuiZhiDa\Core\Domain\Message\Contracts\MessageQueueInterface;
 
 class RedisQueue implements MessageQueueInterface
 {

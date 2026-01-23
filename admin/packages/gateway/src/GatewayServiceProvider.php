@@ -4,7 +4,7 @@ namespace HuiZhiDa\Gateway;
 
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Facades\Route;
-use HuiZhiDa\Message\Domain\Contracts\MessageQueueInterface;
+use HuiZhiDa\Core\Domain\Message\Contracts\MessageQueueInterface;
 use HuiZhiDa\Gateway\Infrastructure\Adapters\AdapterFactory;
 use HuiZhiDa\Gateway\Infrastructure\Queue\RedisQueue;
 use HuiZhiDa\Gateway\Domain\Services\ConversationService;

@@ -4,13 +4,13 @@ namespace HuiZhiDa\Gateway\Infrastructure\Adapters;
 
 use Illuminate\Http\Request;
 use HuiZhiDa\Gateway\Domain\Contracts\ChannelAdapterInterface;
-use HuiZhiDa\Message\Domain\DTO\ChannelMessage;
-use HuiZhiDa\Message\Domain\DTO\UserInfo;
-use HuiZhiDa\Message\Domain\DTO\Contents\TextContent;
-use HuiZhiDa\Message\Domain\DTO\Contents\ImageContent;
-use HuiZhiDa\Message\Domain\Enums\MessageType;
-use HuiZhiDa\Message\Domain\Enums\ContentType;
-use HuiZhiDa\Message\Domain\Enums\UserType;
+use HuiZhiDa\Core\Domain\Message\DTO\ChannelMessage;
+use HuiZhiDa\Core\Domain\Message\DTO\UserInfo;
+use HuiZhiDa\Core\Domain\Message\DTO\Contents\TextContent;
+use HuiZhiDa\Core\Domain\Message\DTO\Contents\ImageContent;
+use HuiZhiDa\Core\Domain\Message\Enums\MessageType;
+use HuiZhiDa\Core\Domain\Message\Enums\ContentType;
+use HuiZhiDa\Core\Domain\Message\Enums\UserType;
 
 class WecomAdapter implements ChannelAdapterInterface
 {

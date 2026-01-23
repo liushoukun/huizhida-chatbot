@@ -16,7 +16,6 @@
         "illuminate/queue": "^12.0",
         "illuminate/redis": "^12.0",
         "guzzlehttp/guzzle": "^7.0",
-        "huizhida/message": "*",
         "huizhida/gateway": "*",
         "huizhida/core": "*"
     },

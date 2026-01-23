@@ -3,10 +3,10 @@
 namespace HuiZhiDa\AgentProcessor\Application\Services;
 
 use Exception;
-use HuiZhiDa\Message\Domain\Contracts\MessageQueueInterface;
+use HuiZhiDa\Core\Domain\Message\Contracts\MessageQueueInterface;
 use HuiZhiDa\Gateway\Domain\Services\ConversationService;
 use HuiZhiDa\Gateway\Infrastructure\Queue\RedisQueue;
-use HuiZhiDa\Message\Domain\DTO\ConversationEvent;
+use HuiZhiDa\Core\Domain\Message\DTO\ConversationEvent;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Redis;

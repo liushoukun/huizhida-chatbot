@@ -6,9 +6,9 @@ use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Log;
 use HuiZhiDa\Gateway\Infrastructure\Adapters\AdapterFactory;
 use HuiZhiDa\Gateway\Domain\Services\MessageService;
-use HuiZhiDa\Message\Domain\Contracts\MessageQueueInterface;
-use HuiZhiDa\Message\Domain\DTO\ChannelMessage;
-use HuiZhiDa\Message\Domain\Enums\MessageType;
+use HuiZhiDa\Core\Domain\Message\Contracts\MessageQueueInterface;
+use HuiZhiDa\Core\Domain\Message\DTO\ChannelMessage;
+use HuiZhiDa\Core\Domain\Message\Enums\MessageType;
 
 class MessageSenderCommand extends Command
 {

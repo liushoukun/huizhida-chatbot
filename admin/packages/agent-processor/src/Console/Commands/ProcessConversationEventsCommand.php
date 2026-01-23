@@ -4,9 +4,9 @@ namespace HuiZhiDa\AgentProcessor\Console\Commands;
 
 use Exception;
 use HuiZhiDa\AgentProcessor\Application\Services\MessageProcessorService;
-use HuiZhiDa\Message\Domain\Contracts\MessageQueueInterface;
-use HuiZhiDa\Message\Domain\DTO\ConversationEvent;
-use HuiZhiDa\Message\Domain\Services\CommonService;
+use HuiZhiDa\Core\Domain\Message\Contracts\MessageQueueInterface;
+use HuiZhiDa\Core\Domain\Message\DTO\ConversationEvent;
+use HuiZhiDa\Core\Domain\Message\Services\CommonService;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Log;
 

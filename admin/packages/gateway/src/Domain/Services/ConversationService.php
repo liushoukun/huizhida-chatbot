@@ -2,13 +2,13 @@
 
 namespace HuiZhiDa\Gateway\Domain\Services;
 
-use HuiZhiDa\Message\Domain\Contracts\MessageQueueInterface;
-use HuiZhiDa\Message\Domain\DTO\ConversationEvent;
-use HuiZhiDa\Message\Domain\Services\CommonService;
+use HuiZhiDa\Core\Domain\Message\Contracts\MessageQueueInterface;
+use HuiZhiDa\Core\Domain\Message\DTO\ConversationEvent;
+use HuiZhiDa\Core\Domain\Message\Services\CommonService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
-use HuiZhiDa\Message\Domain\DTO\ChannelMessage;
-use HuiZhiDa\Message\Domain\Enums\ConversationStatus;
+use HuiZhiDa\Core\Domain\Message\DTO\ChannelMessage;
+use HuiZhiDa\Core\Domain\Message\Enums\ConversationStatus;
 use Illuminate\Support\Str;
 use InvalidArgumentException;
 
@@ -159,7 +159,7 @@ class ConversationService
             $updates['transfer_source'] = $source;
         }
 
-        if (in_array($status, [ConversationStatus::Human_queuing->value, ConversationStatus::Human->value])) {
+        if (in_array($status, [ConversationStatus::HumanQueuing->value, ConversationStatus::Human->value])) {
             $updates['transfer_time'] = now();
         }
 

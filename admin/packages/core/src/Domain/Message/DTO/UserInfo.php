@@ -1,8 +1,8 @@
 <?php
 
-namespace HuiZhiDa\Message\Domain\DTO;
+namespace HuiZhiDa\Core\Domain\Message\DTO;
 
-use HuiZhiDa\Message\Domain\Enums\UserType;
+use HuiZhiDa\Core\Domain\Message\Enums\UserType;
 use RedJasmine\Support\Foundation\Data\Data;
 use Spatie\LaravelData\Attributes\WithCast;
 use Spatie\LaravelData\Casts\EnumCast;

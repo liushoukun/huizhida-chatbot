@@ -1,6 +1,6 @@
 <?php
 
-namespace HuiZhiDa\Message\Domain\DTO;
+namespace HuiZhiDa\Core\Domain\Message\DTO;
 
 /**
  * 渠道消息DTO

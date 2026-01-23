@@ -7,7 +7,7 @@ use HuiZhiDa\Core\Domain\Channel\Repositories\ChannelRepositoryInterface;
 use HuiZhiDa\Gateway\Domain\Services\ConversationService;
 use HuiZhiDa\Gateway\Domain\Services\MessageService;
 use HuiZhiDa\Gateway\Infrastructure\Adapters\AdapterFactory;
-use HuiZhiDa\Message\Domain\DTO\ConversationEvent;
+use HuiZhiDa\Core\Domain\Message\DTO\ConversationEvent;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;

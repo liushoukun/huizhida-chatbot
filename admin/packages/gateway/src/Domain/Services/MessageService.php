@@ -3,11 +3,11 @@
 namespace HuiZhiDa\Gateway\Domain\Services;
 
 use Exception;
-use HuiZhiDa\Message\Domain\Services\CommonService;
+use HuiZhiDa\Core\Domain\Message\Services\CommonService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
-use HuiZhiDa\Message\Domain\DTO\Message;
-use HuiZhiDa\Message\Domain\DTO\ChannelMessage;
+use HuiZhiDa\Core\Domain\Message\DTO\Message;
+use HuiZhiDa\Core\Domain\Message\DTO\ChannelMessage;
 use Illuminate\Support\Facades\Redis;
 use InvalidArgumentException;
 use ReflectionException;

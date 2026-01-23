@@ -1,6 +1,6 @@
 <?php
 
-namespace HuiZhiDa\Message\Domain\DTO;
+namespace HuiZhiDa\Core\Domain\Message\DTO;
 
 /**
  * 智能体消息DTO

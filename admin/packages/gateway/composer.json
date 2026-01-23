@@ -14,7 +14,7 @@
         "laravel/framework": "^12.0",
         "illuminate/support": "^12.0",
         "illuminate/queue": "^12.0",
-        "huizhida/message": "*",
+        "huizhida/core": "*",
         "illuminate/redis": "^12.0"
     },
     "require-dev": {
