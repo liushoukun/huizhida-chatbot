@@ -7,7 +7,7 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\DB;
 use HuiZhiDa\Gateway\Infrastructure\Adapters\AdapterFactory;
 use HuiZhiDa\Core\Domain\Conversation\Services\ConversationService;
-use HuiZhiDa\Core\Domain\Conversation\Contracts\MessageQueueInterface;
+use HuiZhiDa\Core\Domain\Conversation\Contracts\ConversationQueueInterface;
 use HuiZhiDa\Core\Domain\Conversation\Enums\ConversationStatus;
 
 class TransferExecutorCommand extends Command
@@ -18,7 +18,7 @@ class TransferExecutorCommand extends Command
     public function __construct(
         protected AdapterFactory $adapterFactory,
         protected ConversationService $conversationService,
-        protected MessageQueueInterface $mq
+        protected ConversationQueueInterface $mq
     ) {
         parent::__construct();
     }

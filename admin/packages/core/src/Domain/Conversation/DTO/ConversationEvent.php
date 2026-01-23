@@ -2,6 +2,7 @@
 
 namespace HuiZhiDa\Core\Domain\Conversation\DTO;
 
+use HuiZhiDa\Core\Domain\Conversation\Enums\ConversationQueueType;
 use RedJasmine\Support\Foundation\Data\Data;
 
 /**
@@ -9,8 +10,6 @@ use RedJasmine\Support\Foundation\Data\Data;
  */
 class ConversationEvent extends Data
 {
-
-    public static string $processing = 'processing';
 
 
     public function __construct(string $conversationId)
@@ -20,7 +19,7 @@ class ConversationEvent extends Data
     }
 
 
-    public string $event = 'processing';
+    public ConversationQueueType $queue = ConversationQueueType::Processor;
 
     public string $conversationId;
 

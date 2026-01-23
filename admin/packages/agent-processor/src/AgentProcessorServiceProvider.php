@@ -6,7 +6,7 @@ use HuiZhiDa\AgentProcessor\Application\Services\AgentService;
 use HuiZhiDa\AgentProcessor\Application\Services\MessageProcessorService;
 use HuiZhiDa\AgentProcessor\Application\Services\PreCheckService;
 use HuiZhiDa\AgentProcessor\Infrastructure\Adapters\AgentAdapterFactory;
-use HuiZhiDa\Core\Domain\Conversation\Contracts\MessageQueueInterface;
+use HuiZhiDa\Core\Domain\Conversation\Contracts\ConversationQueueInterface;
 use HuiZhiDa\Gateway\Infrastructure\Queue\RedisQueue;
 use HuiZhiDa\Core\Domain\Conversation\Services\ConversationService;
 use HuiZhiDa\Core\Domain\Agent\Repositories\AgentRepositoryInterface;
@@ -35,17 +35,17 @@ class AgentProcessorServiceProvider extends ServiceProvider
             );
         });
 
-        $this->app->singleton(MessageProcessorService::class, function ($app) {
-            return new MessageProcessorService(
-                $app->make(MessageQueueInterface::class),
-                $app->make(ConversationService::class),
-                $app->make(PreCheckService::class),
-                $app->make(AgentService::class)
-            );
-        });
+        // $this->app->singleton(MessageProcessorService::class, function ($app) {
+        //     return new MessageProcessorService(
+        //         $app->make(ConversationQueueInterface::class),
+        //         $app->make(ConversationService::class),
+        //         $app->make(PreCheckService::class),
+        //         $app->make(AgentService::class)
+        //     );
+        // });
 
         // 注册消息队列接口实现
-        $this->app->singleton(MessageQueueInterface::class, function ($app) {
+        $this->app->singleton(ConversationQueueInterface::class, function ($app) {
             $config = config('agent-processor.queue', []);
             return new RedisQueue($config);
         });

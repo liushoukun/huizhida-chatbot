@@ -90,21 +90,13 @@ class ApiAdapter implements ChannelAdapterInterface
         $message->sender->avatar   = $userData['avatar'] ?? null;
 
         // 解析消息内容
-        $contentData = $data['content'] ?? $data;
-        $contentType = $message->contentType;
+        $contentData      = $data['content'] ?? $data;
+        $contentType      = $message->contentType;
+        $message->content = $contentData;
+        // TODO 转换格式
 
-        if ($contentType === ContentType::Text) {
-            $content          = new TextContent();
-            $content->content = $contentData['text'] ?? $contentData['content'] ?? '';
-            $message->content = $content;
-        } elseif ($contentType === ContentType::Image) {
-            $content          = new ImageContent();
-            $content->url     = $contentData['media_url'] ?? $contentData['mediaUrl'] ?? $contentData['url'] ?? '';
-            $content->width   = $contentData['width'] ?? null;
-            $content->height  = $contentData['height'] ?? null;
-            $content->format  = $contentData['format'] ?? null;
-            $message->content = $content;
-        }
+        $message->setContentData($contentType, $contentData);
+
 
         return $message;
     }

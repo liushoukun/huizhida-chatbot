@@ -3,7 +3,8 @@
 namespace HuiZhiDa\AgentProcessor\Application\Services;
 
 use Exception;
-use HuiZhiDa\Core\Domain\Conversation\Contracts\MessageQueueInterface;
+use HuiZhiDa\Core\Application\Services\ConversationApplicationService;
+use HuiZhiDa\Core\Domain\Conversation\Contracts\ConversationQueueInterface;
 use HuiZhiDa\Core\Domain\Conversation\Services\ConversationService;
 use HuiZhiDa\Core\Domain\Conversation\Services\MessageService;
 use HuiZhiDa\Gateway\Infrastructure\Queue\RedisQueue;
@@ -19,8 +20,8 @@ use Illuminate\Support\Facades\Redis;
 class MessageProcessorService
 {
     public function __construct(
-        protected MessageQueueInterface $messageQueue,
-
+        protected ConversationApplicationService $conversationApplicationService,
+        protected ConversationQueueInterface $messageQueue,
         protected ConversationService $conversationService,
         protected PreCheckService $preCheckService,
         protected AgentService $agentService
@@ -43,7 +44,8 @@ class MessageProcessorService
 
         try {
             // 1. 从Redis ZSET获取会话的所有未处理消息
-            $messages = $this->getUnprocessedMessages($event->conversationId);
+            $messages = $this->conversationApplicationService->getPendingMessages($event->conversationId);
+
 
             if (empty($messages)) {
                 Log::info('No unprocessed messages', ['conversation_id' => $conversationId]);
@@ -58,9 +60,9 @@ class MessageProcessorService
                 return;
             }
 
-            // 3. 规则预判断
-            $firstMessage = $messages[0];
-            $checkResult  = $this->preCheckService->check($firstMessage, $conversation);
+            // 3. 规则预判断（传入消息组）
+            $checkResult = $this->preCheckService->check($messages, $conversation);
+
 
             if ($checkResult['action'] === PreCheckService::ACTION_SKIP) {
                 // 跳过处理，移除消息
@@ -86,6 +88,8 @@ class MessageProcessorService
             }
 
             $agentId = $this->getAgentIdForChannel($channelId);
+
+
 
             if (!$agentId) {
                 Log::warning('No agent found for channel', ['channel_id' => $channelId, 'conversation_id' => $conversationId]);

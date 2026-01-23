@@ -3,12 +3,15 @@
 namespace HuiZhiDa\Gateway\Infrastructure\Queue;
 
 use Exception;
+use HuiZhiDa\Core\Domain\Conversation\DTO\ConversationEvent;
+use HuiZhiDa\Core\Domain\Conversation\Enums\ConversationQueueType;
 use HuiZhiDa\Core\Domain\Conversation\Services\CommonService;
 use Illuminate\Support\Facades\Redis;
 use Illuminate\Support\Facades\Log;
-use HuiZhiDa\Core\Domain\Conversation\Contracts\MessageQueueInterface;
+use HuiZhiDa\Core\Domain\Conversation\Contracts\ConversationQueueInterface;
+use RedJasmine\Support\Foundation\Data\Data;
 
-class RedisQueue implements MessageQueueInterface
+class RedisQueue implements ConversationQueueInterface
 {
     protected string        $connection;
     protected array         $subscribers = [];
@@ -20,24 +23,25 @@ class RedisQueue implements MessageQueueInterface
         $this->commonService = app(CommonService::class);
     }
 
-    public function publish(string $queue, mixed $message) : void
+    public function publish(ConversationQueueType $queueType, Data $message) : void
     {
-        $data = is_string($message) ? $message : json_encode($message);
+        $data = $message->toJson();
 
         try {
 
-            Redis::connection($this->connection)->lpush($queue, $data);
+            Redis::connection($this->connection)->lpush($queueType->getQueueName(), $data);
         } catch (Exception $e) {
             Log::error('Queue publish failed', [
-                'queue' => $queue,
+                'queue' => $queueType->getQueueName(),
                 'error' => $e->getMessage(),
             ]);
-            throw $e;
+
         }
     }
 
-    public function subscribe(string $queue, callable $callback) : void
+    public function subscribe(ConversationQueueType $queueType, callable $callback) : void
     {
+        $queue                     = $queueType->getQueueName();
         $this->subscribers[$queue] = $callback;
 
         // 在 Laravel 中，通常使用队列 worker 来处理
@@ -74,29 +78,6 @@ class RedisQueue implements MessageQueueInterface
         Log::warning('Message nacked', ['message' => $message]);
     }
 
-    /**
-     * 添加消息到会话的ZSET中
-     *
-     * @param  string  $conversationId  会话ID
-     * @param  mixed  $message  消息数据
-     * @param  float  $score  分数（时间戳）
-     */
-    public function addToConversationZset(string $conversationId, mixed $message, float $score = null) : void
-    {
-        $key   = "conversation:{$conversationId}:messages";
-        $data  = is_string($message) ? $message : json_encode($message);
-        $score = $score ?? microtime(true);
-
-        try {
-            Redis::connection($this->connection)->zadd($key, $score, $data);
-        } catch (Exception $e) {
-            Log::error('Add message to conversation zset failed', [
-                'conversation_id' => $conversationId,
-                'error'           => $e->getMessage(),
-            ]);
-            throw $e;
-        }
-    }
 
     /**
      * 获取会话中所有未处理的消息

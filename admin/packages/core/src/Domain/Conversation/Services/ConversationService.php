@@ -2,7 +2,7 @@
 
 namespace HuiZhiDa\Core\Domain\Conversation\Services;
 
-use HuiZhiDa\Core\Domain\Conversation\Contracts\MessageQueueInterface;
+use HuiZhiDa\Core\Domain\Conversation\Contracts\ConversationQueueInterface;
 use HuiZhiDa\Core\Domain\Conversation\DTO\ConversationEvent;
 use HuiZhiDa\Core\Domain\Conversation\DTO\Message;
 use HuiZhiDa\Core\Domain\Conversation\Services\CommonService;
@@ -14,11 +14,10 @@ use Illuminate\Support\Str;
 use InvalidArgumentException;
 use Exception;
 
-class ConversationService
+class ConversationService extends CommonService
 {
     public function __construct(
-        protected CommonService $commonService,
-        protected MessageQueueInterface $mq,
+        protected ConversationQueueInterface $mq,
 
     ) {
     }
@@ -26,9 +25,8 @@ class ConversationService
     // 触发事件 等待处理
     public function triggerEvent(ConversationEvent $conversationEvent) : void
     {
-        $eventQueueName = $this->commonService->getEventKey($conversationEvent->event);
         try {
-            $this->mq->publish($eventQueueName, $conversationEvent->toJson());
+            $this->mq->publish($conversationEvent->queue, $conversationEvent);
         } catch (Exception $e) {
             Log::error('Publish conversation event failed', $conversationEvent->toArray());
             // 继续处理，不返回错误
@@ -46,7 +44,7 @@ class ConversationService
      */
     public function getUnprocessedMessages(string $conversationId) : array
     {
-        return  [];
+        return [];
     }
 
     /**

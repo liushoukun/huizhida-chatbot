@@ -4,9 +4,11 @@ namespace HuiZhiDa\AgentProcessor\Console\Commands;
 
 use Exception;
 use HuiZhiDa\AgentProcessor\Application\Services\MessageProcessorService;
-use HuiZhiDa\Core\Domain\Conversation\Contracts\MessageQueueInterface;
+use HuiZhiDa\Core\Application\Services\ConversationApplicationService;
+use HuiZhiDa\Core\Domain\Conversation\Contracts\ConversationQueueInterface;
 use HuiZhiDa\Core\Domain\Conversation\DTO\ConversationEvent;
-use HuiZhiDa\Core\Domain\Conversation\Services\CommonService;
+use HuiZhiDa\Core\Domain\Conversation\Enums\ConversationQueueType;
+use HuiZhiDa\Core\Domain\Conversation\Services\ConversationService;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Log;
 
@@ -36,8 +38,9 @@ class ProcessConversationEventsCommand extends Command
     protected int $maxJobs        = 0;
 
     public function __construct(
-        protected CommonService $commonService,
-        protected MessageQueueInterface $messageQueue,
+        protected ConversationApplicationService $conversationApplicationService,
+        protected ConversationService $conversationService,
+        protected ConversationQueueInterface $messageQueue,
         protected MessageProcessorService $processorService
     ) {
         parent::__construct();
@@ -48,7 +51,7 @@ class ProcessConversationEventsCommand extends Command
      */
     public function handle() : int
     {
-        $queue = $this->commonService->getEventKey(ConversationEvent::$processing);
+        $queue = ConversationQueueType::Processor->getQueueName();
 
         $timeout       = (int) $this->option('timeout');
         $this->maxJobs = (int) $this->option('max-jobs');
@@ -56,12 +59,14 @@ class ProcessConversationEventsCommand extends Command
         $this->info("开始消费队列: {$queue}");
         $this->info("阻塞超时: {$timeout}秒");
 
+
         // 订阅队列
-        $this->messageQueue->subscribe($queue, function ($eventData) use ($queue) {
+        $this->messageQueue->subscribe(ConversationQueueType::Processor, function ($eventData) use ($queue) {
             try {
 
                 $this->info("收到事件: ".json_encode($eventData, JSON_UNESCAPED_UNICODE));
                 $event = ConversationEvent::from($eventData);
+                // 会话枷锁, 一个会话只需要一个消费者处理 TODO
                 // 处理会话事件
                 $this->processorService->processConversationEvent($event);
 

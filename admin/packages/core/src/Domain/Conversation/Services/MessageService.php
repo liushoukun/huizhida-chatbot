@@ -3,40 +3,19 @@
 namespace HuiZhiDa\Core\Domain\Conversation\Services;
 
 use Exception;
-use HuiZhiDa\Core\Domain\Conversation\Services\CommonService;
+use HuiZhiDa\Core\Domain\Conversation\DTO\ChannelMessage;
+use HuiZhiDa\Core\Domain\Conversation\DTO\Message;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
-use HuiZhiDa\Core\Domain\Conversation\DTO\Message;
-use HuiZhiDa\Core\Domain\Conversation\DTO\ChannelMessage;
 use Illuminate\Support\Facades\Redis;
 use InvalidArgumentException;
 use ReflectionException;
 
-class MessageService
+class MessageService extends CommonService
 {
-    public function __construct(
-        protected CommonService $commonService,
-
-    ) {
-    }
 
 
-    /**
-     * @param  string  $conversationId
-     * @param  Message  $message
-     *
-     * @return void
-     * @throws ReflectionException
-     */
-    public function savePendingMessage(string $conversationId, Message $message) : void
-    {
-        $key         = $this->commonService->generatePendingMessagesKey($conversationId);
-        $messageData = json_encode($message->toArray());
-        $score       = microtime(true);
 
-        $redisConnection = config('gateway.redis.connection', 'default');
-        Redis::connection($redisConnection)->zadd($key, $score, $messageData);
-    }
 
     /**
      * 保存消息
@@ -51,7 +30,7 @@ class MessageService
             throw new InvalidArgumentException('Message must have content');
         }
 
-        $contentData = json_encode($message->content->toArray());
+        $contentData = $message->content;
 
         try {
             // 生成消息ID（如果还没有）

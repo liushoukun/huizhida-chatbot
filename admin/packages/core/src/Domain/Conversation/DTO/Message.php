@@ -53,9 +53,9 @@ class Message extends Data
 
     /**
      * 消息内容对象
-     * @var Content|null
+     * @var array|null
      */
-    public ?Content $content = null;
+    public ?array $content = null;
 
     /**
      * 时间戳
@@ -75,5 +75,18 @@ class Message extends Data
     public function __construct()
     {
         $this->timestamp = time();
+    }
+
+
+    public function setContentData(ContentType $contentType, ?array $content = null):static
+    {
+        $this->content = $content;
+        // TODO 根据类型验证
+        return $this;
+    }
+
+    public function getContent() : ?Content
+    {
+        return null;
     }
 }

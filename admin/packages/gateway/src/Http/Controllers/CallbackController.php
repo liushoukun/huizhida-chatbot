@@ -3,6 +3,7 @@
 namespace HuiZhiDa\Gateway\Http\Controllers;
 
 use Exception;
+use HuiZhiDa\Core\Application\Services\ConversationApplicationService;
 use HuiZhiDa\Core\Domain\Channel\Repositories\ChannelRepositoryInterface;
 use HuiZhiDa\Core\Domain\Conversation\Services\ConversationService;
 use HuiZhiDa\Core\Domain\Conversation\Services\MessageService;
@@ -17,6 +18,7 @@ class CallbackController
 {
     public function __construct(
         protected AdapterFactory $adapterFactory,
+        protected ConversationApplicationService $conversationApplicationService,
         protected ConversationService $conversationService,
         protected MessageService $messageService,
         protected ChannelRepositoryInterface $channelRepository,
@@ -65,7 +67,7 @@ class CallbackController
             }
 
             // 7. 存储会话待处理消息：将消息推送到以会话ID为key的Redis ZSET中
-            $this->messageService->savePendingMessage($message->conversationId, $message);
+            $this->conversationApplicationService->savePendingMessage($message);
 
 
             // 8. 第二步：推送事件消息到队列，包含会话ID
