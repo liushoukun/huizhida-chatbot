@@ -45,6 +45,7 @@ class AgentService
             $agent = $this->agentRepository->find($agentId);
 
             if (!$agent || !$agent->isEnabled()) {
+                Log::error("智能体不存在或已禁用", ['agent_id' => $agentId]);
                 throw new RuntimeException("Agent {$agentId} not found or disabled");
             }
 
@@ -54,10 +55,11 @@ class AgentService
 
             // 3. 构建聊天请求
             $request = $this->buildChatRequest($messages, $conversation);
+            Log::debug('Building chat request', ['conversation_id' => $conversation->conversationId]);
 
             // 4. 调用智能体
             $timeout = config('agent-processor.agent.timeout', 30);
-
+            Log::debug('Agent processing completed', ['conversation_id' => $conversation->conversationId]);
             // 5. 格式化响应，返回数据
             return $this->callWithTimeout($adapter, $request, $timeout);
 
@@ -137,14 +139,11 @@ class AgentService
         $startTime = microtime(true);
 
         try {
+            Log::debug('智能体对话开始', ['conversation_id' => $request->conversationId]);
             $response = $adapter->chat($request);
             $duration = microtime(true) - $startTime;
+            Log::debug('智能体对话结束', ['conversation_id' => $request->conversationId, 'duration' => round($duration, 2)]);
 
-
-            Log::info('Agent response received', [
-                'duration'        => round($duration, 2),
-                'conversation_id' => $request->conversationId,
-            ]);
 
             return $response;
         } catch (Exception $e) {

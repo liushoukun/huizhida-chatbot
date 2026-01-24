@@ -61,8 +61,12 @@ class CozeAdapter implements AgentAdapterInterface
         // 1、创建会话
         // 获取会话 如果没有会话先创建会话
         // 优先使用 agent_conversation_id，如果没有则使用 conversation_id
+
         $agentConversationId = $request->agentConversationId;
         if (!$agentConversationId) {
+            Log::debug('Coze 创建会话',
+                ['agentConversationId' => $request->agentConversationId, 'conversationId' => $request->conversationId]);
+
             $response = $this->client->post('v1/conversation/create', [
                 'json'        => [
                     'bot_id' => $botId,
@@ -85,14 +89,21 @@ class CozeAdapter implements AgentAdapterInterface
 
 
         // 2、发起对话
+        Log::debug('Coze 发起对话', ['agentConversationId' => $agentConversationId, 'conversationId' => $request->conversationId]);
+        $messages =[];
+        foreach ($request->messages as $msg) {
+
+            // TODO 存在问题,需要根据格式转换
+            $messages[] = [
+                'role'         => 'user',
+                'content'      => $msg->content['content'] ?? '',
+                'content_type' => 'text',
+            ];
+        }
+
+
         try {
-            foreach ($request->messages as $msg) {
-                $messages[] = [
-                    'role'         => 'user',
-                    'content'      => $msg->content['text'] ?? '',
-                    'content_type' => 'text',
-                ];
-            }
+
             // 发起对话
             $response = $this->client->post('v3/chat?conversation_id='.$agentConversationId, [
                 'json' => [
@@ -150,6 +161,7 @@ class CozeAdapter implements AgentAdapterInterface
             }
             // 3.  获取回复结果
             if ($chatRetrieveStatus === 'completed') {
+                Log::debug('Coze 获取回复结果', ['agentConversationId' => $agentConversationId, 'conversationId' => $request->conversationId]);
                 $chatResultResponse     = $this->client->post('v3/chat/message/list', [
                     'query' => [
                         'conversation_id' => $agentConversationId,
@@ -158,7 +170,7 @@ class CozeAdapter implements AgentAdapterInterface
                 ]);
                 $chatResultResponseData = json_decode($chatResultResponse->getBody()->getContents(), true);
 
-
+                Log::debug('Coze 获取回复结果', ['chatResultResponseData' => $chatResultResponseData]);
                 $responseMessages = collect($chatResultResponseData['data'] ?? [])->filter(function ($message) {
                     return $message['role'] === 'assistant'
                            && $message['type'] === 'answer';
@@ -177,6 +189,15 @@ class CozeAdapter implements AgentAdapterInterface
                 }
 
             }
+
+            // 回复结果不要 markdown 格式 TODO
+
+            Log::debug('Coze 返回结果', [
+                'agentConversationId' => $agentConversationId,
+                'conversationId'      => $request->conversationId,
+                'agentMessages'       => $agentMessages,
+            ]);
+
 
             $agentConversationId = $message['conversation_id'] ?? $agentConversationId;
 

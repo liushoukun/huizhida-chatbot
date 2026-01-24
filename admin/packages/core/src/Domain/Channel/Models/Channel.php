@@ -2,12 +2,11 @@
 
 namespace HuiZhiDa\Core\Domain\Channel\Models;
 
+use HuiZhiDa\Core\Domain\Agent\Models\Agent;
+use HuiZhiDa\Core\Domain\Channel\Models\Enums\ChannelStatus;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\SoftDeletes;
-use HuiZhiDa\Core\Domain\Agent\Models\Agent;
-use HuiZhiDa\Core\Domain\Channel\Models\Enums\ChannelStatus;
-use HuiZhiDa\Core\Domain\Channel\Models\Enums\ChannelType;
 use RedJasmine\Project\Domain\Models\Project;
 use RedJasmine\Support\Domain\Contracts\OperatorInterface;
 use RedJasmine\Support\Domain\Models\Traits\HasOperator;
@@ -31,7 +30,7 @@ class Channel extends Model implements OperatorInterface
 
     protected $casts = [
         'config' => 'array',
-        //'channel' => ChannelType::class,
+
         'status' => ChannelStatus::class,
     ];
 
@@ -75,28 +74,6 @@ class Channel extends Model implements OperatorInterface
         return $this->status === ChannelStatus::DISABLED;
     }
 
-    /**
-     * 检查渠道类型
-     */
-    public function isWecom() : bool
-    {
-        return $this->channel === ChannelType::WECOM;
-    }
-
-    public function isTaobao() : bool
-    {
-        return $this->channel === ChannelType::TAOBAO;
-    }
-
-    public function isDouyin() : bool
-    {
-        return $this->channel === ChannelType::DOUYIN;
-    }
-
-    public function isApi() : bool
-    {
-        return $this->channel === ChannelType::API;
-    }
 
     public function app() : BelongsTo
     {

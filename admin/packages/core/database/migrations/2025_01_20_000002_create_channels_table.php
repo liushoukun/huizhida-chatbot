@@ -1,21 +1,20 @@
 <?php
 
+use HuiZhiDa\Core\Domain\Channel\Models\Enums\ChannelStatus;
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
-use HuiZhiDa\Core\Domain\Channel\Models\Enums\ChannelStatus;
-use HuiZhiDa\Core\Domain\Channel\Models\Enums\ChannelType;
 
 return new class extends Migration {
     /**
      * Run the migrations.
      */
-    public function up(): void
+    public function up() : void
     {
         Schema::create('channels', function (Blueprint $table) {
             $table->id();
             $table->unsignedBigInteger('app_id')->comment('应用ID');
-            $table->string('channel', 20)->default(ChannelType::WEBHOOK->value)->comment('渠道类型');
+            $table->string('channel', 20)->comment('渠道类型');
             $table->json('config')->nullable()->comment('配置信息(加密)');
             $table->tinyInteger('status')->default(ChannelStatus::ENABLED->value)->comment('状态');
             $table->operator();
@@ -32,7 +31,7 @@ return new class extends Migration {
     /**
      * Reverse the migrations.
      */
-    public function down(): void
+    public function down() : void
     {
         Schema::dropIfExists('channels');
     }

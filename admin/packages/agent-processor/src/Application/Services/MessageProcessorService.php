@@ -46,11 +46,15 @@ class MessageProcessorService
 
         // 每个会话加锁
         $conversationId = $event->conversationId;
+        Log::debug('开始处理会话事件', ['conversation_id' => $conversationId]);
 
         try {
             // 1. 获取未处理消息
             // 按当前时间去获取 未处理消息 TODO
-            $messages = $this->conversationApplicationService->getPendingMessages($event->conversationId);
+            $messages = $this->conversationApplicationService->getPendingMessages($conversationId);
+
+
+            Log::debug('获取未处理消息', ['conversation_id' => $conversationId, 'messages_count' => count($messages)]);
 
 
             if (empty($messages)) {
@@ -60,6 +64,7 @@ class MessageProcessorService
 
             // 2. 获取会话信息
             $conversation = $this->conversationService->get($conversationId);
+            Log::debug('获取会话信息', ['conversation_id' => $conversationId, 'conversation' => $conversation]);
 
 
             if (!$conversation) {
@@ -70,6 +75,7 @@ class MessageProcessorService
 
             // 3. 规则预判断（传入消息组）
             $checkResult = $this->preCheckService->check($messages, $conversation);
+            Log::debug('规则预判断', ['conversation_id' => $conversationId, 'check_result' => $checkResult]);
 
             // 忽略消息
             if ($checkResult->actionType === ActionType::Ignore) {
@@ -105,6 +111,8 @@ class MessageProcessorService
             }
 
             // 5. 调用智能体处理消息
+            Log::debug('调用智能体处理消息', ['conversation_id' => $conversationId, 'agent_id' => $agentId]);
+
             try {
                 $chatResponse = $this->agentService->processMessages($messages, $conversation, $agentId);
 
