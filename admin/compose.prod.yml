@@ -1,0 +1,8 @@
+services:
+  php:
+    # Use your custom image instead of the base image
+    image: huizhida-chatbot:latest
+    ports:
+      - 8889:8080
+    environment:
+      - PHP_OPCACHE_ENABLE=1

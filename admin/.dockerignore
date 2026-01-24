@@ -1,0 +1,64 @@
+# Git 相关
+.git
+.gitignore
+.gitattributes
+
+# IDE 相关
+.idea
+.vscode
+*.swp
+*.swo
+*~
+
+# 依赖目录（会在容器内重新安装）
+node_modules
+vendor
+.pnpm-store
+
+# 构建产物（会在容器内重新构建）
+public/build
+public/hot
+public/storage
+
+# 环境配置
+.env
+.env.*
+!.env.example
+
+# 日志和缓存
+storage/logs/*
+storage/framework/cache/*
+storage/framework/sessions/*
+storage/framework/views/*
+!storage/logs/.gitkeep
+!storage/framework/cache/.gitkeep
+!storage/framework/sessions/.gitkeep
+!storage/framework/views/.gitkeep
+
+# 测试相关
+tests
+.phpunit.result.cache
+phpunit.xml
+pest.php
+
+# 文档
+README.md
+docs
+*.md
+
+# Docker 相关
+Dockerfile
+.dockerignore
+docker-compose.yml
+docker-compose.*.yml
+
+# CI/CD
+.github
+.gitlab-ci.yml
+.travis.yml
+
+# 其他
+.DS_Store
+Thumbs.db
+*.log
+*.tmp
