@@ -19,7 +19,7 @@ RUN install-php-extensions \
     redis \
     igbinary \
     msgpack \
-    mongodb \
+    exif \
     opcache
 
 ############################################
