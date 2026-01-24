@@ -37,7 +37,7 @@ class Wecom extends Command
             'corp_id' => $chanel->config['corp_id'],
             'secret'  => $chanel->config['secret'],
             'token'   => $chanel->config['token'],
-            'aes_key' => $chanel->config['encoding_aes_key'],
+            'aes_key' => $chanel->config['aes_key'],
             // // 记得配置suite_id，不然suite_ticket不能自动存储
             // 'suite_id'     => 'ww9f1388bf664xxxxx',
             // 'suite_secret' => 'reuXvCX_5FhDVm_sOslJEHRVxxxxxxx',

@@ -53,7 +53,7 @@ class WorkWechatAdapter implements ChannelAdapterInterface
     {
         // TODO: 实现企业微信签名验证
         $token          = $this->config['token'] ?? '';
-        $encodingAesKey = $this->config['encoding_aes_key'] ?? '';
+        $encodingAesKey = $this->config['aes_key'] ?? '';
 
         // 简化实现，实际需要根据企业微信文档实现
         return true;

@@ -59,7 +59,7 @@ class WorkWechatChannelType implements ChannelTypeInterface
                 ->label('回调Token')
                 ->required()
                 ->helperText('企业微信回调验证的Token'),
-            TextInput::make('config.encoding_aes_key')
+            TextInput::make('config.aes_key')
                 ->label('加密Key')
                 ->required()
                 ->helperText('企业微信消息加解密的EncodingAESKey'),
