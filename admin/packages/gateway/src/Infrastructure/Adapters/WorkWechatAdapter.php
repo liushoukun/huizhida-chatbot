@@ -78,7 +78,8 @@ class WorkWechatAdapter implements ChannelAdapterInterface
         // 获取推送的事件
         $server  = $this->workWechatApp->getServer();
         $api     = $this->workWechatApp->getClient();
-        $message = $server->getRequestMessage(); // 原始消息
+        $message = $server->getDecryptedMessage();
+
         // 消息应该固定为 kf_msg_or_event
         if ($message->Event !== 'kf_msg_or_event') {
             throw new Exception('Invalid message event');
@@ -118,7 +119,6 @@ class WorkWechatAdapter implements ChannelAdapterInterface
         if (empty($msgList)) {
             throw new Exception('No messages in response');
         }
-
         // 处理消息列表，返回最后一条消息（最新的）
         $messages = [];
         foreach ($msgList as $msgData) {
