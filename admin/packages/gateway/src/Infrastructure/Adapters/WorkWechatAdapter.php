@@ -71,6 +71,10 @@ class WorkWechatAdapter implements ChannelAdapterInterface
      */
     public function parseMessages(Request $request) : array
     {
+        Log::debug('workWechat parseMessages', [
+            'body'   => $request->getContent(),
+            'params' => $request->query()
+        ]);
         // 获取推送的事件
         $server  = $this->workWechatApp->getServer();
         $api     = $this->workWechatApp->getClient();
