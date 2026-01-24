@@ -9,6 +9,7 @@ use HuiZhiDa\Core\Domain\Conversation\Enums\ContentType;
 use HuiZhiDa\Core\Domain\Conversation\Enums\MessageType;
 use HuiZhiDa\Gateway\Domain\Contracts\ChannelAdapterInterface;
 use Illuminate\Http\Request;
+use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
@@ -24,6 +25,12 @@ class ApiAdapter implements ChannelAdapterInterface
     {
         $this->config = $config;
     }
+
+    public function health(Request $request) : Response
+    {
+        return  response()->json();
+    }
+
 
     public function verifySignature(Request $request) : bool
     {

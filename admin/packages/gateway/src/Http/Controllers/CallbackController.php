@@ -25,6 +25,16 @@ class CallbackController
     ) {
     }
 
+    public function health(Request $request, string $channel, string $id)
+    {
+        $channelModel  = $this->channelRepository->find($id);
+        $channelConfig = $channelModel->config; // 实际应从数据库读取
+
+        $adapter = $this->adapterFactory->get($channel, $channelConfig);
+        return $adapter->health($request);
+    }
+
+
     /**
      * 处理渠道回调
      */

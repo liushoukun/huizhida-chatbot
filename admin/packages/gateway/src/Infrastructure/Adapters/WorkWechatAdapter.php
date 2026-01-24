@@ -15,6 +15,7 @@ use HuiZhiDa\Core\Domain\Conversation\Enums\MessageType;
 use HuiZhiDa\Core\Domain\Conversation\Enums\UserType;
 use HuiZhiDa\Gateway\Domain\Contracts\ChannelAdapterInterface;
 use Illuminate\Http\Request;
+use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
@@ -37,6 +38,13 @@ class WorkWechatAdapter implements ChannelAdapterInterface
         $this->config = $config;
 
         $this->workWechatApp = new Application($config);
+    }
+
+    public function health(Request $request) : Response
+    {
+
+        $server  = $this->workWechatApp->getServer();
+        return$server->serve();
     }
 
     public function verifySignature(Request $request) : bool

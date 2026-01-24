@@ -62,10 +62,6 @@ class GatewayServiceProvider extends ServiceProvider
         Route::middleware('api')
             ->prefix('api/gateway')
             ->group(function () {
-                Route::get('/health', function () {
-                    return response()->json(['status' => 'ok']);
-                });
-
                 Route::post('/callback/{channel}/{appId}', [
                     \HuiZhiDa\Gateway\Http\Controllers\CallbackController::class,
                     'handle'
