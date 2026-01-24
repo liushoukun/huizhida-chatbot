@@ -46,40 +46,48 @@ class CallbackController
             }
 
             // 4. 解析并转换消息
-            $message = $adapter->parseMessage($request);
+            $messages = $adapter->parseMessages($request);
 
-            // 设置渠道和应用信息
-            $message->appId     = $channelModel->app_id;
-            $message->channelId = (string) $channelModel->id;
-            // 如果没有渠道会话ID 把渠道会话ID
-            $message->channelConversationId = $message->channelConversationId ?? null;
-            // 5. 获取或创建会话
-            $conversation = $this->conversationService->getOrCreate($message);
-            // 获取 系统会话ID
-            $message->conversationId = $conversation['conversation_id'];
+            // 先对消息按人员 用户进行分组
 
-            // 6. 保存消息记录
-            try {
-                $this->messageService->save($message);
-            } catch (Exception $e) {
-                Log::error('Save message failed', ['error' => $e->getMessage()]);
-                // 继续处理，不返回错误
+            foreach ($messages as $message) {
+                // 设置渠道和应用信息
+                $message->appId     = $channelModel->app_id;
+                $message->channelId = (string) $channelModel->id;
+                // 如果没有渠道会话ID 把渠道会话ID
+                $message->channelConversationId = $message->channelConversationId ?? null;
+
+                // 5. 获取或创建会话
+                $conversation = $this->conversationService->getOrCreate($message);
+
+                // 获取 系统会话ID
+                $message->conversationId = $conversation->conversation_id;
+
+                // 6. 保存消息记录
+                try {
+                    $this->messageService->save($message);
+                } catch (Exception $e) {
+                    Log::error('Save message failed', ['error' => $e->getMessage()]);
+                    // 继续处理，不返回错误
+                }
+
+
+                // 7. 存储会话待处理消息：将消息推送到以会话ID为key的Redis ZSET中
+                $this->conversationApplicationService->savePendingMessage($message);
+
+
+                // 8. 第二步：推送事件消息到队列，包含会话ID
+                $this->conversationService->triggerEvent(new ConversationEvent($message->conversationId));
+
             }
 
-            // 7. 存储会话待处理消息：将消息推送到以会话ID为key的Redis ZSET中
-            $this->conversationApplicationService->savePendingMessage($message);
 
-
-            // 8. 第二步：推送事件消息到队列，包含会话ID
-            $this->conversationService->triggerEvent(new ConversationEvent($message->conversationId));
             // 9. 快速响应渠道
             $response = $adapter->getSuccessResponse();
 
             Log::info('Callback processed successfully', [
-                'channel'         => $channel,
-                'channel_id'      => $id,
-                'conversation_id' => $conversation['conversation_id'],
-                'message_id'      => $message->messageId,
+                'channel'    => $channel,
+                'channel_id' => $id,
             ]);
 
             return response()->json($response, 200);

@@ -42,6 +42,7 @@ class ChannelTable
     {
         return [
             TextColumn::make('id')
+                ->formatStateUsing(fn ($state) =>(string)$state)
                 ->label('ID')
                 ->copyable()
                 ->sortable()
@@ -51,6 +52,7 @@ class ChannelTable
                 ->size('xs'),
 
             TextColumn::make('app_id')
+                ->formatStateUsing(fn ($state) =>(string)$state)
                 ->label('应用ID')
                 ->copyable()
                 ->searchable()
@@ -80,14 +82,14 @@ class ChannelTable
                     if (!$state) {
                         return null;
                     }
-                    
+
                     // 处理枚举类型：如果是枚举，获取其 value
                     $channelValue = $state instanceof \BackedEnum ? $state->value : (string) $state;
-                    
+
                     if (!$channelValue) {
                         return null;
                     }
-                    
+
                     try {
                         $type = app(ChannelTypeManager::class)->create($channelValue);
                         return $type->label();
@@ -99,14 +101,14 @@ class ChannelTable
                     if (!$state) {
                         return null;
                     }
-                    
+
                     // 处理枚举类型：如果是枚举，获取其 value
                     $channelValue = $state instanceof \BackedEnum ? $state->value : (string) $state;
-                    
+
                     if (!$channelValue) {
                         return null;
                     }
-                    
+
                     try {
                         $type = app(ChannelTypeManager::class)->create($channelValue);
                         return $type->color() ?? 'gray';

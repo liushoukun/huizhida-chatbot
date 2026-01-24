@@ -3,6 +3,12 @@
 namespace HuiZhiDa\Core\Domain\Conversation\DTO;
 
 use HuiZhiDa\Core\Domain\Conversation\DTO\Contents\Content;
+use HuiZhiDa\Core\Domain\Conversation\DTO\Contents\FileContent;
+use HuiZhiDa\Core\Domain\Conversation\DTO\Contents\ImageContent;
+use HuiZhiDa\Core\Domain\Conversation\DTO\Contents\TextContent;
+use HuiZhiDa\Core\Domain\Conversation\DTO\Contents\UnknownContent;
+use HuiZhiDa\Core\Domain\Conversation\DTO\Contents\VideoContent;
+use HuiZhiDa\Core\Domain\Conversation\DTO\Contents\VoiceContent;
 use HuiZhiDa\Core\Domain\Conversation\Enums\ContentType;
 use HuiZhiDa\Core\Domain\Conversation\Enums\MessageType;
 use RedJasmine\Support\Domain\Contracts\UserInterface;
@@ -41,7 +47,7 @@ class Message extends Data
      * 消息类型
      * @var MessageType
      */
-    public MessageType $messageType = MessageType::Question;
+    public MessageType $messageType = MessageType::Message;
 
     /**
      * 消息内容类型
@@ -85,6 +91,20 @@ class Message extends Data
 
     public function getContent() : ?Content
     {
-        return null;
+        // 如果内容为空，返回 null
+        if ($this->content === null) {
+            return null;
+        }
+
+        // 根据内容类型创建对应的内容对象
+        return match ($this->contentType) {
+            ContentType::Text => TextContent::from($this->content),
+            ContentType::Image => ImageContent::from($this->content),
+            ContentType::Voice => VoiceContent::from($this->content),
+            ContentType::Video => VideoContent::from($this->content),
+            ContentType::File => FileContent::from($this->content),
+            ContentType::Unknown => UnknownContent::from($this->content),
+            default => null, // Card, Event, Combination 等类型暂不支持
+        };
     }
 }

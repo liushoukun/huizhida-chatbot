@@ -9,12 +9,13 @@ enum MessageType: string
 
     use EnumsHelper;
 
-    // 提问
-    case Question = 'question';
-    // 回答
-    case Answer = 'answer';
     // 事件
     case Event = 'event';
+    // 提问
+    case Message = 'message';
+    // 回答
+    case Answer = 'answer';
+
     // 通知
     case Notification = 'notification';
     // 提示
@@ -23,8 +24,7 @@ enum MessageType: string
     public static function labels() : array
     {
         return [
-            self::Question->value     => '提前',
-            self::Answer->value       => '提示',
+            self::Message->value      => '消息',
             self::Event->value        => '事件',
             self::Notification->value => '通知',
             self::Tip->value          => '提示',

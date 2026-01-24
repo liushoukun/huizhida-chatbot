@@ -15,7 +15,12 @@ interface ChannelAdapterInterface
     /**
      * 解析渠道消息格式，转换为统一格式
      */
-    public function parseMessage(Request $request): ChannelMessage;
+    /**
+     * @param  Request  $request
+     *
+     * @return ChannelMessage[]
+     */
+    public function parseMessages(Request $request): array;
 
     /**
      * 将统一格式转换为渠道格式

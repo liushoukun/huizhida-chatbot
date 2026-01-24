@@ -44,6 +44,7 @@ class AgentTable
             ...AgentResource::ownerTableColumns(),
 
             TextColumn::make('id')
+                ->formatStateUsing(fn ($state) =>(string)$state)
                 ->label('ID')
                 ->copyable()
                 ->sortable()

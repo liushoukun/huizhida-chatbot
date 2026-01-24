@@ -8,6 +8,7 @@ use HuiZhiDa\Core\Domain\Conversation\DTO\ConversationEvent;
 use HuiZhiDa\Core\Domain\Conversation\DTO\Message;
 use HuiZhiDa\Core\Domain\Conversation\Models\Conversation;
 use HuiZhiDa\Core\Domain\Conversation\Services\CommonService;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use HuiZhiDa\Core\Domain\Conversation\DTO\ChannelMessage;
@@ -54,81 +55,45 @@ class ConversationService extends CommonService
     /**
      * 获取或创建会话
      */
-    public function getOrCreate(ChannelMessage $message) : array
+    public function getOrCreate(ChannelMessage $message) : Conversation
     {
+        // 内置会话服务
+        // 根据、应用、渠道、用户，获取最后一次会话
         if (!$message->sender) {
             throw new InvalidArgumentException('Message must have sender info');
         }
 
-        $conversationId = $this->generateConversationId(
-            $message->channelId,
-            $message->sender->id,
-            $message->appId ?? null
-        );
+        $lastConversation = Conversation::where('app_id', $message->appId)
+                                        ->where('channel_id', $message->channelId)
+                                        ->where('user_type', $message->sender->type)
+                                        ->where('user_id', $message->sender->id)
+                                        ->orderByDesc('id')
+                                        ->first();
 
-        // 查询是否有老会话ID
-        $conversation = DB::table('conversations')
-                          ->where('app_id', $message->appId)
-                          ->where('channel_id', $message->channelId)
-                          ->where('channel_id', $message->channelId)
-                          ->where('channel_conversation_id', $message->channelConversationId)
-                          ->orderByDesc('id')
-                          ->first();
-
-        if (!$conversation) {
-            // 创建新会话
-            $contextData = json_encode([
-                'history'   => [],
-                'variables' => [],
-            ]);
-
-            // 从消息中获取 channel_id
-            $channelId = $message->channelId ? (int) $message->channelId : null;
-            if (!$channelId) {
-                // 尝试根据 channel 和 app_id 查询 channels 表获取
-                $channel   = DB::table('channels')
-                               ->where('app_id', $message->appId ?? null)
-                               ->first();
-                $channelId = $channel ? $channel->id : null;
-            }
-
-            DB::table('conversations')->insert([
-                'conversation_id'         => $conversationId,
-                'channel_conversation_id' => $message->channelConversationId,
-                'channel_id'              => $channelId,
-                'app_id'                  => $message->appId ?? null,
-                'agent_id'                => null,
-                'user_type'               => $message->sender->type->value ?? 'user',
-                'user_id'                 => $message->sender->id,
-                'user_nickname'           => $message->sender->nickname,
-                'user_avatar'             => $message->sender->avatar,
-                'status'                  => ConversationStatus::Pending->value,
-                'context'                 => $contextData,
-                'created_at'              => now(),
-                'updated_at'              => now(),
-            ]);
-
-            $conversation = DB::table('conversations')->where('conversation_id', $conversationId)->first();
-
-            Log::info('Created new conversation', ['conversation_id' => $conversationId]);
-        } else {
-            // 更新会话时间和用户信息（如果用户信息有变化）
-            $updates = ['updated_at' => now()];
-
-            // 更新用户信息（如果消息中包含更新的信息）
-            if ($message->sender->nickname && ($conversation->user_nickname !== $message->sender->nickname)) {
-                $updates['user_nickname'] = $message->sender->nickname;
-            }
-            if ($message->sender->avatar && ($conversation->user_avatar !== $message->sender->avatar)) {
-                $updates['user_avatar'] = $message->sender->avatar;
-            }
-
-            DB::table('conversations')
-              ->where('conversation_id', $conversationId)
-              ->update($updates);
+        if (($lastConversation && $lastConversation->status !== ConversationStatus::Closed)) {
+            $lastConversation->updated_at = Carbon::now();
+            $lastConversation->save();
+            return $lastConversation;
         }
 
-        return (array) $conversation;
+        $conversation                          = new Conversation();
+        $conversation->conversation_id         = Str::uuid();
+        $conversation->channel_conversation_id = $message->channelConversationId;
+        $conversation->channel_id              = $message->channelId;
+        $conversation->app_id                  = $message->appId;
+        $conversation->agent_id                = null;
+        $conversation->user_type               = $message->sender->type;
+        $conversation->user_id                 = $message->sender->id;
+        $conversation->user_nickname           = $message->sender->nickname;
+        $conversation->user_avatar             = $message->sender->avatar;
+        $conversation->status                  = ConversationStatus::Pending;
+        $conversation->context                 = json_encode([
+            'history'   => [],
+            'variables' => [],
+        ]);
+        $conversation->save();
+        return $conversation;
+
     }
 
     /**

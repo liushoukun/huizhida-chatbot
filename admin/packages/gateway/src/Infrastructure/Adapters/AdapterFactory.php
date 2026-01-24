@@ -12,7 +12,7 @@ class AdapterFactory
     public function __construct()
     {
         // 注册默认适配器
-        $this->register('wecom', WecomAdapter::class);
+        $this->register('work-wechat', WorkWechatAdapter::class);
         $this->register('api', ApiAdapter::class);
     }
 

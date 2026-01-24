@@ -8,11 +8,11 @@ use HuiZhiDa\Core\Domain\Channel\Contracts\ChannelTypeInterface;
 /**
  * 企业微信渠道类型
  */
-class WecomChannelType implements ChannelTypeInterface
+class WorkWechatChannelType implements ChannelTypeInterface
 {
     public function value(): string
     {
-        return 'wecom';
+        return 'work-wechat';
     }
 
     public function label(): string

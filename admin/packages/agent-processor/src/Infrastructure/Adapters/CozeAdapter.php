@@ -168,7 +168,7 @@ class CozeAdapter implements AgentAdapterInterface
                     // TODO 解析Message 根据类型解析
                     // 如果有媒体对象 需要解析媒体对象
                     $agentMessage              = new AgentMessage();
-                    $agentMessage->messageType = MessageType::Answer;
+                    $agentMessage->messageType = MessageType::Message;
                     $agentMessage->setContentData(ContentType::Text, [
                         'text' => $responseMessage['content'] ?? '',
                     ]);

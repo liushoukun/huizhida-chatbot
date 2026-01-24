@@ -43,7 +43,7 @@ class MessageSenderCommand extends Command
             $message = ChannelMessage::from($data);
 
             // 验证消息类型（发送的消息应该是Answer类型）
-            if ($message->messageType !== MessageType::Answer) {
+            if ($message->messageType !== MessageType::Message) {
                 throw new \InvalidArgumentException('Message must be Answer type for sending');
             }
 

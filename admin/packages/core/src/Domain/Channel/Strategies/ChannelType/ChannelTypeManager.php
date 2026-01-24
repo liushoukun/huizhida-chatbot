@@ -14,8 +14,8 @@ class ChannelTypeManager extends EnumManager
      * @var array<string, class-string<ChannelTypeInterface>>
      */
     protected const DRIVERS = [
-        'wecom' => WecomChannelType::class,
-        'api' => ApiChannelType::class,
+        'work-wechat' => WorkWechatChannelType::class,
+        'api'         => ApiChannelType::class,
     ];
 
 }

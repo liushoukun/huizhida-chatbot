@@ -4,11 +4,9 @@ namespace HuiZhiDa\Gateway\Infrastructure\Adapters;
 
 use Exception;
 use HuiZhiDa\Core\Domain\Conversation\DTO\ChannelMessage;
-use HuiZhiDa\Core\Domain\Conversation\DTO\Contents\ImageContent;
 use HuiZhiDa\Core\Domain\Conversation\DTO\Contents\TextContent;
 use HuiZhiDa\Core\Domain\Conversation\Enums\ContentType;
 use HuiZhiDa\Core\Domain\Conversation\Enums\MessageType;
-use HuiZhiDa\Core\Domain\Conversation\Enums\UserType;
 use HuiZhiDa\Gateway\Domain\Contracts\ChannelAdapterInterface;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
@@ -62,7 +60,7 @@ class ApiAdapter implements ChannelAdapterInterface
         return hash_equals($expectedSignature, $signature);
     }
 
-    public function parseMessage(Request $request) : ChannelMessage
+    public function parseMessages(Request $request) : array
     {
         $rawData = $request->getContent();
         $data    = json_decode($request->getContent(), true);
@@ -87,7 +85,7 @@ class ApiAdapter implements ChannelAdapterInterface
             'type' => 'guest',
             'id'   => Str::uuid(),
         ]);
-       
+
 
         // 解析消息内容
         $contentData      = $data['content'] ?? $data;
@@ -98,7 +96,7 @@ class ApiAdapter implements ChannelAdapterInterface
         $message->setContentData($contentType, $contentData);
 
 
-        return $message;
+        return [$message];
     }
 
     public function convertToChannelFormat(ChannelMessage $message) : array
@@ -117,17 +115,6 @@ class ApiAdapter implements ChannelAdapterInterface
                 'type' => 'text',
                 'text' => $message->content->content,
             ];
-        } elseif ($message->contentType === ContentType::Image && $message->content instanceof ImageContent) {
-            $data['content'] = [
-                'type' => 'image',
-                'url'  => $message->content->url,
-            ];
-            if ($message->content->width) {
-                $data['content']['width'] = $message->content->width;
-            }
-            if ($message->content->height) {
-                $data['content']['height'] = $message->content->height;
-            }
         } else {
             // 默认文本消息
             $data['content'] = [
@@ -254,20 +241,19 @@ class ApiAdapter implements ChannelAdapterInterface
     protected function mapMessageType(string $type) : MessageType
     {
         $map = [
-            'text'         => MessageType::Question,
-            'image'        => MessageType::Question,
-            'voice'        => MessageType::Question,
-            'video'        => MessageType::Question,
-            'file'         => MessageType::Question,
-            'link'         => MessageType::Question,
-            'location'     => MessageType::Question,
+            'text'         => MessageType::Message,
+            'image'        => MessageType::Message,
+            'voice'        => MessageType::Message,
+            'video'        => MessageType::Message,
+            'file'         => MessageType::Message,
+            'link'         => MessageType::Message,
+            'location'     => MessageType::Message,
             'event'        => MessageType::Event,
-            'answer'       => MessageType::Answer,
             'notification' => MessageType::Notification,
             'tip'          => MessageType::Tip,
         ];
 
-        return $map[strtolower($type)] ?? MessageType::Question;
+        return $map[strtolower($type)] ?? MessageType::Message;
     }
 
     /**
