@@ -9,7 +9,7 @@ use Illuminate\Http\Response;
 interface ChannelAdapterInterface
 {
 
-    public function health(Request $request) : Response;
+    public function health(Request $request);
 
     /**
      * 验证签名

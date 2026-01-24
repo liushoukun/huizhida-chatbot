@@ -21,6 +21,7 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use RedJasmine\Support\Domain\Data\UserData;
+use Symfony\Bridge\PsrHttpMessage\Factory\HttpFoundationFactory;
 use Symfony\Contracts\HttpClient\Exception\ClientExceptionInterface;
 use Symfony\Contracts\HttpClient\Exception\RedirectionExceptionInterface;
 use Symfony\Contracts\HttpClient\Exception\ServerExceptionInterface;
@@ -40,11 +41,12 @@ class WorkWechatAdapter implements ChannelAdapterInterface
         $this->workWechatApp = new Application($config);
     }
 
-    public function health(Request $request) : Response
+    public function health(Request $request)
     {
 
-        $server  = $this->workWechatApp->getServer();
-        return$server->serve();
+        $server = $this->workWechatApp->getServer();
+
+        return $server->serve();
     }
 
     public function verifySignature(Request $request) : bool
