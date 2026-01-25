@@ -6,6 +6,7 @@ use HuiZhiDa\Core\Domain\Conversation\Enums\ConversationStatus;
 use RedJasmine\Support\Domain\Contracts\UserInterface;
 use RedJasmine\Support\Domain\Models\Casts\UserInterfaceCastTransformer;
 use RedJasmine\Support\Foundation\Data\Data;
+use RedJasmine\Support\Helpers\ID\DatetimeIdGenerator;
 use Spatie\LaravelData\Attributes\WithCast;
 use Spatie\LaravelData\Casts\EnumCast;
 
@@ -43,4 +44,18 @@ class ConversationData extends Data
     #[WithCast(UserInterfaceCastTransformer::class)]
     public ?UserInterface $user = null;
 
+
+    public function getConversationId() : string
+    {
+        if (!$this->conversationId) {
+            $this->conversationId = static::buildID();
+        }
+        return $this->conversationId;
+    }
+
+
+    public static function buildID() : string
+    {
+        return DatetimeIdGenerator::buildId();
+    }
 }

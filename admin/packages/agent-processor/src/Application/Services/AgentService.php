@@ -129,7 +129,7 @@ class AgentService
             $channelMessage->appId                 = $answer->appId;
             $channelMessage->channelConversationId = $answer->channelConversationId;
             $channelMessage->channelAppId          = $answer->channelAppId;
-            $answer->messags[]                     = $channelMessage;
+            $answer->messages[]                    = $channelMessage;
         }
 
         return $answer;

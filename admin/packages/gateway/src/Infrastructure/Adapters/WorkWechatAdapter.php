@@ -4,26 +4,23 @@ namespace HuiZhiDa\Gateway\Infrastructure\Adapters;
 
 use EasyWeChat\Work\Application;
 use Exception;
-use HuiZhiDa\AgentProcessor\Domain\Data\AgentChatResponse;
 use HuiZhiDa\Core\Domain\Conversation\DTO\ChannelMessage;
-use HuiZhiDa\Core\Domain\Conversation\DTO\Contents\TextContent;
-use HuiZhiDa\Core\Domain\Conversation\DTO\Contents\ImageContent;
-use HuiZhiDa\Core\Domain\Conversation\DTO\Contents\VoiceContent;
 use HuiZhiDa\Core\Domain\Conversation\DTO\Contents\FileContent;
+use HuiZhiDa\Core\Domain\Conversation\DTO\Contents\ImageContent;
+use HuiZhiDa\Core\Domain\Conversation\DTO\Contents\TextContent;
 use HuiZhiDa\Core\Domain\Conversation\DTO\Contents\VideoContent;
+use HuiZhiDa\Core\Domain\Conversation\DTO\Contents\VoiceContent;
 use HuiZhiDa\Core\Domain\Conversation\DTO\ConversationAnswerData;
 use HuiZhiDa\Core\Domain\Conversation\Enums\ContentType;
 use HuiZhiDa\Core\Domain\Conversation\Enums\MessageType;
 use HuiZhiDa\Core\Domain\Conversation\Enums\UserType;
 use HuiZhiDa\Gateway\Domain\Contracts\ChannelAdapterInterface;
 use Illuminate\Http\Request;
-use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use RedJasmine\Support\Domain\Data\UserData;
-use Symfony\Bridge\PsrHttpMessage\Factory\HttpFoundationFactory;
 use Symfony\Contracts\HttpClient\Exception\ClientExceptionInterface;
 use Symfony\Contracts\HttpClient\Exception\RedirectionExceptionInterface;
 use Symfony\Contracts\HttpClient\Exception\ServerExceptionInterface;
@@ -144,7 +141,7 @@ class WorkWechatAdapter implements ChannelAdapterInterface
     protected function convertToChannelMessage(array $msgData, string $openKfId) : ChannelMessage
     {
         $message                        = new ChannelMessage();
-        $message->messageId             = Str::uuid();
+        $message->messageId             = $message->getMessageId();
         $message->channelConversationId = $msgData['external_userid'];// 企业微信是一个用户是一个会话,会话状态支持 轮换，结束后，可以重新接入
         $message->channelMessageId      = $msgData['msgid'] ?? '';
         $message->messageType           = $this->mapMessageType($msgData['msgtype'] ?? 'text');
@@ -179,7 +176,7 @@ class WorkWechatAdapter implements ChannelAdapterInterface
         $message['msgtype'] = $channelMessage->contentType->value;
         if ($channelMessage->contentType === ContentType::Text) {
             $message['text'] = [
-                'content' => $channelMessage->contentData->text,
+                'content' => $channelMessage->getContent()->text,
             ];
         }
 
@@ -480,23 +477,24 @@ class WorkWechatAdapter implements ChannelAdapterInterface
 
         $api = $this->workWechatApp->getClient();
 
-        foreach ($conversationAnswer->messags as $message) {
+        foreach ($conversationAnswer->messages as $message) {
 
-            $workWechatMessage              = $this->convertToWorkWechatMessage($message);
+            $workWechatMessage = $this->convertToWorkWechatMessage($message);
+
             $workWechatMessage['touser']    = $conversationAnswer->user->getID();
-            $workWechatMessage['open_kfid'] = '';
-            $workWechatMessage['msgid']     = $message->messageId ?? Str::uuid();
-
+            $workWechatMessage['open_kfid'] = $conversationAnswer->channelAppId;
+            $workWechatMessage['msgid']     = $message->getMessageId();
+            Log::debug('发送消息到企业微信', $workWechatMessage);
+            $response = $api->postJson(
+                '/cgi-bin/kf/send_msg',
+                $workWechatMessage,
+            );
+            Log::debug('发送结果', [
+                'status' => $response->getStatusCode(),
+                'body'   => json_decode($response->getContent(), true)
+            ]);
         }
 
-        $api->postJson(
-            '/cgi-bin/kf/send_msg',
-            [
-
-            ],
-        );
-        // 根据会话详情 返回信息发送消息
-        dd($chatResponse);
 
     }
 

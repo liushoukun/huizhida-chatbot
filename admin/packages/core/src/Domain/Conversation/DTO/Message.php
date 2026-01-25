@@ -13,6 +13,7 @@ use HuiZhiDa\Core\Domain\Conversation\Enums\ContentType;
 use HuiZhiDa\Core\Domain\Conversation\Enums\MessageType;
 use RedJasmine\Support\Domain\Contracts\UserInterface;
 use RedJasmine\Support\Foundation\Data\Data;
+use RedJasmine\Support\Helpers\ID\DatetimeIdGenerator;
 
 /**
  * 核心消息DTO
@@ -116,5 +117,20 @@ class Message extends Data
             ContentType::Unknown => UnknownContent::from($this->content),
             default => null, // Card, Event, Combination 等类型暂不支持
         };
+    }
+
+
+    public function getMessageId() : string
+    {
+        if (!$this->messageId) {
+            $this->messageId = static::buildID();
+        }
+        return $this->messageId;
+    }
+
+
+    public static function buildID() : string
+    {
+        return DatetimeIdGenerator::buildId();
     }
 }

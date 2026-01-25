@@ -14,5 +14,5 @@ class ConversationAnswerData extends ConversationData
      *
      * @var ChannelMessage[]
      */
-    public array $messags;
+    public array $messages;
 }

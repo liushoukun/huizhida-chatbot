@@ -89,7 +89,7 @@ class ApiAdapter implements ChannelAdapterInterface
 
         $message->sender = UserData::from($data['user'] ?? [
             'type' => 'guest',
-            'id'   => Str::uuid(),
+            'id'   => Str::random(),
         ]);
 
 

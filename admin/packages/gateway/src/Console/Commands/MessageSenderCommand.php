@@ -41,7 +41,9 @@ class MessageSenderCommand extends Command
 
         $this->mq->subscribe(ConversationQueueType::Sending, function ($data) {
 
+
             $conversationAnswer = ConversationAnswerData::from($data);
+
             $this->handleMessage($conversationAnswer);
         });
 
@@ -61,28 +63,29 @@ class MessageSenderCommand extends Command
 
             // 发送消息
             $adapter->sendMessages($conversationAnswer);
-
+            Log::info('发送结束');
             // 更新消息状态
-            try {
-                $this->messageService->updateStatus($message->messageId ?? '', 'sent');
-            } catch (Exception $e) {
-                Log::warning('Update message status failed', [
-                    'message_id' => $message->messageId,
-                    'error'      => $e->getMessage(),
-                ]);
-            }
+            // try {
+            //     $this->messageService->updateStatus($message->messageId ?? '', 'sent');
+            // } catch (Exception $e) {
+            //     Log::warning('Update message status failed', [
+            //         'message_id' => $message->messageId,
+            //         'error'      => $e->getMessage(),
+            //     ]);
+            // }
 
-            $this->info('Message sent successfully', [
-                'message_id'      => $message->messageId,
-                'conversation_id' => $message->conversationId,
-                'channel_id'      => $message->channelId,
-            ]);
+            // $this->info('Message sent successfully', [
+            //     'message_id'      => $message->messageId,
+            //     'conversation_id' => $message->conversationId,
+            //     'channel_id'      => $message->channelId,
+            // ]);
         } catch (Exception $e) {
-            Log::error('Handle message failed', [
-                'error' => $e->getMessage(),
-                'data'  => $data,
-            ]);
-            $this->mq->nack($data);
+            throw $e;
+            // Log::error('Handle message failed', [
+            //     'error' => $e->getMessage(),
+            //     'data'  => $data,
+            // ]);
+            //$this->mq->nack($data);
         }
     }
 

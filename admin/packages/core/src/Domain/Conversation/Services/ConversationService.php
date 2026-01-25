@@ -78,7 +78,7 @@ class ConversationService extends CommonService
         }
 
         $conversation                          = new Conversation();
-        $conversation->conversation_id         = Str::uuid();
+        $conversation->conversation_id         = ConversationData::buildID();
         $conversation->channel_app_id          = $message->channelAppId;
         $conversation->channel_conversation_id = $message->channelConversationId;
         $conversation->channel_id              = $message->channelId;
@@ -164,20 +164,5 @@ class ConversationService extends CommonService
           ]);
     }
 
-    /**
-     * 生成会话ID
-     */
-    protected function generateConversationId(?string $channelId, string $userId, ?int $appId) : string
-    {
-        return Str::uuid();
-        $parts = [];
-        // if ($channelId) {
-        //     $parts[] = $channelId;
-        // }
-        // $parts[] = $userId;
-        // if ($appId) {
-        //     $parts[] = $appId;
-        // }
-        return implode('_', $parts);
-    }
+
 }
