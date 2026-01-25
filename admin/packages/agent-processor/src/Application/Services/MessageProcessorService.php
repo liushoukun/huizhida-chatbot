@@ -78,8 +78,8 @@ class MessageProcessorService
 
             // 忽略消息
             if ($checkResult->actionType === ActionType::Ignore) {
-                // 跳过处理，移除消息
-                $this->removeProcessedMessages($conversationId);
+                // 忽略，用户还没有发送完全，或者 乱发规则 ,不进行带处理消息
+                 // $this->removeProcessedMessages($conversationId);
                 return;
             }
 

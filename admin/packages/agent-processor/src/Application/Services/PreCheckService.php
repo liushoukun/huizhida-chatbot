@@ -101,10 +101,6 @@ class PreCheckService
             return $keywordResult;
         }
 
-
-        // 可以在这里添加更多转人工策略
-        // 策略3: 其他策略...
-
         return null;
     }
 
@@ -123,7 +119,7 @@ class PreCheckService
             $text = $this->extractText($message);
             if ($text && $this->hasTransferKeyword($text)) {
                 Log::info('PreCheck: Transfer keyword matched', [
-                    'conversation_id' => $conversation['conversation_id'] ?? null,
+                    'conversation_id' => $conversation->conversationId,
                     'text'            => $text,
                 ]);
 
