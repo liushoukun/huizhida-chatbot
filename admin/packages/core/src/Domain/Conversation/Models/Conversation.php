@@ -9,7 +9,6 @@ class Conversation extends Model
 {
 
 
-
     protected function casts() : array
     {
         return [

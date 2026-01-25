@@ -25,7 +25,6 @@ class AgentAdapterFactory
         $config    = $agent->config ?? [];
         return match ($agent->agent_type) {
             'coze' => new CozeAdapter($config),
-            'tencent_yuanqi' => new TencentYuanqiAdapter($config),
             default => throw new InvalidArgumentException("Unsupported provider: {$agentType}. Supported: coze, tencent_yuanqi"),
         };
 

@@ -8,7 +8,7 @@ use RedJasmine\Support\Foundation\Data\Data;
 /**
  * 聊天响应数据对象
  */
-class ChatResponse extends Data
+class AgentChatResponse extends Data
 {
     /**
      * 会话ID

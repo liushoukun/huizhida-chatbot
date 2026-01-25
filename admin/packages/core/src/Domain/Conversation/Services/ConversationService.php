@@ -96,26 +96,7 @@ class ConversationService extends CommonService
 
     }
 
-    /**
-     * 获取会话
-     */
-    public function get(string $conversationId) : ?ConversationData
-    {
-        $model = Conversation::where('conversation_id', $conversationId)->firstOrFail();
 
-        return $model ? ConversationData::from([
-            'conversationId'        => $model->conversation_id,
-            'agent_conversation_id' => $model->agent_conversation_id,
-            'channelId'             => $model->channel_id,
-            'appId'                 => $model->app_id,
-            'user'                  => [
-                'type'     => $model->user_type,
-                'id'       => $model->user_id,
-                'nickname' => $model->user_nickname,
-                'avatar'   => $model->user_avatar,
-            ],
-        ]) : null;
-    }
 
     /**
      * 更新会话

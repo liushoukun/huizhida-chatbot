@@ -3,9 +3,10 @@
 namespace HuiZhiDa\AgentProcessor\Application\Services;
 
 use Exception;
-use HuiZhiDa\AgentProcessor\Domain\Data\ChatResponse;
+use HuiZhiDa\AgentProcessor\Domain\Data\AgentChatResponse;
 use HuiZhiDa\Core\Application\Services\ConversationApplicationService;
 use HuiZhiDa\Core\Domain\Conversation\Contracts\ConversationQueueInterface;
+use HuiZhiDa\Core\Domain\Conversation\DTO\ConversationAnswerData;
 use HuiZhiDa\Core\Domain\Conversation\DTO\ConversationData;
 use HuiZhiDa\Core\Domain\Conversation\Enums\ConversationQueueType;
 use HuiZhiDa\Core\Domain\Conversation\Services\ConversationService;
@@ -43,7 +44,6 @@ class MessageProcessorService
     {
 
 
-
         // 每个会话加锁
         $conversationId = $event->conversationId;
         Log::debug('开始处理会话事件', ['conversation_id' => $conversationId]);
@@ -52,18 +52,16 @@ class MessageProcessorService
             // 1. 获取未处理消息
             // 按当前时间去获取 未处理消息 TODO
             $messages = $this->conversationApplicationService->getPendingMessages($conversationId);
-
-
-            Log::debug('获取未处理消息', ['conversation_id' => $conversationId, 'messages_count' => count($messages)]);
-
-
             if (empty($messages)) {
                 Log::info('No unprocessed messages', ['conversation_id' => $conversationId]);
                 return;
             }
 
+            Log::debug('获取未处理消息', ['conversation_id' => $conversationId, 'messages_count' => count($messages)]);
+
+
             // 2. 获取会话信息
-            $conversation = $this->conversationService->get($conversationId);
+            $conversation = $this->conversationApplicationService->get($conversationId);
             Log::debug('获取会话信息', ['conversation_id' => $conversationId, 'conversation' => $conversation]);
 
 
@@ -114,27 +112,22 @@ class MessageProcessorService
             Log::debug('调用智能体处理消息', ['conversation_id' => $conversationId, 'agent_id' => $agentId]);
 
             try {
-                $chatResponse = $this->agentService->processMessages($messages, $conversation, $agentId);
+                $awnerData = $this->agentService->processMessages($messages, $conversation, $agentId);
+
+                // 保存智能体会话ID
+                $this->conversationApplicationService->updateAgentConversationId(
+                    $awnerData->conversationId,
+                    $awnerData->agentConversationId
+                );
+
 
                 // TODO 根据智能体消息，确认是否需要转人工
 
-
-                $this->publishReply($conversation, $chatResponse);
+                $this->publishAnswer($conversation, $awnerData);
 
                 // 7. 移除已处理的消息
                 $this->removeProcessedMessages($conversationId);
 
-                // 8. 更新会话（包括智能体会话ID）
-                $updateData = [
-                    'updated_at' => now(),
-                ];
-
-                // 如果智能体返回了会话ID，保存它
-                if (isset($response['agent_conversation_id']) && !empty($response['agent_conversation_id'])) {
-                    $updateData['agent_conversation_id'] = $response['agent_conversation_id'];
-                }
-
-                $this->conversationService->update($conversationId, $updateData);
 
             } catch (Exception $e) {
                 Log::error('Agent processing failed', [
@@ -214,13 +207,12 @@ class MessageProcessorService
     /**
      * 发布回复消息
      */
-    protected function publishReply(ConversationData $conversation, ChatResponse $chatResponse) : void
+    protected function publishAnswer(ConversationData $conversation, ConversationAnswerData $conversationAnswerData) : void
     {
 
+        $this->messageQueue->publish(ConversationQueueType::Sending, $conversationAnswerData);
 
-        $this->messageQueue->publish(ConversationQueueType::Sending, $chatResponse);
-
-        Log::info('Reply published', [
+        Log::info('发布回答队列', [
             'conversation_id' => $conversation->conversationId,
         ]);
     }

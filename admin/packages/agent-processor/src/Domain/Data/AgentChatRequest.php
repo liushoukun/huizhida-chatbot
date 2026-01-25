@@ -9,7 +9,7 @@ use RedJasmine\Support\Foundation\Data\Data;
 /**
  * 聊天请求数据对象
  */
-class ChatRequest extends Data
+class AgentChatRequest extends Data
 {
     /**
      * 会话ID

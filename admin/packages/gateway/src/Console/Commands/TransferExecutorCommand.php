@@ -2,6 +2,7 @@
 
 namespace HuiZhiDa\Gateway\Console\Commands;
 
+use HuiZhiDa\Core\Application\Services\ConversationApplicationService;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\DB;
@@ -18,6 +19,7 @@ class TransferExecutorCommand extends Command
     public function __construct(
         protected AdapterFactory $adapterFactory,
         protected ConversationService $conversationService,
+        protected ConversationApplicationService $conversationApplicationService,
         protected ConversationQueueInterface $mq
     ) {
         parent::__construct();
@@ -51,13 +53,13 @@ class TransferExecutorCommand extends Command
             }
 
             // 获取会话信息以获取channel_id
-            $conversation = $this->conversationService->get($conversationId);
+            $conversation = $this->conversationApplicationService->get($conversationId);
             if (!$conversation) {
                 throw new \InvalidArgumentException('Conversation not found');
             }
 
             // 更新会话状态
-            $status = $mode === 'specific' ? ConversationStatus::Human->value : ConversationStatus::Human_queuing->value;
+            $status = $mode === 'specific' ? ConversationStatus::Human->value : ConversationStatus::HumanQueuing->value;
             $this->conversationService->updateStatus(
                 $conversationId,
                 $status,

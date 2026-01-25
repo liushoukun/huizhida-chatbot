@@ -3,9 +3,11 @@
 namespace App\Console\Commands;
 
 use HuiZhiDa\AgentProcessor\Application\Services\AgentService;
+use HuiZhiDa\AgentProcessor\Application\Services\MessageProcessorService;
 use HuiZhiDa\Core\Application\Services\ConversationApplicationService;
 use HuiZhiDa\Core\Domain\Conversation\DTO\ChannelMessage;
 use HuiZhiDa\Core\Domain\Conversation\DTO\ConversationData;
+use HuiZhiDa\Core\Domain\Conversation\DTO\ConversationEvent;
 use HuiZhiDa\Core\Domain\Conversation\Enums\ContentType;
 use Illuminate\Console\Command;
 use RedJasmine\Support\Domain\Data\UserData;
@@ -26,10 +28,19 @@ class AgentTest extends Command
      */
     protected $description = 'Command description';
 
+
+    public function handle()
+    {
+        $service =  app(MessageProcessorService::class);
+        $event = new ConversationEvent('68a19eb3-3713-4183-afc3-c45785484e10');
+
+        $service->processConversationEvent($event);
+
+    }
     /**
      * Execute the console command.
      */
-    public function handle()
+    public function handles()
     {
 
         $conversationApplicationService = app(ConversationApplicationService::class);

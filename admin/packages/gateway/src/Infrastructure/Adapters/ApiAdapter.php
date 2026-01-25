@@ -3,6 +3,7 @@
 namespace HuiZhiDa\Gateway\Infrastructure\Adapters;
 
 use Exception;
+use HuiZhiDa\AgentProcessor\Domain\Data\AgentChatResponse;
 use HuiZhiDa\Core\Domain\Conversation\DTO\ChannelMessage;
 use HuiZhiDa\Core\Domain\Conversation\DTO\Contents\TextContent;
 use HuiZhiDa\Core\Domain\Conversation\Enums\ContentType;
@@ -133,7 +134,7 @@ class ApiAdapter implements ChannelAdapterInterface
         return $data;
     }
 
-    public function sendMessage(ChannelMessage $message) : void
+    public function sendMessages(AgentChatResponse $chatResponse) : void
     {
         $apiUrl = $this->config['api_url'] ?? '';
 

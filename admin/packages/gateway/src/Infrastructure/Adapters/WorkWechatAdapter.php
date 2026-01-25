@@ -4,6 +4,7 @@ namespace HuiZhiDa\Gateway\Infrastructure\Adapters;
 
 use EasyWeChat\Work\Application;
 use Exception;
+use HuiZhiDa\AgentProcessor\Domain\Data\AgentChatResponse;
 use HuiZhiDa\Core\Domain\Conversation\DTO\ChannelMessage;
 use HuiZhiDa\Core\Domain\Conversation\DTO\Contents\TextContent;
 use HuiZhiDa\Core\Domain\Conversation\DTO\Contents\ImageContent;
@@ -453,13 +454,11 @@ class WorkWechatAdapter implements ChannelAdapterInterface
         return $data;
     }
 
-    public function sendMessage(ChannelMessage $message) : void
+    public function sendMessages(AgentChatResponse $chatResponse) : void
     {
-        // TODO: 实现企业微信消息发送
-        $format = $this->convertToChannelFormat($message);
+        // 根据会话详情 返回信息发送消息
+        dd($chatResponse);
 
-        // 实际需要调用企业微信 API
-        // 这里只是示例
     }
 
     public function transferToQueue(string $conversationId, string $priority = 'normal') : void

@@ -2,6 +2,7 @@
 
 namespace HuiZhiDa\Gateway\Domain\Contracts;
 
+use HuiZhiDa\AgentProcessor\Domain\Data\AgentChatResponse;
 use Illuminate\Http\Request;
 use HuiZhiDa\Core\Domain\Conversation\DTO\ChannelMessage;
 use Illuminate\Http\Response;
@@ -34,7 +35,7 @@ interface ChannelAdapterInterface
     /**
      * 发送消息到渠道
      */
-    public function sendMessage(ChannelMessage $message) : void;
+    public function sendMessages(AgentChatResponse $chatResponse) : void;
 
     /**
      * 转接到客服队列

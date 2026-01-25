@@ -2,8 +2,8 @@
 
 namespace HuiZhiDa\AgentProcessor\Domain\Contracts;
 
-use HuiZhiDa\AgentProcessor\Domain\Data\ChatRequest;
-use HuiZhiDa\AgentProcessor\Domain\Data\ChatResponse;
+use HuiZhiDa\AgentProcessor\Domain\Data\AgentChatRequest;
+use HuiZhiDa\AgentProcessor\Domain\Data\AgentChatResponse;
 
 /**
  * 智能体适配器接口
@@ -21,10 +21,11 @@ interface AgentAdapterInterface
     /**
      * 发送消息并获取回复
      *
-     * @param ChatRequest $request 聊天请求
-     * @return ChatResponse 聊天响应
+     * @param AgentChatRequest  $request 聊天请求
+     *
+     * @return AgentChatResponse 聊天响应
      */
-    public function chat(ChatRequest $request): ChatResponse;
+    public function chat(AgentChatRequest $request): AgentChatResponse;
 
     /**
      * 健康检查
