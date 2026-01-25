@@ -29,7 +29,7 @@ class ApiAdapter implements ChannelAdapterInterface
 
     public function health(Request $request) : Response
     {
-        return  response()->json();
+        return response()->json();
     }
 
 
@@ -71,18 +71,15 @@ class ApiAdapter implements ChannelAdapterInterface
     public function parseMessages(Request $request) : array
     {
         $rawData = $request->getContent();
-        $data    = json_decode($request->getContent(), true);
+        $data    = $request->all();
 
-        if (json_last_error() !== JSON_ERROR_NONE) {
-            throw new InvalidArgumentException('Invalid JSON format: '.json_last_error_msg());
-        }
 
         $message                        = new ChannelMessage();
         $message->channelConversationId = $data['conversation_id'] ?? uniqid('api_msg_', true);
         $message->channelChatId         = $data['chat_id'] ?? uniqid('api_msg_', true);
         $message->channelMessageId      = $data['message_id'] ?? uniqid('api_msg_', true);
-        $message->messageType           = $this->mapMessageType($data['message_type']);
-        $message->contentType           = $this->mapContentType($data['content_type']);
+        $message->messageType           = MessageType::from($data['message_type']);
+        $message->contentType           = ContentType::from($data['content_type']);
         $message->timestamp             = $data['timestamp'] ?? time();
         $message->rawData               = $rawData;
 
@@ -95,13 +92,7 @@ class ApiAdapter implements ChannelAdapterInterface
         ]);
 
 
-        // 解析消息内容
-        $contentData      = $data['content'] ?? $data;
-        $contentType      = $message->contentType;
-        $message->content = $contentData;
-        // TODO 转换格式
-
-        $message->setContentData($contentType, $contentData);
+        $message->setContentData($message->contentType, $data['content'] ?? null);
 
 
         return [$message];
@@ -121,7 +112,7 @@ class ApiAdapter implements ChannelAdapterInterface
         if ($message->contentType === ContentType::Text && $message->content instanceof TextContent) {
             $data['content'] = [
                 'type' => 'text',
-                'text' => $message->content->content,
+                'text' => $message->content->text,
             ];
         } else {
             // 默认文本消息

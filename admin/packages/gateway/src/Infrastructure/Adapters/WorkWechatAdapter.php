@@ -209,8 +209,8 @@ class WorkWechatAdapter implements ChannelAdapterInterface
      */
     protected function parseTextContent(array $msgData) : TextContent
     {
-        $content          = new TextContent();
-        $content->content = $msgData['text']['content'] ?? '';
+        $content       = new TextContent();
+        $content->text = $msgData['text']['content'] ?? '';
 
         return $content;
     }
@@ -444,7 +444,7 @@ class WorkWechatAdapter implements ChannelAdapterInterface
 
         if ($message->contentType === ContentType::Text && $message->content instanceof TextContent) {
             $data['text'] = [
-                'content' => $message->content->content,
+                'content' => $message->content->text,
             ];
         } else {
             // 处理其他类型的内容

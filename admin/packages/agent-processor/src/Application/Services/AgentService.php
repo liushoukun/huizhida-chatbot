@@ -98,7 +98,11 @@ class AgentService
         Log::debug('智能体对话开始', ['conversation_id' => $request->conversationId]);
         $response = $adapter->chat($request);
         $duration = microtime(true) - $startTime;
-        Log::debug('智能体对话结束', ['conversation_id' => $request->conversationId, 'duration' => round($duration, 2)]);
+        Log::debug('智能体对话结束', [
+            'conversation_id'       => $request->conversationId,
+            'agent_conversation_id' => $response->agentConversationId,
+            'duration'              => round($duration, 2)
+        ]);
 
         return $response;
     }
@@ -111,14 +115,15 @@ class AgentService
         $answer = new ConversationAnswerData();
 
         $answer->conversationId        = $conversation->conversationId;
-        $answer->agentConversationId   = $conversation->agentConversationId;
         $answer->channelConversationId = $conversation->channelConversationId;
         $answer->channelId             = $conversation->channelId;
         $answer->appId                 = $conversation->appId;
         $answer->user                  = $conversation->user;
 
+        // 返回信息
+        $answer->agentConversationId = $response->agentConversationId;
         foreach ($response->messages as $message) {
-            $channelMessage                        = ChannelMessage::from($message);
+            $channelMessage                        = ChannelMessage::from($message->toArray());
             $channelMessage->channelId             = $answer->channelId;
             $channelMessage->appId                 = $answer->appId;
             $channelMessage->channelConversationId = $answer->channelConversationId;

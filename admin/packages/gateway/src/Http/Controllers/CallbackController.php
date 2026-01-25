@@ -44,10 +44,10 @@ class CallbackController
             // 1. 获取渠道适配器
             // TODO: 从数据库获取渠道配置
             // 读取渠道配置
-            $channelModel  = $this->channelRepository->find($id);
-            $channelConfig = $channelModel->config; // 实际应从数据库读取
+            $channelModel = $this->channelRepository->find($id);
 
-            $adapter = $this->adapterFactory->get($channel, $channelConfig);
+
+            $adapter = $this->adapterFactory->get($channelModel->channel, $channelModel->config);
 
             // 2. 验证签名
             if (!$adapter->verifySignature($request)) {
@@ -82,7 +82,7 @@ class CallbackController
                 }
 
 
-                // 7. 存储会话待处理消息：将消息推送到以会话ID为key的Redis ZSET中
+                // 7. 存储会话待处理消息
                 $this->conversationApplicationService->savePendingMessage($message);
 
 

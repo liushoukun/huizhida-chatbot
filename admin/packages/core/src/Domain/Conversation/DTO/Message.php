@@ -84,8 +84,11 @@ class Message extends Data
 
     public function setContentData(ContentType $contentType, ?array $content = null) : static
     {
+        // TODO 格式验证
+
+
         $this->content = $content;
-        // TODO 根据类型验证
+
         return $this;
     }
 

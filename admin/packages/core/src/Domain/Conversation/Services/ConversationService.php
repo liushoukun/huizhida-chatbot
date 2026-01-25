@@ -6,6 +6,7 @@ use HuiZhiDa\Core\Domain\Conversation\Contracts\ConversationQueueInterface;
 use HuiZhiDa\Core\Domain\Conversation\DTO\ConversationData;
 use HuiZhiDa\Core\Domain\Conversation\DTO\ConversationEvent;
 use HuiZhiDa\Core\Domain\Conversation\DTO\Message;
+use HuiZhiDa\Core\Domain\Conversation\Jobs\ConverstionJob;
 use HuiZhiDa\Core\Domain\Conversation\Models\Conversation;
 use HuiZhiDa\Core\Domain\Conversation\Services\CommonService;
 use Illuminate\Support\Carbon;
@@ -29,7 +30,6 @@ class ConversationService extends CommonService
     public function triggerEvent(ConversationEvent $conversationEvent) : void
     {
         try {
-
             $this->mq->recordLastEvent($conversationEvent);
             $this->mq->publish($conversationEvent->queue, $conversationEvent);
         } catch (Exception $e) {

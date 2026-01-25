@@ -54,9 +54,9 @@ class ConversationApplicationService extends ApplicationService
         return Conversation::where('conversation_id', $conversationId)->firstOrFail();
     }
 
-    public function updateAgentConversationId(string $conversationId, string $agentConversationId) : null
+    public function updateAgentConversationId(string $conversationId, string $agentConversationId) : void
     {
-        return Conversation::where('conversation_id', $conversationId)->update(['agent_conversation_id' => $agentConversationId]);
+        Conversation::where('conversation_id', $conversationId)->update(['agent_conversation_id' => $agentConversationId]);
     }
 
     /**

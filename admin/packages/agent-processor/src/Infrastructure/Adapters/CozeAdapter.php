@@ -90,13 +90,17 @@ class CozeAdapter implements AgentAdapterInterface
         Log::debug('Coze 发起对话', ['agentConversationId' => $agentConversationId, 'conversationId' => $request->conversationId]);
         $messages = [];
         foreach ($request->messages as $msg) {
+            // TODO ,需要根据格式转换
+            if ($msg->contentType === ContentType::Text) {
 
-            // TODO 存在问题,需要根据格式转换
-            $messages[] = [
-                'role'         => 'user',
-                'content'      => $msg->content['content'] ?? '',
-                'content_type' => 'text',
-            ];
+                $messages[] = [
+                    'role'         => 'user',
+                    'content'      => $msg->getContent()->text ?? '',
+                    'content_type' => 'text',
+                ];
+            } else {
+                // 组合消息
+            }
         }
 
 
@@ -197,8 +201,6 @@ class CozeAdapter implements AgentAdapterInterface
                 'agentMessages'       => $agentMessages,
             ]);
 
-
-            $agentConversationId = $message['conversation_id'] ?? $agentConversationId;
 
             $chatResponse->messages            = $agentMessages;
             $chatResponse->conversationId      = $request->conversationId;

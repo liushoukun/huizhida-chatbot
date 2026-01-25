@@ -9,4 +9,10 @@ class TextContent extends Content
 {
     // TextContent 使用基类的 content 字段即可
     // 如果需要扩展，可以在这里添加特定字段
+
+    /**
+     * 内容文本
+     * @var string
+     */
+    public string $text = '';
 }

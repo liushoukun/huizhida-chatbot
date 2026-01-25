@@ -11,9 +11,5 @@ use RedJasmine\Support\Foundation\Data\Data;
  */
 abstract class Content extends Data
 {
-    /**
-     * 内容文本
-     * @var string
-     */
-    public string $content = '';
+
 }
