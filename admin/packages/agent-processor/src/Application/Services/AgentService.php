@@ -119,6 +119,7 @@ class AgentService
         $answer->channelId             = $conversation->channelId;
         $answer->appId                 = $conversation->appId;
         $answer->user                  = $conversation->user;
+        $answer->channelAppId          = $conversation->channelAppId;
 
         // 返回信息
         $answer->agentConversationId = $response->agentConversationId;
@@ -127,6 +128,7 @@ class AgentService
             $channelMessage->channelId             = $answer->channelId;
             $channelMessage->appId                 = $answer->appId;
             $channelMessage->channelConversationId = $answer->channelConversationId;
+            $channelMessage->channelAppId          = $answer->channelAppId;
             $answer->messags[]                     = $channelMessage;
         }
 

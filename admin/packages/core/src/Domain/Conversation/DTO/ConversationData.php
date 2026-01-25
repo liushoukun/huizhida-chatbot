@@ -30,9 +30,12 @@ class ConversationData extends Data
     /**
      * @var string|null
      */
-    public ?string $agentConversationId   = null;
+    public ?string $agentConversationId = null;
 
     public ?string $channelConversationId = null;
+
+
+    public ?string $channelAppId = null;
 
     /**
      * @var UserInterface|null

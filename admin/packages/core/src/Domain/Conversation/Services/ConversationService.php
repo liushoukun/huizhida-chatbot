@@ -65,6 +65,7 @@ class ConversationService extends CommonService
 
         $lastConversation = Conversation::where('app_id', $message->appId)
                                         ->where('channel_id', $message->channelId)
+                                        ->where('channel_app_id', $message->channelAppId)
                                         ->where('user_type', $message->sender->type)
                                         ->where('user_id', $message->sender->id)
                                         ->orderByDesc('id')
@@ -78,6 +79,7 @@ class ConversationService extends CommonService
 
         $conversation                          = new Conversation();
         $conversation->conversation_id         = Str::uuid();
+        $conversation->channel_app_id          = $message->channelAppId;
         $conversation->channel_conversation_id = $message->channelConversationId;
         $conversation->channel_id              = $message->channelId;
         $conversation->app_id                  = $message->appId;
@@ -95,7 +97,6 @@ class ConversationService extends CommonService
         return $conversation;
 
     }
-
 
 
     /**

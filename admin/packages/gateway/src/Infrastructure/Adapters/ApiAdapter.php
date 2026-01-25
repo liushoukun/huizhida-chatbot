@@ -6,6 +6,7 @@ use Exception;
 use HuiZhiDa\AgentProcessor\Domain\Data\AgentChatResponse;
 use HuiZhiDa\Core\Domain\Conversation\DTO\ChannelMessage;
 use HuiZhiDa\Core\Domain\Conversation\DTO\Contents\TextContent;
+use HuiZhiDa\Core\Domain\Conversation\DTO\ConversationAnswerData;
 use HuiZhiDa\Core\Domain\Conversation\Enums\ContentType;
 use HuiZhiDa\Core\Domain\Conversation\Enums\MessageType;
 use HuiZhiDa\Gateway\Domain\Contracts\ChannelAdapterInterface;
@@ -83,7 +84,7 @@ class ApiAdapter implements ChannelAdapterInterface
         $message->timestamp             = $data['timestamp'] ?? time();
         $message->rawData               = $rawData;
 
-
+        $message->channelAppId = 'api';
         // 解析用户信息
 
         $message->sender = UserData::from($data['user'] ?? [
@@ -125,7 +126,7 @@ class ApiAdapter implements ChannelAdapterInterface
         return $data;
     }
 
-    public function sendMessages(AgentChatResponse $chatResponse) : void
+    public function sendMessages(ConversationAnswerData $conversationAnswer) : void
     {
         $apiUrl = $this->config['api_url'] ?? '';
 

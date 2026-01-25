@@ -32,6 +32,7 @@ class ConversationApplicationService extends ApplicationService
             'conversationId'        => $model->conversation_id,
             'agentConversationId'   => $model->agent_conversation_id,
             'channelConversationId' => $model->channel_conversation_id,
+            'channelAppId'          => $model->channel_app_id,
             'channelId'             => $model->channel_id,
             'appId'                 => $model->app_id,
             'status'                => $model->status,

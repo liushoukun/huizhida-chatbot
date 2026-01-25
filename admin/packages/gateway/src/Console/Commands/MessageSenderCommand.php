@@ -6,6 +6,7 @@ use Exception;
 use HuiZhiDa\AgentProcessor\Domain\Data\AgentChatResponse;
 use HuiZhiDa\Core\Application\Services\ChannelApplicationService;
 use HuiZhiDa\Core\Application\Services\ConversationApplicationService;
+use HuiZhiDa\Core\Domain\Conversation\DTO\ConversationAnswerData;
 use HuiZhiDa\Core\Domain\Conversation\Enums\ConversationQueueType;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Log;
@@ -40,26 +41,26 @@ class MessageSenderCommand extends Command
 
         $this->mq->subscribe(ConversationQueueType::Sending, function ($data) {
 
-            $chatResponse = AgentChatResponse::from($data);
-            $this->handleMessage($chatResponse);
+            $conversationAnswer = ConversationAnswerData::from($data);
+            $this->handleMessage($conversationAnswer);
         });
 
         return 0;
     }
 
-    protected function handleMessage(AgentChatResponse $chatResponse) : void
+    protected function handleMessage(ConversationAnswerData $conversationAnswer) : void
     {
         try {
 
-            $conversation = $this->conversationApplicationService->findConversation($chatResponse->conversationId);
-            $channel      = $this->channelApplicationService->find(FindQuery::make($conversation->channel_id));
+
+            $channel      = $this->channelApplicationService->find(FindQuery::make($conversationAnswer->channelId));
 
 
             $adapter = $this->adapterFactory->get($channel->channel, $channel->config);
 
 
             // 发送消息
-            $adapter->sendMessages($chatResponse);
+            $adapter->sendMessages($conversationAnswer);
 
             // 更新消息状态
             try {

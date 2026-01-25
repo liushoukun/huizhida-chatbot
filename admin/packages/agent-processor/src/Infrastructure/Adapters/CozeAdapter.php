@@ -104,11 +104,15 @@ class CozeAdapter implements AgentAdapterInterface
         }
 
 
+
         try {
 
             // 发起对话
-            $response = $this->client->post('v3/chat?conversation_id='.$agentConversationId, [
-                'json' => [
+            $response = $this->client->post('v3/chat', [
+                'query' => [
+                    'conversation_id' => $agentConversationId,
+                ],
+                'json'  => [
                     'bot_id'              => $botId,
                     'user_id'             => $request->user->getID(),// TODO 需要替换
                     'additional_messages' => $messages,

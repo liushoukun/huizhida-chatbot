@@ -62,7 +62,8 @@ class MessageProcessorService
 
             // 2. 获取会话信息
             $conversation = $this->conversationApplicationService->get($conversationId);
-            Log::debug('获取会话信息', ['conversation_id' => $conversationId, 'conversation' => $conversation]);
+            Log::debug('获取会话信息', $conversation->toArray());
+
 
 
             if (!$conversation) {
@@ -122,6 +123,7 @@ class MessageProcessorService
 
 
                 // TODO 根据智能体消息，确认是否需要转人工
+                Log::info('判断是否需要转人工');
 
                 $this->publishAnswer($conversation, $awnerData);
 
@@ -209,11 +211,11 @@ class MessageProcessorService
      */
     protected function publishAnswer(ConversationData $conversation, ConversationAnswerData $conversationAnswerData) : void
     {
-
-        $this->messageQueue->publish(ConversationQueueType::Sending, $conversationAnswerData);
-
         Log::info('发布回答队列', [
             'conversation_id' => $conversation->conversationId,
         ]);
+        $this->messageQueue->publish(ConversationQueueType::Sending, $conversationAnswerData);
+
+
     }
 }

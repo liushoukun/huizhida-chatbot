@@ -16,11 +16,15 @@ class ChannelMessage extends Message
     public ?int $appId = null;
 
     /**
-     * 渠道ID
+     * 系统内渠道ID
      * @var string|null
      */
     public ?string $channelId = null;
-
+    /**
+     * 渠道返回应用ID
+     * @var string|null
+     */
+    public ?string $channelAppId = null;
     /**
      * 渠道会话ID
      * @var string|null
@@ -38,4 +42,6 @@ class ChannelMessage extends Message
      * @var string|null
      */
     public ?string $channelMessageId = null;
+
+
 }

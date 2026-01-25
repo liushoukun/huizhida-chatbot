@@ -11,8 +11,9 @@ return new class extends Migration {
         Schema::create('conversations', function (Blueprint $table) {
             $table->id();
             $table->string('conversation_id', 64)->unique()->comment('会话ID(系统生成)');
-            $table->string('agent_conversation_id', 128)->index()->nullable()->comment('智能体会话ID');
-            $table->string('channel_conversation_id', 128)->nullable()->index()->comment('渠道会话ID(系统生成)');
+            $table->string('agent_conversation_id', 128)->index()->nullable()->comment('智能体的会话ID');
+            $table->string('channel_conversation_id', 128)->nullable()->index()->comment('渠道的会话ID');
+            $table->string('channel_app_id', 128)->nullable()->index()->comment('渠道的应用ID');
 
             // 渠道信息
             $table->unsignedBigInteger('app_id')->index()->comment('应用ID');
@@ -31,6 +32,7 @@ return new class extends Migration {
 
             // 上下文和转接信息
             $table->json('context')->nullable()->comment('上下文数据');
+            $table->json('meta_data')->nullable()->comment('元数据');
             // 转接处理
             $table->string('transfer_reason', 100)->nullable()->comment('转接原因');
             $table->string('transfer_source', 20)->nullable()->comment('转接来源: rule, agent');
@@ -39,7 +41,6 @@ return new class extends Migration {
 
             $table->timestamps();
             $table->timestamp('closed_at')->nullable()->comment('关闭时间');
-
 
 
         });

@@ -25,7 +25,7 @@ return new class extends Migration {
             // 消息
             $table->string('message_type', 32)->comment('消息类型');
             $table->string('content_type', 32)->comment('内容类型');
-            $table->json('content')->nullable()->comment('消息内容（Content对象）');
+            $table->json('content')->nullable()->comment('消息内容对象');
             $table->text('raw_data')->nullable()->comment('原始数据');
 
             // 发送人
@@ -42,7 +42,7 @@ return new class extends Migration {
             $table->unsignedBigInteger('agent_id')->nullable()->index()->comment('处理智能体ID');
             $table->unsignedBigInteger('agent_message_id')->nullable()->comment('智能体内消息ID');
             $table->unsignedBigInteger('agent_chat_id')->nullable()->comment('智能体内对话ID');
-
+            $table->json('meta_data')->nullable()->comment('元数据');
             // 时间字段
             $table->bigInteger('timestamp')->comment('消息时间戳');
             $table->timestamps();

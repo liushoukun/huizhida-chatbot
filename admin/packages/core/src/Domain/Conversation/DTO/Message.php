@@ -73,6 +73,13 @@ class Message extends Data
      */
     public ?string $rawData = null;
 
+
+    /**
+     * 扩展信息
+     * @var array
+     */
+    public array $exrra = [];
+
     /**
      * 构造函数
      */

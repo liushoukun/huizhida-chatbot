@@ -11,6 +11,7 @@ use HuiZhiDa\Core\Domain\Conversation\DTO\Contents\ImageContent;
 use HuiZhiDa\Core\Domain\Conversation\DTO\Contents\VoiceContent;
 use HuiZhiDa\Core\Domain\Conversation\DTO\Contents\FileContent;
 use HuiZhiDa\Core\Domain\Conversation\DTO\Contents\VideoContent;
+use HuiZhiDa\Core\Domain\Conversation\DTO\ConversationAnswerData;
 use HuiZhiDa\Core\Domain\Conversation\Enums\ContentType;
 use HuiZhiDa\Core\Domain\Conversation\Enums\MessageType;
 use HuiZhiDa\Core\Domain\Conversation\Enums\UserType;
@@ -124,7 +125,8 @@ class WorkWechatAdapter implements ChannelAdapterInterface
         $messages = [];
         foreach ($msgList as $msgData) {
             // 转换消息
-            $messages[] = $this->convertToChannelMessage($msgData, $openKfId);
+            $message    = $this->convertToChannelMessage($msgData, $openKfId);
+            $messages[] = $message;
         }
 
         return $messages;
@@ -149,7 +151,8 @@ class WorkWechatAdapter implements ChannelAdapterInterface
         $message->contentType           = $this->mapContentType($msgData['msgtype'] ?? 'text');
         $message->timestamp             = $msgData['send_time'] ?? time();
         $message->rawData               = json_encode($msgData, JSON_UNESCAPED_UNICODE);
-        $message->channelId             = $openKfId;
+        $message->channelAppId          = $openKfId;
+
 
         // 解析发送者信息
         $message->sender = UserData::from([
@@ -167,6 +170,23 @@ class WorkWechatAdapter implements ChannelAdapterInterface
         }
 
         return $message;
+    }
+
+
+    protected function convertToWorkWechatMessage(ChannelMessage $channelMessage) : array
+    {
+        $message            = [];
+        $message['msgtype'] = $channelMessage->contentType->value;
+        if ($channelMessage->contentType === ContentType::Text) {
+            $message['text'] = [
+                'content' => $channelMessage->contentData->text,
+            ];
+        }
+
+        // TODO 转换更多消息
+
+        return $message;
+
     }
 
     /**
@@ -309,6 +329,7 @@ class WorkWechatAdapter implements ChannelAdapterInterface
      * @param  string  $type  媒体类型 (image, voice, video, file)
      *
      * @return string|null 保存的文件路径（相对于storage），失败返回null
+     * @throws TransportExceptionInterface
      */
     protected function downloadMedia(string $mediaId, string $type) : ?string
     {
@@ -454,8 +475,26 @@ class WorkWechatAdapter implements ChannelAdapterInterface
         return $data;
     }
 
-    public function sendMessages(AgentChatResponse $chatResponse) : void
+    public function sendMessages(ConversationAnswerData $conversationAnswer) : void
     {
+
+        $api = $this->workWechatApp->getClient();
+
+        foreach ($conversationAnswer->messags as $message) {
+
+            $workWechatMessage              = $this->convertToWorkWechatMessage($message);
+            $workWechatMessage['touser']    = $conversationAnswer->user->getID();
+            $workWechatMessage['open_kfid'] = '';
+            $workWechatMessage['msgid']     = $message->messageId ?? Str::uuid();
+
+        }
+
+        $api->postJson(
+            '/cgi-bin/kf/send_msg',
+            [
+
+            ],
+        );
         // 根据会话详情 返回信息发送消息
         dd($chatResponse);
 
