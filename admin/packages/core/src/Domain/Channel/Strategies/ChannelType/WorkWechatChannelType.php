@@ -11,6 +11,7 @@ use HuiZhiDa\Core\Domain\Channel\DTO\Receptionist;
 use HuiZhiDa\Core\Domain\Channel\DTO\ReceptionistStatusEnum;
 use HuiZhiDa\Core\Domain\Channel\DTO\ReceptionistTypeEnum;
 use HuiZhiDa\Core\Domain\Channel\DTO\ServiceApplication;
+use Illuminate\Support\Facades\Log;
 use InvalidArgumentException;
 
 /**
@@ -112,6 +113,7 @@ class WorkWechatChannelType implements ChannelTypeInterface
         $data = json_decode($res->getContent(), true) ?? [];
         $this->assertOk($data, '获取成员ID列表');
         $deptUser = $data['dept_user'] ?? [];
+        Log::info('获取用户ID', $deptUser);
         $list = [];
         $seen = [];
         foreach ($deptUser as $row) {
@@ -201,6 +203,7 @@ class WorkWechatChannelType implements ChannelTypeInterface
 
     public function getReceptionists(string $applicationId, array $params = []): array
     {
+        Log::info('getReceptionists', ['applicationId' => $applicationId]);
         $res = $this->getClient()->get('/cgi-bin/kf/servicer/list', ['open_kfid' => $applicationId]);
         $data = json_decode($res->getContent(), true) ?? [];
         $this->assertOk($data, '获取接待人员列表');
@@ -212,7 +215,7 @@ class WorkWechatChannelType implements ChannelTypeInterface
                 $list[] = Receptionist::from([
                     'type' => ReceptionistTypeEnum::Member,
                     'id' => $s['userid'],
-                    'status' => $status === 0 ? ReceptionistStatusEnum::Online : ReceptionistStatusEnum::Offline,
+                    'status' => ($status) === 0 ? ReceptionistStatusEnum::Online : ReceptionistStatusEnum::Offline,
                 ]);
             } elseif (isset($s['department_id'])) {
                 $list[] = Receptionist::from([
