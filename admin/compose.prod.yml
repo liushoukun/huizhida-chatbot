@@ -1,8 +1,36 @@
 services:
-  php:
+  web:
     # Use your custom image instead of the base image
-    image: huizhida-chatbot:latest
+    image: registry.cn-shenzhen.aliyuncs.com/xlankeji/huizhida:latest
     ports:
-      - 8889:8080
-    environment:
-      - PHP_OPCACHE_ENABLE=1
+      - 8078:8080
+    env_file:
+      - 1panel.env
+
+  agent-processor:
+    image: registry.cn-shenzhen.aliyuncs.com/xlankeji/huizhida:latest
+    command: ["php", "/var/www/html/artisan", "agent-processor:consume"]
+    stop_signal: SIGTERM
+    depends_on:
+      - web
+    env_file:
+      - 1panel.env
+
+  message-sender:
+    image: registry.cn-shenzhen.aliyuncs.com/xlankeji/huizhida:latest
+    command: ["php", "/var/www/html/artisan", "gateway:message-sender"]
+    stop_signal: SIGTERM
+    depends_on:
+      - web
+    env_file:
+      - 1panel.env
+
+  transfer-executor:
+    image: registry.cn-shenzhen.aliyuncs.com/xlankeji/huizhida:latest
+    command: ["php", "/var/www/html/artisan", "gateway:transfer-executor"]
+    stop_signal: SIGTERM
+    depends_on:
+      - web
+    env_file:
+      - 1panel.env
+
