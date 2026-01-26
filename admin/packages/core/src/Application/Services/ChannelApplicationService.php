@@ -21,4 +21,10 @@ class ChannelApplicationService extends ApplicationService
         public ChannelTransformer $transformer
     ) {
     }
+
+
+    public function findByChannelId(int $channelId) : Channel
+    {
+        return $this->repository->find($channelId);
+    }
 }

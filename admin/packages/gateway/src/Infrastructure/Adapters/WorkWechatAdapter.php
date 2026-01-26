@@ -507,17 +507,16 @@ class WorkWechatAdapter implements ChannelAdapterInterface
         // 文档
         // https://developer.work.weixin.qq.com/document/path/94669#%E5%8F%98%E6%9B%B4%E4%BC%9A%E8%AF%9D%E7%8A%B6%E6%80%81
         $data = [
-            'external_userid' => $conversation->user->getID(),
             'open_kfid'       => $conversation->channelAppId,
+            'external_userid' => $conversation->user->getID(),
             'service_state'   => 2,
-            'servicer_userid' => null,
-
+            //'servicer_userid' => null,
         ];
         Log::info('发起转接人工', $data);
-        $response = $api->postJson('/cgi-bin/kf/service_state/transfer', $data);
+        $response = $api->postJson('/cgi-bin/kf/service_state/trans', $data);
         Log::info('发起转接人工返回', [
             'status'  => $response->getStatusCode(),
-            'content' => $response->getContent()
+            'content'  => $response->getContent(),
         ]);
     }
 

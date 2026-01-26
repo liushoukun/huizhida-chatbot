@@ -3,9 +3,11 @@
 namespace HuiZhiDa\Gateway\Console\Commands;
 
 use Exception;
+use HuiZhiDa\Core\Application\Services\ChannelApplicationService;
 use HuiZhiDa\Core\Application\Services\ConversationApplicationService;
 use HuiZhiDa\Core\Domain\Conversation\Contracts\ConversationQueueInterface;
 use HuiZhiDa\Core\Domain\Conversation\DTO\Events\ConversationEvent;
+use HuiZhiDa\Core\Domain\Conversation\Enums\ConversationQueueType;
 use HuiZhiDa\Gateway\Infrastructure\Adapters\AdapterFactory;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
@@ -20,6 +22,7 @@ class TransferExecutorCommand extends Command
     public function __construct(
         protected AdapterFactory $adapterFactory,
         protected ConversationApplicationService $conversationApplicationService,
+        protected ChannelApplicationService $channelApplicationService,
         protected ConversationQueueInterface $mq
     ) {
         parent::__construct();
@@ -29,9 +32,8 @@ class TransferExecutorCommand extends Command
     {
         $this->info('Transfer executor consumer started');
 
-        $queueName = config('gateway.queue.transfer_queue', 'transfer_requests');
 
-        $this->mq->subscribe($queueName, function ($data) {
+        $this->mq->subscribe(ConversationQueueType::Transfer, function ($data) {
             $event = ConversationEvent::from($data);
             $this->handleTransfer($event);
         });
@@ -51,42 +53,21 @@ class TransferExecutorCommand extends Command
             }
 
 
-            // 获取渠道适配器
-            $channelId = $conversation['channel_id'] ?? null;
-            if (!$channelId) {
-                throw new InvalidArgumentException('Channel ID not found in conversation');
-            }
+            $channelId = $conversation->channelId;
+            $channel = $this->channelApplicationService->findByChannelId($channelId);
 
-            // 从数据库获取channel信息
-            $channel = DB::table('channels')->where('id', $channelId)->first();
-            if (!$channel) {
-                throw new InvalidArgumentException('Channel not found');
-            }
 
             $channelConfig = $channel->config ?? [];
             $adapter       = $this->adapterFactory->get($channel->channel, $channelConfig);
+            $adapter->transferToHumanQueuing($conversation);
 
-            // 执行转接
-            if ($mode === 'specific' && $specificServicer) {
-                $adapter->transferToSpecific(
-                    $conversationId,
-                    $specificServicer,
-                    $priority
-                );
-            } else {
-                $adapter->transferToQueue($conversationId, $priority);
-            }
+            $this->info('Transfer executed successfully');
+        } catch (\Throwable $e) {
 
-            $this->info('Transfer executed successfully', [
-                'conversation_id' => $conversationId,
-                'channel'         => $channel->channel,
-            ]);
-        } catch (Exception $e) {
             Log::error('Handle transfer failed', [
                 'error' => $e->getMessage(),
-                'data'  => $data,
             ]);
-            $this->mq->nack($data);
+
         }
     }
 }
