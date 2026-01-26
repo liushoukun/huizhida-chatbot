@@ -14,6 +14,7 @@ use Filament\Tables\Enums\FiltersLayout;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 use HuiZhiDa\Filament\Resources\Channel\ChannelResource;
+use HuiZhiDa\Filament\Resources\Channel\Actions\ViewServiceApplicationsAction;
 use HuiZhiDa\Core\Domain\Channel\Models\Enums\ChannelStatus;
 use HuiZhiDa\Core\Domain\Channel\Strategies\ChannelType\ChannelTypeManager;
 use InvalidArgumentException;
@@ -166,6 +167,7 @@ class ChannelTable
     {
         return [
             EditAction::make(),
+            ViewServiceApplicationsAction::make(),
             ActionGroup::make([
                 ViewAction::make(),
                 DeleteAction::make(),
