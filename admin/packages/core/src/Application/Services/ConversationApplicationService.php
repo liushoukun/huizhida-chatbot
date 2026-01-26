@@ -2,10 +2,12 @@
 
 namespace HuiZhiDa\Core\Application\Services;
 
-use HuiZhiDa\Core\Domain\Conversation\Contracts\MessageRepositoryInterface;
+use HuiZhiDa\Core\Domain\Conversation\Repositories\MessageRepositoryInterface;
 use HuiZhiDa\Core\Domain\Conversation\DTO\ChannelMessage;
 use HuiZhiDa\Core\Domain\Conversation\DTO\ConversationData;
+use HuiZhiDa\Core\Domain\Conversation\Enums\ConversationStatus;
 use HuiZhiDa\Core\Domain\Conversation\Models\Conversation;
+use HuiZhiDa\Core\Domain\Conversation\Repositories\ConversationRepositoryInterface;
 use RedJasmine\Support\Application\ApplicationService;
 use RedJasmine\Support\Domain\Queries\FindQuery;
 
@@ -17,8 +19,25 @@ class ConversationApplicationService extends ApplicationService
 {
 
     public function __construct(
-        protected MessageRepositoryInterface $messageRepository
+        public MessageRepositoryInterface $messageRepository,
+        public ConversationRepositoryInterface $conversationRepository,
+
     ) {
+    }
+
+    /**
+     * 转换状态
+     *
+     * @param  string  $conversationId
+     * @param  ConversationStatus  $status
+     *
+     * @return void
+     */
+    public function transfer(string $conversationId, ConversationStatus $status) : void
+    {
+        $conversation = $this->conversationRepository->findByConversationId($conversationId);
+        $conversation->updateStatus($status);
+        $this->conversationRepository->update($conversation);
     }
 
     /**

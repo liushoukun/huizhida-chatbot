@@ -11,7 +11,6 @@
     ],
     "require": {
         "php": "^8.2",
-        "filament/filament": "^4.0",
         "huizhida/core":  "*",
         "red-jasmine/filament-project": "^1.0",
         "red-jasmine/filament-admin": "^1.0",

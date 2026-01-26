@@ -2,7 +2,7 @@
 
 namespace HuiZhiDa\Core\Infrastructure\Repositories;
 
-use HuiZhiDa\Core\Domain\Conversation\Contracts\MessageRepositoryInterface;
+use HuiZhiDa\Core\Domain\Conversation\Repositories\MessageRepositoryInterface;
 use HuiZhiDa\Core\Domain\Conversation\DTO\ChannelMessage;
 use HuiZhiDa\Core\Domain\Conversation\DTO\Message;
 use Illuminate\Support\Facades\Redis;

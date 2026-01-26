@@ -118,11 +118,7 @@ class PreCheckService
         foreach ($messages as $message) {
             $text = $this->extractText($message);
             if ($text && $this->hasTransferKeyword($text)) {
-                Log::info('PreCheck: Transfer keyword matched', [
-                    'conversation_id' => $conversation->conversationId,
-                    'text'            => $text,
-                ]);
-
+                Log::info("预校验 符合转人工关键字");
                 return CheckResult::from([
                     'actionType' => ActionType::TransferHuman
                 ]);

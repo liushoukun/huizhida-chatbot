@@ -9,6 +9,7 @@ use HuiZhiDa\Core\Domain\Conversation\Contracts\ConversationQueueInterface;
 use HuiZhiDa\Core\Domain\Conversation\DTO\ConversationAnswerData;
 use HuiZhiDa\Core\Domain\Conversation\DTO\ConversationData;
 use HuiZhiDa\Core\Domain\Conversation\Enums\ConversationQueueType;
+use HuiZhiDa\Core\Domain\Conversation\Enums\ConversationStatus;
 use HuiZhiDa\Core\Domain\Conversation\Services\ConversationService;
 use HuiZhiDa\Core\Domain\Conversation\Services\MessageService;
 use HuiZhiDa\Gateway\Infrastructure\Queue\RedisQueue;
@@ -64,28 +65,21 @@ class MessageProcessorService
             $conversation = $this->conversationApplicationService->get($conversationId);
             Log::debug('获取会话信息', $conversation->toArray());
 
-
-
-            if (!$conversation) {
-                Log::warning('Conversation not found', ['conversation_id' => $conversationId]);
-                return;
-            }
-
-
             // 3. 规则预判断（传入消息组）
             $checkResult = $this->preCheckService->check($messages, $conversation);
             Log::debug('规则预判断', ['conversation_id' => $conversationId, 'check_result' => $checkResult]);
-
             // 忽略消息
             if ($checkResult->actionType === ActionType::Ignore) {
-                // 忽略，用户还没有发送完全，或者 乱发规则 ,不进行带处理消息
-                 // $this->removeProcessedMessages($conversationId);
+                Log::debug('调过处理');
+
+                // 跳过处理，移除消息
+                $this->removeProcessedMessages($conversationId);
                 return;
             }
 
             if ($checkResult->actionType === ActionType::TransferHuman) {
                 // 转人工，推入转人工队列
-                $this->requestTransferHuman($conversation, $checkResult['reason'], 'rule');
+                $this->requestTransferHuman($conversation, $checkResult);
                 $this->removeProcessedMessages($conversationId);
                 return;
             }
@@ -95,7 +89,7 @@ class MessageProcessorService
             $channelId = $conversation->channelId;
             if (!$conversation->channelId) {
                 Log::warning('Conversation missing channel_id', ['conversation_id' => $conversationId]);
-                $this->requestTransferHuman($conversation, 'no_channel_id', 'rule');
+                $this->requestTransferHuman($conversation, $checkResult);
                 $this->removeProcessedMessages($conversationId);
                 return;
             }
@@ -104,7 +98,7 @@ class MessageProcessorService
 
             if (!$agentId) {
                 Log::warning('No agent found for channel', ['channel_id' => $channelId, 'conversation_id' => $conversationId]);
-                $this->requestTransferHuman($conversation, 'no_agent', 'rule');
+                $this->requestTransferHuman($conversation, $checkResult);
                 $this->removeProcessedMessages($conversationId);
                 return;
             }
@@ -123,7 +117,7 @@ class MessageProcessorService
 
 
                 // TODO 根据智能体消息，确认是否需要转人工
-                Log::info('判断是否需要转人工');
+
 
                 $this->publishAnswer($conversation, $awnerData);
 
@@ -132,23 +126,19 @@ class MessageProcessorService
 
 
             } catch (Exception $e) {
-                Log::error('Agent processing failed', [
+                Log::error('智能体处理失败', [
                     'conversation_id' => $conversationId,
                     'agent_id'        => $agentId,
                     'error'           => $e->getMessage(),
                 ]);
 
                 // 智能体处理失败，转人工
-                $this->requestTransferHuman($conversation, 'agent_fail', 'rule');
+                $this->requestTransferHuman($conversation);
                 $this->removeProcessedMessages($conversationId);
             }
 
         } catch (Exception $e) {
-            Log::error('Process conversation event failed', [
-                'conversation_id' => $conversationId,
-                'error'           => $e->getMessage(),
-                'trace'           => $e->getTraceAsString(),
-            ]);
+            Log::error('处理会话事件失败');
             throw $e;
         }
     }
@@ -178,32 +168,15 @@ class MessageProcessorService
     /**
      * 请求转人工
      */
-    protected function requestTransferHuman(array $conversation, string $reason, string $source) : void
+    protected function requestTransferHuman(ConversationData $conversation, ?CheckResult $checkResult = null) : void
     {
-        $conversationId = $conversation['conversation_id'] ?? '';
-        $channel        = $conversation['channel_type'] ?? '';
+        $conversationId = $conversation->conversationId;
 
-        // 更新会话状态
-        $this->conversationService->updateStatus($conversationId, 'pending_human', $reason, $source);
+        $this->conversationApplicationService->transfer($conversation->conversationId, ConversationStatus::HumanQueuing);
 
-        // 推入转人工队列
-        $transferData = [
-            'conversation_id' => $conversationId,
-            'channel'         => $channel,
-            'reason'          => $reason,
-            'source'          => $source,
-            'priority'        => ($conversation['is_vip'] ?? false) ? 'high' : 'normal',
-            'timestamp'       => time(),
-        ];
+        $this->messageQueue->publish(ConversationQueueType::Transfer, $conversation);
 
-        $queue = config('agent-processor.queue.transfer_requests_queue', 'transfer_requests');
-        $this->messageQueue->publish($queue, $transferData);
-
-        Log::info('Transfer human requested', [
-            'conversation_id' => $conversationId,
-            'reason'          => $reason,
-            'source'          => $source,
-        ]);
+        Log::info('转换人工处理');
     }
 
     /**

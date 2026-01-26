@@ -11,6 +11,8 @@ enum ConversationQueueType: string
     case Processor = 'processor'; // 处理器队列
 
     case Sending = 'sending'; // 发送者
+    // 转人工
+    case Transfer = 'transfer'; // 转换会话状态
 
     /**
      * 获取队列名称

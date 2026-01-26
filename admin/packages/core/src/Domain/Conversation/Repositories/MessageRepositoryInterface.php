@@ -1,6 +1,6 @@
 <?php
 
-namespace HuiZhiDa\Core\Domain\Conversation\Contracts;
+namespace HuiZhiDa\Core\Domain\Conversation\Repositories;
 
 use HuiZhiDa\Core\Domain\Conversation\DTO\ChannelMessage;
 use HuiZhiDa\Core\Domain\Conversation\DTO\Message;

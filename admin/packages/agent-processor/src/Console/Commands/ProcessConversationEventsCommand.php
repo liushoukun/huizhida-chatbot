@@ -40,7 +40,7 @@ class ProcessConversationEventsCommand extends Command
     public function __construct(
         protected ConversationApplicationService $conversationApplicationService,
         protected ConversationService $conversationService,
-        protected ConversationQueueInterface $messageQueue,
+        protected ConversationQueueInterface $mq,
         protected MessageProcessorService $processorService
     ) {
         parent::__construct();
@@ -61,14 +61,17 @@ class ProcessConversationEventsCommand extends Command
 
 
         // 订阅队列
-        $this->messageQueue->subscribe(ConversationQueueType::Processor, function ($eventData) use ($queue) {
+        $this->mq->subscribe(ConversationQueueType::Processor, function ($eventData) use ($queue) {
+
             try {
 
                 $this->info("收到事件: ".json_encode($eventData, JSON_UNESCAPED_UNICODE));
                 $event = ConversationEvent::from($eventData);
-
+                Log::withContext([
+                    'conversationId' => $event->conversationId,
+                ]);
                 // 防抖处理，只处理最后一次
-                if (!$this->messageQueue->isLastEvent($event)) {
+                if (!$this->mq->isLastEvent($event)) {
                     $this->info("非最后一次事件，忽略");
                     return;
                 }
@@ -77,7 +80,7 @@ class ProcessConversationEventsCommand extends Command
                 $this->processorService->processConversationEvent($event);
 
                 // 确认消息
-                $this->messageQueue->ack($event);
+                $this->mq->ack($event);
 
                 $this->processedCount++;
                 $this->info("处理完成，已处理: {$this->processedCount} 个事件");
@@ -97,7 +100,7 @@ class ProcessConversationEventsCommand extends Command
                 ]);
 
                 // 拒绝消息，重新入队
-                $this->messageQueue->nack($event);
+                $this->mq->nack($event);
             }
         });
 
