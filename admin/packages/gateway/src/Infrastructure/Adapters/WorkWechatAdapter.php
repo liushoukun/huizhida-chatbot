@@ -510,7 +510,9 @@ class WorkWechatAdapter implements ChannelAdapterInterface
             'open_kfid'       => $conversation->channelAppId,
             'external_userid' => $conversation->user->getID(),
             'service_state'   => 2,
-            //'servicer_userid' => null,
+            //'servicer_userid' =>null,
+            // 'service_state'   => 3,
+            // 'servicer_userid' =>'liuyongjian',
         ];
         Log::info('发起转接人工', $data);
         $response = $api->postJson('/cgi-bin/kf/service_state/trans', $data);
