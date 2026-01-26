@@ -7,7 +7,7 @@ use HuiZhiDa\AgentProcessor\Application\Services\MessageProcessorService;
 use HuiZhiDa\Core\Application\Services\ConversationApplicationService;
 use HuiZhiDa\Core\Domain\Conversation\DTO\ChannelMessage;
 use HuiZhiDa\Core\Domain\Conversation\DTO\ConversationData;
-use HuiZhiDa\Core\Domain\Conversation\DTO\ConversationEvent;
+use HuiZhiDa\Core\Domain\Conversation\DTO\Events\ConversationEvent;
 use HuiZhiDa\Core\Domain\Conversation\Enums\ContentType;
 use Illuminate\Console\Command;
 use RedJasmine\Support\Domain\Data\UserData;
