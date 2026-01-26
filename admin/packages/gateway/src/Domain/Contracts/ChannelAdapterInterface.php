@@ -4,6 +4,7 @@ namespace HuiZhiDa\Gateway\Domain\Contracts;
 
 use HuiZhiDa\AgentProcessor\Domain\Data\AgentChatResponse;
 use HuiZhiDa\Core\Domain\Conversation\DTO\ConversationAnswerData;
+use HuiZhiDa\Core\Domain\Conversation\DTO\ConversationData;
 use Illuminate\Http\Request;
 use HuiZhiDa\Core\Domain\Conversation\DTO\ChannelMessage;
 use Illuminate\Http\Response;
@@ -38,15 +39,9 @@ interface ChannelAdapterInterface
      */
     public function sendMessages(ConversationAnswerData $conversationAnswer) : void;
 
-    /**
-     * 转接到客服队列
-     */
-    public function transferToQueue(string $conversationId, string $priority = 'normal') : void;
 
-    /**
-     * 转接到指定客服
-     */
-    public function transferToSpecific(string $conversationId, string $servicerId, string $priority = 'normal') : void;
+
+    public function transferToHumanQueuing(ConversationData $conversation) : void;
 
     /**
      * 获取成功响应

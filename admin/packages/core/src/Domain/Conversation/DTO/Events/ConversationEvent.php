@@ -1,6 +1,6 @@
 <?php
 
-namespace HuiZhiDa\Core\Domain\Conversation\DTO;
+namespace HuiZhiDa\Core\Domain\Conversation\DTO\Events;
 
 use HuiZhiDa\Core\Domain\Conversation\Enums\ConversationQueueType;
 use Illuminate\Support\Str;

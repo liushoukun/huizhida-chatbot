@@ -6,7 +6,7 @@ use Exception;
 use HuiZhiDa\AgentProcessor\Application\Services\MessageProcessorService;
 use HuiZhiDa\Core\Application\Services\ConversationApplicationService;
 use HuiZhiDa\Core\Domain\Conversation\Contracts\ConversationQueueInterface;
-use HuiZhiDa\Core\Domain\Conversation\DTO\ConversationEvent;
+use HuiZhiDa\Core\Domain\Conversation\DTO\Events\ConversationEvent;
 use HuiZhiDa\Core\Domain\Conversation\Enums\ConversationQueueType;
 use HuiZhiDa\Core\Domain\Conversation\Services\ConversationService;
 use Illuminate\Console\Command;

@@ -2,21 +2,18 @@
 
 namespace HuiZhiDa\Core\Domain\Conversation\Services;
 
+use Exception;
 use HuiZhiDa\Core\Domain\Conversation\Contracts\ConversationQueueInterface;
+use HuiZhiDa\Core\Domain\Conversation\DTO\ChannelMessage;
 use HuiZhiDa\Core\Domain\Conversation\DTO\ConversationData;
-use HuiZhiDa\Core\Domain\Conversation\DTO\ConversationEvent;
+use HuiZhiDa\Core\Domain\Conversation\DTO\Events\ConversationEvent;
 use HuiZhiDa\Core\Domain\Conversation\DTO\Message;
-use HuiZhiDa\Core\Domain\Conversation\Jobs\ConverstionJob;
+use HuiZhiDa\Core\Domain\Conversation\Enums\ConversationStatus;
 use HuiZhiDa\Core\Domain\Conversation\Models\Conversation;
-use HuiZhiDa\Core\Domain\Conversation\Services\CommonService;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
-use HuiZhiDa\Core\Domain\Conversation\DTO\ChannelMessage;
-use HuiZhiDa\Core\Domain\Conversation\Enums\ConversationStatus;
-use Illuminate\Support\Str;
 use InvalidArgumentException;
-use Exception;
 
 class ConversationService extends CommonService
 {

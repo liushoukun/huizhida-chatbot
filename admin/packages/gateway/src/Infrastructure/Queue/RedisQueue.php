@@ -3,13 +3,12 @@
 namespace HuiZhiDa\Gateway\Infrastructure\Queue;
 
 use Exception;
-use HuiZhiDa\Core\Domain\Conversation\DTO\ConversationEvent;
+use HuiZhiDa\Core\Domain\Conversation\Contracts\ConversationQueueInterface;
+use HuiZhiDa\Core\Domain\Conversation\DTO\Events\ConversationEvent;
 use HuiZhiDa\Core\Domain\Conversation\Enums\ConversationQueueType;
 use HuiZhiDa\Core\Domain\Conversation\Services\CommonService;
-use Illuminate\Support\Facades\Cache;
-use Illuminate\Support\Facades\Redis;
 use Illuminate\Support\Facades\Log;
-use HuiZhiDa\Core\Domain\Conversation\Contracts\ConversationQueueInterface;
+use Illuminate\Support\Facades\Redis;
 use RedJasmine\Support\Foundation\Data\Data;
 
 class RedisQueue implements ConversationQueueInterface

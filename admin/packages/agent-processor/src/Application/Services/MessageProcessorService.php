@@ -3,20 +3,16 @@
 namespace HuiZhiDa\AgentProcessor\Application\Services;
 
 use Exception;
-use HuiZhiDa\AgentProcessor\Domain\Data\AgentChatResponse;
 use HuiZhiDa\Core\Application\Services\ConversationApplicationService;
 use HuiZhiDa\Core\Domain\Conversation\Contracts\ConversationQueueInterface;
 use HuiZhiDa\Core\Domain\Conversation\DTO\ConversationAnswerData;
 use HuiZhiDa\Core\Domain\Conversation\DTO\ConversationData;
+use HuiZhiDa\Core\Domain\Conversation\DTO\Events\ConversationEvent;
 use HuiZhiDa\Core\Domain\Conversation\Enums\ConversationQueueType;
 use HuiZhiDa\Core\Domain\Conversation\Enums\ConversationStatus;
 use HuiZhiDa\Core\Domain\Conversation\Services\ConversationService;
-use HuiZhiDa\Core\Domain\Conversation\Services\MessageService;
-use HuiZhiDa\Gateway\Infrastructure\Queue\RedisQueue;
-use HuiZhiDa\Core\Domain\Conversation\DTO\ConversationEvent;
-use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Redis;
+use Illuminate\Support\Facades\Log;
 
 /**
  * 消息处理器服务

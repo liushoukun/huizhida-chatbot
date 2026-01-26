@@ -2,7 +2,7 @@
 
 namespace HuiZhiDa\Core\Domain\Conversation\Contracts;
 
-use HuiZhiDa\Core\Domain\Conversation\DTO\ConversationEvent;
+use HuiZhiDa\Core\Domain\Conversation\DTO\Events\ConversationEvent;
 use HuiZhiDa\Core\Domain\Conversation\Enums\ConversationQueueType;
 use RedJasmine\Support\Foundation\Data\Data;
 

@@ -11,6 +11,7 @@ use HuiZhiDa\Core\Domain\Conversation\DTO\Contents\TextContent;
 use HuiZhiDa\Core\Domain\Conversation\DTO\Contents\VideoContent;
 use HuiZhiDa\Core\Domain\Conversation\DTO\Contents\VoiceContent;
 use HuiZhiDa\Core\Domain\Conversation\DTO\ConversationAnswerData;
+use HuiZhiDa\Core\Domain\Conversation\DTO\ConversationData;
 use HuiZhiDa\Core\Domain\Conversation\Enums\ContentType;
 use HuiZhiDa\Core\Domain\Conversation\Enums\MessageType;
 use HuiZhiDa\Core\Domain\Conversation\Enums\UserType;
@@ -498,15 +499,28 @@ class WorkWechatAdapter implements ChannelAdapterInterface
 
     }
 
-    public function transferToQueue(string $conversationId, string $priority = 'normal') : void
+    public function transferToHumanQueuing(ConversationData $conversation) : void
     {
         // TODO: 实现转接到客服队列
+        $api = $this->workWechatApp->getClient();
+        // /cgi-bin/kf/service_state/trans
+        // 文档
+        // https://developer.work.weixin.qq.com/document/path/94669#%E5%8F%98%E6%9B%B4%E4%BC%9A%E8%AF%9D%E7%8A%B6%E6%80%81
+        $data = [
+            'external_userid' => $conversation->user->getID(),
+            'open_kfid'       => $conversation->channelAppId,
+            'service_state'   => 2,
+            'servicer_userid' => null,
+
+        ];
+        Log::info('发起转接人工', $data);
+        $response = $api->postJson('/cgi-bin/kf/service_state/transfer', $data);
+        Log::info('发起转接人工返回', [
+            'status'  => $response->getStatusCode(),
+            'content' => $response->getContent()
+        ]);
     }
 
-    public function transferToSpecific(string $conversationId, string $servicerId, string $priority = 'normal') : void
-    {
-        // TODO: 实现转接到指定客服
-    }
 
     public function getSuccessResponse() : array
     {

@@ -7,6 +7,7 @@ use HuiZhiDa\AgentProcessor\Domain\Data\AgentChatResponse;
 use HuiZhiDa\Core\Domain\Conversation\DTO\ChannelMessage;
 use HuiZhiDa\Core\Domain\Conversation\DTO\Contents\TextContent;
 use HuiZhiDa\Core\Domain\Conversation\DTO\ConversationAnswerData;
+use HuiZhiDa\Core\Domain\Conversation\DTO\ConversationData;
 use HuiZhiDa\Core\Domain\Conversation\Enums\ContentType;
 use HuiZhiDa\Core\Domain\Conversation\Enums\MessageType;
 use HuiZhiDa\Gateway\Domain\Contracts\ChannelAdapterInterface;
@@ -184,7 +185,7 @@ class ApiAdapter implements ChannelAdapterInterface
         }
     }
 
-    public function transferToQueue(string $conversationId, string $priority = 'normal') : void
+    public function transferToHumanQueuing(ConversationData $conversation) : void
     {
         $apiUrl = $this->config['api_url'] ?? '';
 
@@ -204,26 +205,6 @@ class ApiAdapter implements ChannelAdapterInterface
         $this->sendApiRequest($apiUrl.'/transfer', $payload);
     }
 
-    public function transferToSpecific(string $conversationId, string $servicerId, string $priority = 'normal') : void
-    {
-        $apiUrl = $this->config['api_url'] ?? '';
-
-        if (empty($apiUrl)) {
-            throw new RuntimeException('API URL is not configured');
-        }
-
-        // 构建转接请求
-        $payload = [
-            'action'          => 'transfer',
-            'conversation_id' => $conversationId,
-            'mode'            => 'specific',
-            'servicer_id'     => $servicerId,
-            'priority'        => $priority,
-            'timestamp'       => time(),
-        ];
-
-        $this->sendApiRequest($apiUrl.'/transfer', $payload);
-    }
 
     public function getSuccessResponse() : array
     {
