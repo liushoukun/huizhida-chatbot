@@ -2,9 +2,9 @@
 
 namespace HuiZhiDa\Core\Infrastructure\Repositories;
 
-use HuiZhiDa\Core\Domain\Conversation\Repositories\MessageRepositoryInterface;
 use HuiZhiDa\Core\Domain\Conversation\DTO\ChannelMessage;
 use HuiZhiDa\Core\Domain\Conversation\DTO\Message;
+use HuiZhiDa\Core\Domain\Conversation\Repositories\MessageRepositoryInterface;
 use Illuminate\Support\Facades\Redis;
 
 class MessageRepository implements MessageRepositoryInterface
@@ -44,6 +44,23 @@ class MessageRepository implements MessageRepositoryInterface
 
         $redisConnection = config('gateway.redis.connection', 'default');
         Redis::connection($redisConnection)->zadd($key, $score, $messageData);
+    }
+
+    /**
+     *
+     * @param  string  $conversationId
+     * @param  ChannelMessage[]  $messages
+     *
+     * @return void
+     */
+    public function pendingMessages(string $conversationId, array $messages) : void
+    {
+        $key        = $this->generatePendingMessagesKey($conversationId);
+        $dictionary = [];
+        foreach ($messages as $message) {
+            $dictionary[$message->toJson()] = microtime(true);
+        }
+        Redis::zadd($key, $dictionary);
     }
 
     /**

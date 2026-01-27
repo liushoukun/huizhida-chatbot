@@ -7,7 +7,7 @@
     "vitepress-sidebar": "^1.31.1"
   },
   "scripts": {
-    "docs:dev": "vitepress dev",
+    "docs:dev": "vitepress dev --port=5188",
     "docs:build": "vitepress build",
     "docs:preview": "vitepress preview"
   }

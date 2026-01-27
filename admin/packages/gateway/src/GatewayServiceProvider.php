@@ -2,11 +2,11 @@
 
 namespace HuiZhiDa\Gateway;
 
-use Illuminate\Support\ServiceProvider;
-use Illuminate\Support\Facades\Route;
 use HuiZhiDa\Core\Domain\Conversation\Contracts\ConversationQueueInterface;
 use HuiZhiDa\Gateway\Infrastructure\Adapters\AdapterFactory;
 use HuiZhiDa\Gateway\Infrastructure\Queue\RedisQueue;
+use Illuminate\Support\Facades\Route;
+use Illuminate\Support\ServiceProvider;
 
 class GatewayServiceProvider extends ServiceProvider
 {
@@ -48,8 +48,8 @@ class GatewayServiceProvider extends ServiceProvider
         // 注册命令
         if ($this->app->runningInConsole()) {
             $this->commands([
-                \HuiZhiDa\Gateway\Console\Commands\MessageSenderCommand::class,
-                \HuiZhiDa\Gateway\Console\Commands\TransferExecutorCommand::class,
+                UI\Consoles\Commands\MessageSenderCommand::class,
+                UI\Consoles\Commands\TransferExecutorCommand::class,
             ]);
         }
     }

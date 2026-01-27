@@ -1,21 +1,16 @@
 <?php
 
-namespace HuiZhiDa\Gateway\Console\Commands;
+namespace HuiZhiDa\Gateway\UI\Consoles\Commands;
 
 use Exception;
-use HuiZhiDa\AgentProcessor\Domain\Data\AgentChatResponse;
 use HuiZhiDa\Core\Application\Services\ChannelApplicationService;
 use HuiZhiDa\Core\Application\Services\ConversationApplicationService;
+use HuiZhiDa\Core\Domain\Conversation\Contracts\ConversationQueueInterface;
 use HuiZhiDa\Core\Domain\Conversation\DTO\ConversationAnswerData;
 use HuiZhiDa\Core\Domain\Conversation\Enums\ConversationQueueType;
+use HuiZhiDa\Gateway\Infrastructure\Adapters\AdapterFactory;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Log;
-use HuiZhiDa\Gateway\Infrastructure\Adapters\AdapterFactory;
-use HuiZhiDa\Core\Domain\Conversation\Services\MessageService;
-use HuiZhiDa\Core\Domain\Conversation\Contracts\ConversationQueueInterface;
-use HuiZhiDa\Core\Domain\Conversation\DTO\ChannelMessage;
-use HuiZhiDa\Core\Domain\Conversation\Enums\MessageType;
-use InvalidArgumentException;
 use RedJasmine\Payment\Domain\Models\ChannelApp;
 use RedJasmine\Support\Domain\Queries\FindQuery;
 
@@ -26,7 +21,7 @@ class MessageSenderCommand extends Command
 
     public function __construct(
         protected AdapterFactory $adapterFactory,
-        protected MessageService $messageService,
+
         protected ConversationApplicationService $conversationApplicationService,
         protected ChannelApplicationService $channelApplicationService,
         protected ConversationQueueInterface $mq
@@ -55,7 +50,7 @@ class MessageSenderCommand extends Command
         try {
 
 
-            $channel      = $this->channelApplicationService->find(FindQuery::make($conversationAnswer->channelId));
+            $channel = $this->channelApplicationService->find(FindQuery::make($conversationAnswer->channelId));
 
 
             $adapter = $this->adapterFactory->get($channel->channel, $channel->config);

@@ -4,8 +4,10 @@ namespace HuiZhiDa\Core\Domain\Conversation\Models;
 
 use HuiZhiDa\Core\Domain\Conversation\Enums\ConversationStatus;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
+/**
+ * @property ConversationStatus $status
+ */
 class Conversation extends Model
 {
 
@@ -17,7 +19,7 @@ class Conversation extends Model
         ];
     }
 
-    public function updateStatus(ConversationStatus $status)
+    public function updateStatus(ConversationStatus $status) : void
     {
 
         $this->status = $status;

@@ -48,7 +48,7 @@ class Message extends Data
      * 消息类型
      * @var MessageType
      */
-    public MessageType $messageType = MessageType::Message;
+    public MessageType $messageType = MessageType::Chat;
 
     /**
      * 消息内容类型

@@ -4,10 +4,8 @@ namespace HuiZhiDa\Core;
 
 use HuiZhiDa\Core\Domain\Agent\Repositories\AgentRepositoryInterface;
 use HuiZhiDa\Core\Domain\Channel\Repositories\ChannelRepositoryInterface;
-use HuiZhiDa\Core\Domain\Conversation\Repositories\MessageRepositoryInterface;
 use HuiZhiDa\Core\Domain\Conversation\Repositories\ConversationRepositoryInterface;
-use HuiZhiDa\Core\Domain\Conversation\Services\ConversationService;
-use HuiZhiDa\Core\Domain\Conversation\Services\MessageService;
+use HuiZhiDa\Core\Domain\Conversation\Repositories\MessageRepositoryInterface;
 use HuiZhiDa\Core\Infrastructure\Repositories\AgentRepository;
 use HuiZhiDa\Core\Infrastructure\Repositories\ChannelRepository;
 use HuiZhiDa\Core\Infrastructure\Repositories\ConversationRepository;
@@ -37,11 +35,7 @@ class CoreServiceProvider extends ServiceProvider
 
         $this->app->bind(ConversationRepositoryInterface::class, ConversationRepository::class);
 
-        // 注册 Conversation 服务
-        $this->app->singleton(ConversationService::class);
 
-        // 注册 Message 服务
-        $this->app->singleton(MessageService::class);
     }
 
     /**

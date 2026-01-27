@@ -17,9 +17,9 @@ class ChannelMessage extends Message
 
     /**
      * 系统内渠道ID
-     * @var string|null
+     * @var int|null
      */
-    public ?string $channelId = null;
+    public ?int $channelId = null;
     /**
      * 渠道返回应用ID
      * @var string|null

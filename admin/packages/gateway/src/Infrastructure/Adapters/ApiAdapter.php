@@ -100,33 +100,6 @@ class ApiAdapter implements ChannelAdapterInterface
         return [$message];
     }
 
-    public function convertToChannelFormat(ChannelMessage $message) : array
-    {
-        $data = [
-            'message_id' => $message->messageId,
-            'timestamp'  => $message->timestamp,
-        ];
-
-        if ($message->conversationId) {
-            $data['conversation_id'] = $message->conversationId;
-        }
-
-        if ($message->contentType === ContentType::Text && $message->content instanceof TextContent) {
-            $data['content'] = [
-                'type' => 'text',
-                'text' => $message->content->text,
-            ];
-        } else {
-            // 默认文本消息
-            $data['content'] = [
-                'type' => 'text',
-                'text' => '',
-            ];
-        }
-
-        return $data;
-    }
-
     public function sendMessages(ConversationAnswerData $conversationAnswer) : void
     {
         $apiUrl = $this->config['api_url'] ?? '';
@@ -185,6 +158,33 @@ class ApiAdapter implements ChannelAdapterInterface
         }
     }
 
+    public function convertToChannelFormat(ChannelMessage $message) : array
+    {
+        $data = [
+            'message_id' => $message->messageId,
+            'timestamp'  => $message->timestamp,
+        ];
+
+        if ($message->conversationId) {
+            $data['conversation_id'] = $message->conversationId;
+        }
+
+        if ($message->contentType === ContentType::Text && $message->content instanceof TextContent) {
+            $data['content'] = [
+                'type' => 'text',
+                'text' => $message->content->text,
+            ];
+        } else {
+            // 默认文本消息
+            $data['content'] = [
+                'type' => 'text',
+                'text' => '',
+            ];
+        }
+
+        return $data;
+    }
+
     public function transferToHumanQueuing(ConversationData $conversation) : void
     {
         $apiUrl = $this->config['api_url'] ?? '';
@@ -204,57 +204,6 @@ class ApiAdapter implements ChannelAdapterInterface
 
         $this->sendApiRequest($apiUrl.'/transfer', $payload);
     }
-
-
-    public function getSuccessResponse() : array
-    {
-        return [
-            'success'   => true,
-            'code'      => 200,
-            'message'   => 'ok',
-            'timestamp' => time(),
-        ];
-    }
-
-    /**
-     * 映射消息类型
-     */
-    protected function mapMessageType(string $type) : MessageType
-    {
-        $map = [
-            'text'         => MessageType::Message,
-            'image'        => MessageType::Message,
-            'voice'        => MessageType::Message,
-            'video'        => MessageType::Message,
-            'file'         => MessageType::Message,
-            'link'         => MessageType::Message,
-            'location'     => MessageType::Message,
-            'event'        => MessageType::Event,
-            'notification' => MessageType::Notification,
-            'tip'          => MessageType::Tip,
-        ];
-
-        return $map[strtolower($type)] ?? MessageType::Message;
-    }
-
-    /**
-     * 映射内容类型
-     */
-    protected function mapContentType(string $type) : ContentType
-    {
-        $map = [
-            'text'  => ContentType::Text,
-            'image' => ContentType::Image,
-            'voice' => ContentType::Voice,
-            'video' => ContentType::Video,
-            'file'  => ContentType::File,
-            'card'  => ContentType::Card,
-            'event' => ContentType::Event,
-        ];
-
-        return $map[strtolower($type)] ?? ContentType::Text;
-    }
-
 
     /**
      * 发送 API 请求（用于转接等操作）
@@ -306,5 +255,52 @@ class ApiAdapter implements ChannelAdapterInterface
             ]);
             throw $e;
         }
+    }
+
+    public function getSuccessResponse() : array
+    {
+        return [
+            'success'   => true,
+            'code'      => 200,
+            'message'   => 'ok',
+            'timestamp' => time(),
+        ];
+    }
+
+    /**
+     * 映射消息类型
+     */
+    protected function mapMessageType(string $type) : MessageType
+    {
+        $map = [
+            'text'     => MessageType::Chat,
+            'image'    => MessageType::Chat,
+            'voice'    => MessageType::Chat,
+            'video'    => MessageType::Chat,
+            'file'     => MessageType::Chat,
+            'link'     => MessageType::Chat,
+            'location' => MessageType::Chat,
+            'event'    => MessageType::Event,
+        ];
+
+        return $map[strtolower($type)] ?? MessageType::Chat;
+    }
+
+    /**
+     * 映射内容类型
+     */
+    protected function mapContentType(string $type) : ContentType
+    {
+        $map = [
+            'text'  => ContentType::Text,
+            'image' => ContentType::Image,
+            'voice' => ContentType::Voice,
+            'video' => ContentType::Video,
+            'file'  => ContentType::File,
+            'card'  => ContentType::Card,
+            'event' => ContentType::Event,
+        ];
+
+        return $map[strtolower($type)] ?? ContentType::Text;
     }
 }

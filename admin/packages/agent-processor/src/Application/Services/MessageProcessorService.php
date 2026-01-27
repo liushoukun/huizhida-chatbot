@@ -10,7 +10,6 @@ use HuiZhiDa\Core\Domain\Conversation\DTO\ConversationData;
 use HuiZhiDa\Core\Domain\Conversation\DTO\Events\ConversationEvent;
 use HuiZhiDa\Core\Domain\Conversation\Enums\ConversationQueueType;
 use HuiZhiDa\Core\Domain\Conversation\Enums\ConversationStatus;
-use HuiZhiDa\Core\Domain\Conversation\Services\ConversationService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
@@ -23,7 +22,6 @@ class MessageProcessorService
     public function __construct(
         protected ConversationApplicationService $conversationApplicationService,
         protected ConversationQueueInterface $messageQueue,
-        protected ConversationService $conversationService,
         protected PreCheckService $preCheckService,
         protected AgentService $agentService
     ) {

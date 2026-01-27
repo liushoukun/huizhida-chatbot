@@ -117,16 +117,15 @@ class AgentService
         $answer->conversationId        = $conversation->conversationId;
         $answer->channelConversationId = $conversation->channelConversationId;
         $answer->channelId             = $conversation->channelId;
-        $answer->appId                 = $conversation->appId;
-        $answer->user                  = $conversation->user;
-        $answer->channelAppId          = $conversation->channelAppId;
+
+        $answer->user         = $conversation->user;
+        $answer->channelAppId = $conversation->channelAppId;
 
         // 返回信息
         $answer->agentConversationId = $response->agentConversationId;
         foreach ($response->messages as $message) {
             $channelMessage                        = ChannelMessage::from($message->toArray());
             $channelMessage->channelId             = $answer->channelId;
-            $channelMessage->appId                 = $answer->appId;
             $channelMessage->channelConversationId = $answer->channelConversationId;
             $channelMessage->channelAppId          = $answer->channelAppId;
             $answer->messages[]                    = $channelMessage;

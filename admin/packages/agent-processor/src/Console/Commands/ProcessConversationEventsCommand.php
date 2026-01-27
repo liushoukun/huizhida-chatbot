@@ -8,7 +8,6 @@ use HuiZhiDa\Core\Application\Services\ConversationApplicationService;
 use HuiZhiDa\Core\Domain\Conversation\Contracts\ConversationQueueInterface;
 use HuiZhiDa\Core\Domain\Conversation\DTO\Events\ConversationEvent;
 use HuiZhiDa\Core\Domain\Conversation\Enums\ConversationQueueType;
-use HuiZhiDa\Core\Domain\Conversation\Services\ConversationService;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Log;
 
@@ -39,7 +38,7 @@ class ProcessConversationEventsCommand extends Command
 
     public function __construct(
         protected ConversationApplicationService $conversationApplicationService,
-        protected ConversationService $conversationService,
+
         protected ConversationQueueInterface $mq,
         protected MessageProcessorService $processorService
     ) {

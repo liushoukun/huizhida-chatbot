@@ -6,21 +6,20 @@ use Exception;
 use HuiZhiDa\Core\Domain\Conversation\Contracts\ConversationQueueInterface;
 use HuiZhiDa\Core\Domain\Conversation\DTO\Events\ConversationEvent;
 use HuiZhiDa\Core\Domain\Conversation\Enums\ConversationQueueType;
-use HuiZhiDa\Core\Domain\Conversation\Services\CommonService;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Redis;
 use RedJasmine\Support\Foundation\Data\Data;
 
 class RedisQueue implements ConversationQueueInterface
 {
-    protected string        $connection;
-    protected array         $subscribers = [];
-    protected CommonService $commonService;
+    protected string $connection;
+    protected array  $subscribers = [];
+
 
     public function __construct(array $config = [])
     {
-        $this->connection    = $config['connection'] ?? 'default';
-        $this->commonService = app(CommonService::class);
+        $this->connection = $config['connection'] ?? 'default';
+
     }
 
     /**

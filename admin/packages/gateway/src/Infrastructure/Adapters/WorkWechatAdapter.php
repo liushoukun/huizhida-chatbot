@@ -14,7 +14,6 @@ use HuiZhiDa\Core\Domain\Conversation\DTO\ConversationAnswerData;
 use HuiZhiDa\Core\Domain\Conversation\DTO\ConversationData;
 use HuiZhiDa\Core\Domain\Conversation\Enums\ContentType;
 use HuiZhiDa\Core\Domain\Conversation\Enums\MessageType;
-use HuiZhiDa\Core\Domain\Conversation\Enums\UserType;
 use HuiZhiDa\Gateway\Domain\Contracts\ChannelAdapterInterface;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
@@ -154,7 +153,7 @@ class WorkWechatAdapter implements ChannelAdapterInterface
 
         // 解析发送者信息
         $message->sender = UserData::from([
-            'type'     => UserType::User->value,
+            'type'     => 'user',
             'id'       => $msgData['external_userid'],
             'nickname' => $msgData['nickname'] ?? '',
         ]);
@@ -170,21 +169,33 @@ class WorkWechatAdapter implements ChannelAdapterInterface
         return $message;
     }
 
-
-    protected function convertToWorkWechatMessage(ChannelMessage $channelMessage) : array
+    protected function mapMessageType(string $wecomType) : MessageType
     {
-        $message            = [];
-        $message['msgtype'] = $channelMessage->contentType->value;
-        if ($channelMessage->contentType === ContentType::Text) {
-            $message['text'] = [
-                'content' => $channelMessage->getContent()->text,
-            ];
-        }
+        $map = [
+            'text'     => MessageType::Chat,
+            'image'    => MessageType::Chat,
+            'voice'    => MessageType::Chat,
+            'video'    => MessageType::Chat,
+            'file'     => MessageType::Chat,
+            'location' => MessageType::Chat,
+            'link'     => MessageType::Chat,
+            'event'    => MessageType::Event,
+        ];
 
-        // TODO 转换更多消息
+        return $map[$wecomType] ?? MessageType::Chat;
+    }
 
-        return $message;
+    protected function mapContentType(string $wecomType) : ContentType
+    {
+        $map = [
+            'text'  => ContentType::Text,
+            'image' => ContentType::Image,
+            'voice' => ContentType::Voice,
+            'video' => ContentType::Video,
+            'file'  => ContentType::File,
+        ];
 
+        return $map[$wecomType] ?? ContentType::Text;
     }
 
     /**
@@ -253,68 +264,6 @@ class WorkWechatAdapter implements ChannelAdapterInterface
         }
         if (isset($msgData['image']['pic_height'])) {
             $content->height = (int) $msgData['image']['pic_height'];
-        }
-
-        return $content;
-    }
-
-    /**
-     * 解析语音消息
-     */
-    protected function parseVoiceContent(array $msgData) : VoiceContent
-    {
-        $content = new VoiceContent();
-        $mediaId = $msgData['voice']['media_id'] ?? '';
-
-        // 下载语音文件
-        $filePath = $this->downloadMedia($mediaId, 'voice');
-        if ($filePath) {
-            $content->url = Storage::url($filePath);
-        }
-
-        return $content;
-    }
-
-    /**
-     * 解析视频消息
-     */
-    protected function parseVideoContent(array $msgData) : VideoContent
-    {
-        $content = new VideoContent();
-        $mediaId = $msgData['video']['media_id'] ?? '';
-
-        // 下载视频文件
-        $filePath = $this->downloadMedia($mediaId, 'video');
-        if ($filePath) {
-            $content->url = Storage::url($filePath);
-        }
-
-        // 下载视频缩略图
-        $thumbMediaId = $msgData['video']['thumb_media_id'] ?? '';
-        if ($thumbMediaId) {
-            $thumbPath = $this->downloadMedia($thumbMediaId, 'image');
-            if ($thumbPath) {
-                $content->thumbUrl = Storage::url($thumbPath);
-            }
-        }
-
-        return $content;
-    }
-
-    /**
-     * 解析文件消息
-     */
-    protected function parseFileContent(array $msgData) : FileContent
-    {
-        $content = new FileContent();
-        $mediaId = $msgData['file']['media_id'] ?? '';
-
-        // 下载文件
-        $filePath = $this->downloadMedia($mediaId, 'file');
-        if ($filePath) {
-            $content->url       = Storage::url($filePath);
-            $content->filename  = basename($filePath);
-            $content->extension = pathinfo($filePath, PATHINFO_EXTENSION);
         }
 
         return $content;
@@ -406,23 +355,6 @@ class WorkWechatAdapter implements ChannelAdapterInterface
     }
 
     /**
-     * 将Content对象转换为数组
-     */
-    protected function contentToArray($content) : array
-    {
-        if (method_exists($content, 'toArray')) {
-            return $content->toArray();
-        }
-
-        // 手动转换为数组
-        $array = [];
-        foreach (get_object_vars($content) as $key => $value) {
-            $array[$key] = $value;
-        }
-        return $array;
-    }
-
-    /**
      * 根据Content-Type获取文件扩展名
      */
     protected function getExtensionFromContentType(string $contentType, string $defaultType) : string
@@ -453,6 +385,85 @@ class WorkWechatAdapter implements ChannelAdapterInterface
         ];
 
         return $defaults[$defaultType] ?? 'bin';
+    }
+
+    /**
+     * 解析语音消息
+     */
+    protected function parseVoiceContent(array $msgData) : VoiceContent
+    {
+        $content = new VoiceContent();
+        $mediaId = $msgData['voice']['media_id'] ?? '';
+
+        // 下载语音文件
+        $filePath = $this->downloadMedia($mediaId, 'voice');
+        if ($filePath) {
+            $content->url = Storage::url($filePath);
+        }
+
+        return $content;
+    }
+
+    /**
+     * 解析视频消息
+     */
+    protected function parseVideoContent(array $msgData) : VideoContent
+    {
+        $content = new VideoContent();
+        $mediaId = $msgData['video']['media_id'] ?? '';
+
+        // 下载视频文件
+        $filePath = $this->downloadMedia($mediaId, 'video');
+        if ($filePath) {
+            $content->url = Storage::url($filePath);
+        }
+
+        // 下载视频缩略图
+        $thumbMediaId = $msgData['video']['thumb_media_id'] ?? '';
+        if ($thumbMediaId) {
+            $thumbPath = $this->downloadMedia($thumbMediaId, 'image');
+            if ($thumbPath) {
+                $content->thumbUrl = Storage::url($thumbPath);
+            }
+        }
+
+        return $content;
+    }
+
+    /**
+     * 解析文件消息
+     */
+    protected function parseFileContent(array $msgData) : FileContent
+    {
+        $content = new FileContent();
+        $mediaId = $msgData['file']['media_id'] ?? '';
+
+        // 下载文件
+        $filePath = $this->downloadMedia($mediaId, 'file');
+        if ($filePath) {
+            $content->url       = Storage::url($filePath);
+            $content->filename  = basename($filePath);
+            $content->extension = pathinfo($filePath, PATHINFO_EXTENSION);
+        }
+
+        return $content;
+    }
+
+    /**
+     * 将Content对象转换为数组
+     */
+    protected function contentToArray($content) : array
+    {
+        if (method_exists($content, 'toArray')) {
+            return $content->toArray();
+        }
+
+        // 手动转换为数组
+        $array = [];
+        foreach (get_object_vars($content) as $key => $value) {
+            $array[$key] = $value;
+        }
+        return $array;
     }
 
     public function convertToChannelFormat(ChannelMessage $message) : array
@@ -499,6 +510,22 @@ class WorkWechatAdapter implements ChannelAdapterInterface
 
     }
 
+    protected function convertToWorkWechatMessage(ChannelMessage $channelMessage) : array
+    {
+        $message            = [];
+        $message['msgtype'] = $channelMessage->contentType->value;
+        if ($channelMessage->contentType === ContentType::Text) {
+            $message['text'] = [
+                'content' => $channelMessage->getContent()->text,
+            ];
+        }
+
+        // TODO 转换更多消息
+
+        return $message;
+
+    }
+
     public function transferToHumanQueuing(ConversationData $conversation) : void
     {
         // TODO: 实现转接到客服队列
@@ -518,10 +545,9 @@ class WorkWechatAdapter implements ChannelAdapterInterface
         $response = $api->postJson('/cgi-bin/kf/service_state/trans', $data);
         Log::info('发起转接人工返回', [
             'status'  => $response->getStatusCode(),
-            'content'  => $response->getContent(),
+            'content' => $response->getContent(),
         ]);
     }
-
 
     public function getSuccessResponse() : array
     {
@@ -529,34 +555,5 @@ class WorkWechatAdapter implements ChannelAdapterInterface
             'errcode' => 0,
             'errmsg'  => 'ok',
         ];
-    }
-
-    protected function mapMessageType(string $wecomType) : MessageType
-    {
-        $map = [
-            'text'     => MessageType::Message,
-            'image'    => MessageType::Message,
-            'voice'    => MessageType::Message,
-            'video'    => MessageType::Message,
-            'file'     => MessageType::Message,
-            'location' => MessageType::Message,
-            'link'     => MessageType::Message,
-            'event'    => MessageType::Event,
-        ];
-
-        return $map[$wecomType] ?? MessageType::Message;
-    }
-
-    protected function mapContentType(string $wecomType) : ContentType
-    {
-        $map = [
-            'text'  => ContentType::Text,
-            'image' => ContentType::Image,
-            'voice' => ContentType::Voice,
-            'video' => ContentType::Video,
-            'file'  => ContentType::File,
-        ];
-
-        return $map[$wecomType] ?? ContentType::Text;
     }
 }

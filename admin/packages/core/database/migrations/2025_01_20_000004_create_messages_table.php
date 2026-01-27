@@ -1,8 +1,5 @@
 <?php
 
-use HuiZhiDa\Core\Domain\Conversation\Enums\ContentType;
-use HuiZhiDa\Core\Domain\Conversation\Enums\MessageType;
-use HuiZhiDa\Core\Domain\Conversation\Enums\UserType;
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
@@ -29,7 +26,7 @@ return new class extends Migration {
             $table->text('raw_data')->nullable()->comment('原始数据');
 
             // 发送人
-            $table->string('sender_type', 32)->comment(UserType::comments('用户类型'));
+            $table->string('sender_type', 32)->comment('用户类型');
             $table->string('sender_id', 128)->index()->comment('用户ID');
             $table->string('sender_nickname', 100)->nullable()->comment('用户昵称');
             $table->string('sender_avatar', 255)->nullable()->comment('用户头像');

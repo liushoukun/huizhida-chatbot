@@ -8,6 +8,10 @@ enum ConversationQueueType: string
 {
     use EnumsHelper;
 
+
+    case Inputs = 'inputs'; // 输入队列
+    case Outputs = 'outputs'; // 输出队列
+
     case Processor = 'processor'; // 处理器队列
 
     case Sending = 'sending'; // 发送者

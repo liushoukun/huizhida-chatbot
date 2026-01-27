@@ -21,7 +21,10 @@ class ConversationData extends Data
     #[WithCast(EnumCast::class, ConversationStatus::class)]
     public ConversationStatus $status = ConversationStatus::Pending;
 
-
+    /**
+     * 渠道ID
+     * @var int
+     */
     public int $channelId;
 
 
@@ -32,11 +35,17 @@ class ConversationData extends Data
      * @var string|null
      */
     public ?string $agentConversationId = null;
-
+    /**
+     * 渠道应用ID
+     * @var string|null
+     */
+    public ?string $channelAppId = null;
+    /**
+     * 渠道会话ID
+     * @var string|null
+     */
     public ?string $channelConversationId = null;
 
-
-    public ?string $channelAppId = null;
 
     /**
      * @var UserInterface|null

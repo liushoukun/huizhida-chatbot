@@ -1,8 +1,7 @@
 <?php
 
-namespace HuiZhiDa\Gateway\Console\Commands;
+namespace HuiZhiDa\Gateway\UI\Consoles\Commands;
 
-use Exception;
 use HuiZhiDa\Core\Application\Services\ChannelApplicationService;
 use HuiZhiDa\Core\Application\Services\ConversationApplicationService;
 use HuiZhiDa\Core\Domain\Conversation\Contracts\ConversationQueueInterface;
@@ -10,7 +9,6 @@ use HuiZhiDa\Core\Domain\Conversation\DTO\Events\ConversationEvent;
 use HuiZhiDa\Core\Domain\Conversation\Enums\ConversationQueueType;
 use HuiZhiDa\Gateway\Infrastructure\Adapters\AdapterFactory;
 use Illuminate\Console\Command;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use InvalidArgumentException;
 

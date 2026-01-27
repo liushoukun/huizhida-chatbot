@@ -19,10 +19,10 @@ interface ChannelAdapterInterface
      */
     public function verifySignature(Request $request) : bool;
 
+
     /**
      * 解析渠道消息格式，转换为统一格式
-     */
-    /**
+     *
      * @param  Request  $request
      *
      * @return ChannelMessage[]
@@ -38,7 +38,6 @@ interface ChannelAdapterInterface
      * 发送消息到渠道
      */
     public function sendMessages(ConversationAnswerData $conversationAnswer) : void;
-
 
 
     public function transferToHumanQueuing(ConversationData $conversation) : void;

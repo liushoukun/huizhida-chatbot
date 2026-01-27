@@ -30,6 +30,8 @@ interface MessageRepositoryInterface
      */
     public function pending(ChannelMessage $message) : void;
 
+    public function pendingMessages(string $conversationId, array $messages) : void;
+
     /**
      * @param  string  $conversationId
      *

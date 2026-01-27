@@ -23,15 +23,10 @@ class ConversationEvent extends Data
     }
 
 
-    public ConversationQueueType $queue = ConversationQueueType::Processor;
+    public ConversationQueueType $queue = ConversationQueueType::Inputs;
 
     public string $conversationId;
 
     public int $timestamp;
-
-
-    public ?int $channelId = null;
-
-    public ?int $agentId = null;
 
 }

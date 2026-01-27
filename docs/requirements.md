@@ -1,4 +1,4 @@
-# 汇智答-智能客服平台 
+# 汇智答-智能客服平台
 
 ## 1. 文档信息
 
@@ -7,9 +7,10 @@
 | 项目名称 | 汇智答 (HuiZhiDa) |
 | 英文名称 | HuiZhiDa ChatBot |
 | 项目代号 | HZD |
-| 文档版本 | v2.2.0 |
+| 文档版本 | v2.3.0 |
 | 创建日期 | 2026-01-20 |
-| 文档状态 | 架构定稿 |
+| 更新日期 | 2026-01-27 |
+| 文档状态 | 架构优化 |
 | Slogan | 汇聚智能，有问必答 |
 
 ---
@@ -23,7 +24,7 @@
 **汇智答** 旨在构建一个统一的智能客服中枢平台，实现多平台消息的统一接入、智能处理和自动回复。
 
 > **汇智答** = **汇**聚 + **智**能 + 应**答**
-> 
+>
 > 汇聚智能，有问必答
 
 ### 2.2 项目目标
@@ -55,7 +56,7 @@
 
 ### 3.1 整体架构图
 
-系统采用 **三层微服务架构**，将不同职责分离到独立的服务中：
+系统采用 **双队列驱动的微服务架构**，通过 `inputs` 和 `outputs` 两个消息队列实现服务解耦，按会话维度聚合消息处理：
 
 ```mermaid
 flowchart TB
@@ -66,41 +67,58 @@ flowchart TB
         Others["其他渠道"]
     end
 
-    subgraph GatewayService["消息网关服务 (Golang)"]
-        subgraph Adapters["渠道适配器"]
-            WeChatAdapter["企微适配器"]
-            TaobaoAdapter["淘宝适配器"]
-            DouyinAdapter["抖音适配器"]
-            GenericAdapter["通用适配器"]
+    subgraph GatewayService["消息网关服务 (Gateway)"]
+        subgraph GatewayIn["接收层"]
+            Adapters["渠道适配器"]
+            Transformer["消息格式转换"]
+            ConversationWriter["会话记录"]
         end
-        Transformer["消息格式转换"]
-        ConversationWriter["会话记录"]
-        MsgSender["消息发送器"]
-    end
-
-    subgraph MessageQueue["消息队列 (MQ)"]
-        InQueue["incoming_messages<br/>待处理队列"]
-        OutQueue["outgoing_messages<br/>待发送队列"]
-        TransferQueue["transfer_requests<br/>转人工队列"]
-    end
-
-    subgraph ProcessorService["消息处理器服务 (Python)"]
-        Processor["消息处理器"]
-        PreCheck["规则预判断"]
         
-        subgraph AgentLayer["智能体层"]
-            AgentInterface["IAgentAdapter<br/>统一接口"]
-            subgraph Implementations["智能体实现"]
+        subgraph GatewayOut["发送层"]
+            OutputConsumer["Outputs消费者"]
+            MsgSender["消息发送器"]
+            StateHandler["状态处理器"]
+        end
+    end
+
+    subgraph MessageLayer["消息层"]
+        subgraph MessageStorage["消息存储 (Redis)"]
+            InputMessages["input-messages:{conv_id}<br/>ZSET 待处理消息"]
+        end
+        
+        subgraph MessageQueue["消息队列 (MQ)"]
+            InputsQueue["inputs<br/>输入事件队列"]
+            OutputsQueue["outputs<br/>输出事件队列"]
+        end
+    end
+
+    subgraph ProcessorService["核心处理器服务 (Processor)"]
+        InputConsumer["Inputs消费者"]
+        ConvLock["会话锁<br/>lock:{conv_id}"]
+        
+        subgraph CoreProcess["核心处理流程"]
+            FetchMessages["获取会话消息列表"]
+            
+            subgraph EventHandler["1️⃣ 事件处理层"]
+                HandleClose["外部结束对话"]
+                HandleStateChange["外部状态变更"]
+            end
+            
+            subgraph PreCheck["2️⃣ 预校验层"]
+                CheckTransferred["会话已转人工?"]
+                CheckKeyword["内容要求转人工?"]
+            end
+            
+            subgraph AgentLayer["3️⃣ 智能体处理层"]
+                AgentInterface["IAgentAdapter"]
                 LocalAgent["本地智能体"]
                 RemoteAgent["远程智能体"]
-                HybridAgent["组合智能体"]
             end
-        end
-        
-        subgraph AICapabilities["AI能力"]
-            RAG["FAQ检索<br/>LangChain"]
-            Intent["意图识别"]
-            Emotion["情绪分析"]
+            
+            subgraph PostProcess["4️⃣ 回复预处理层"]
+                CheckForceTransfer["强制转人工判断"]
+                PackageOutput["封装Output消息"]
+            end
         end
     end
 
@@ -108,143 +126,134 @@ flowchart TB
         Filament["Filament Admin"]
         AppMgr["应用管理"]
         ConfigMgr["配置管理"]
-        StatsMgr["数据统计"]
     end
 
     subgraph Storage["数据存储层"]
         MySQL[("MySQL<br/>主数据库")]
-        Redis2[("Redis<br/>缓存")]
-        MQ[("消息队列<br/>MQ")]
-        VectorDB[("向量数据库<br/>Chroma/Milvus")]
+        Redis[("Redis<br/>缓存/锁/消息")]
+        VectorDB[("向量数据库")]
     end
 
-    subgraph LocalAI["本地AI服务"]
-        Ollama["Ollama"]
+    subgraph AI["智能体服务"]
+        Ollama["本地模型<br/>Ollama"]
+        RemoteAI["远程平台<br/>OpenAI/Coze"]
     end
 
-    subgraph RemoteAI["远程智能体平台"]
-        OpenAI["OpenAI"]
-        Qwen["通义千问"]
-        Coze["Coze"]
-    end
+    %% 入站流程
+    Clients --> Adapters
+    Adapters --> Transformer --> ConversationWriter
+    ConversationWriter -->|"存储消息"| InputMessages
+    ConversationWriter -->|"发布事件"| InputsQueue
+    ConversationWriter --> MySQL
 
-    %% 客户端到网关
-    WeChat --> WeChatAdapter
-    Taobao --> TaobaoAdapter
-    Douyin --> DouyinAdapter
-    Others --> GenericAdapter
+    %% 核心处理流程
+    InputsQueue -->|"消费事件"| InputConsumer
+    InputConsumer --> ConvLock --> FetchMessages
+    FetchMessages -->|"获取消息"| InputMessages
+    FetchMessages --> EventHandler --> PreCheck --> AgentLayer --> PostProcess
+    AgentLayer --> AI
+    PostProcess -->|"发布事件"| OutputsQueue
 
-    %% 网关内部流程
-    Adapters --> Transformer
-    Transformer --> ConversationWriter
-    ConversationWriter --> InQueue
-
-    %% 队列到处理器
-    InQueue --> Processor
-    Processor --> PreCheck
-    PreCheck --> AgentLayer
-    AgentLayer --> AICapabilities
-
-    %% 处理器输出到队列
-    Processor --> OutQueue
-    Processor --> TransferQueue
-
-    %% 队列到网关发送
-    OutQueue --> MsgSender
-    TransferQueue --> MsgSender
-    MsgSender --> Clients
-
-    %% 智能体连接
-    LocalAgent --> Ollama
-    RemoteAgent --> RemoteAI
-    AICapabilities --> VectorDB
+    %% 出站流程
+    OutputsQueue -->|"消费事件"| OutputConsumer
+    OutputConsumer --> MsgSender --> Clients
+    OutputConsumer --> StateHandler --> MySQL
 
     %% 数据存储
     GatewayService --> MySQL
-    GatewayService --> Redis2
+    GatewayService --> Redis
     ProcessorService --> MySQL
-    ProcessorService --> Redis2
+    ProcessorService --> Redis
     AdminService --> MySQL
-    AdminService --> Redis2
 
     %% 样式定义
     classDef clientStyle fill:#E3F2FD,stroke:#1976D2,stroke-width:2px,color:#000
     classDef gatewayStyle fill:#FFF3E0,stroke:#F57C00,stroke-width:2px,color:#000
-    classDef queueStyle fill:#F3E5F5,stroke:#7B1FA2,stroke-width:2px,color:#000
+    classDef storageStyle fill:#F3E5F5,stroke:#7B1FA2,stroke-width:2px,color:#000
+    classDef queueStyle fill:#FCE4EC,stroke:#C2185B,stroke-width:2px,color:#000
     classDef processorStyle fill:#E8F5E9,stroke:#388E3C,stroke-width:2px,color:#000
     classDef adminStyle fill:#FCE4EC,stroke:#C2185B,stroke-width:2px,color:#000
-    classDef storageStyle fill:#E0F2F1,stroke:#00796B,stroke-width:3px,color:#000
+    classDef dbStyle fill:#E0F2F1,stroke:#00796B,stroke-width:3px,color:#000
     classDef aiStyle fill:#FFF9C4,stroke:#F9A825,stroke-width:2px,color:#000
 
     %% 应用样式
     class WeChat,Taobao,Douyin,Others clientStyle
-    class WeChatAdapter,TaobaoAdapter,DouyinAdapter,GenericAdapter,Transformer,ConversationWriter,MsgSender gatewayStyle
-    class InQueue,OutQueue,TransferQueue queueStyle
-    class Processor,PreCheck,LocalAgent,RemoteAgent,HybridAgent,AgentInterface,RAG,Intent,Emotion processorStyle
-    class Filament,AppMgr,ConfigMgr,StatsMgr adminStyle
-    class MySQL,Redis2,MQ,VectorDB storageStyle
-    class Ollama,OpenAI,Qwen,Coze aiStyle
+    class Adapters,Transformer,ConversationWriter,OutputConsumer,MsgSender,StateHandler gatewayStyle
+    class InputMessages storageStyle
+    class InputsQueue,OutputsQueue queueStyle
+    class InputConsumer,ConvLock,FetchMessages,HandleClose,HandleStateChange,CheckTransferred,CheckKeyword,AgentInterface,LocalAgent,RemoteAgent,CheckForceTransfer,PackageOutput processorStyle
+    class Filament,AppMgr,ConfigMgr adminStyle
+    class MySQL,Redis,VectorDB dbStyle
+    class Ollama,RemoteAI aiStyle
 ```
 
 ### 3.2 服务职责划分
 
 | 服务 | 技术栈 | 核心职责 |
 |------|--------|----------|
-| **消息网关** | Golang (Gin/Fiber) | 渠道回调接收、签名验证、消息格式转换、会话记录、消息入队、消息发送、转人工执行 |
-| **消息处理器** | Python (FastAPI) | 消息消费、规则预判断、智能体调用、AI能力集成（RAG/意图/情绪）、智能体适配器开发 |
-| **管理后台** | PHP Laravel + Filament | 应用管理、渠道配置、智能体配置、数据统计、系统监控 |
+| **消息网关 (Gateway)** | PHP Laravel | 渠道回调接收、签名验证、消息格式转换、会话记录、消息入队 (inputs)、消费输出队列 (outputs)、消息发送、状态同步 |
+| **核心处理器 (Processor)** | PHP Laravel | 消费输入队列 (inputs)、事件处理、规则预校验、智能体调用、回复预处理、发布到输出队列 (outputs) |
+| **管理后台 (Admin)** | PHP Laravel + Filament | 应用管理、渠道配置、智能体配置、数据统计、系统监控 |
 
 ### 3.3 技术栈
 
-| 服务 | 技术选型 | 说明 |
+| 组件 | 技术选型 | 说明 |
 |------|----------|------|
-| **消息网关** | Go + Gin/Fiber | 高并发消息处理，渠道回调接收 |
-| **消息处理器** | Python + FastAPI | AI生态丰富，智能体开发便捷 |
+| **消息网关** | PHP Laravel | 渠道适配器、消息转换、队列生产/消费 |
+| **核心处理器** | PHP Laravel | 消息处理、智能体调用、业务逻辑 |
 | **管理后台** | PHP Laravel + Filament | 快速开发管理界面，功能完善 |
-| **消息队列** | Redis Streams / RabbitMQ / Kafka | 服务间消息传递，可配置选择 |
+| **消息队列** | Redis Streams / RabbitMQ | 服务间消息传递，可配置选择 |
+| **消息存储** | Redis ZSET | 会话级消息聚合存储 |
+| **分布式锁** | Redis | 会话级并发控制 |
 | **数据库** | MySQL 8.0 | 持久化存储，事务支持 |
-| **缓存** | Redis | 会话缓存、配置缓存、分布式锁 |
+| **缓存** | Redis | 会话缓存、配置缓存 |
 | **向量数据库** | Chroma / Milvus | FAQ语义检索，知识库 |
-| **本地模型** | Ollama | 本地LLM推理，意图识别 |
-| **AI框架** | LangChain / LlamaIndex | RAG、对话编排 |
+| **本地模型** | Ollama | 本地LLM推理 |
 | **部署** | Docker + Docker Compose / K8s | 容器化部署 |
 
 ### 3.4 服务间通信
 
+系统采用 **双队列驱动** 模式，`inputs` 队列驱动消息处理，`outputs` 队列驱动消息发送：
+
 ```mermaid
 flowchart LR
-    subgraph Gateway["消息网关 (Go)"]
-        G1["接收回调"]
-        G2["发送消息"]
+    subgraph Gateway["消息网关"]
+        G1["接收回调<br/>(生产者)"]
+        G2["发送消息<br/>(消费者)"]
     end
 
-    subgraph Queue["消息队列 (MQ)"]
-        Q1["incoming_messages"]
-        Q2["outgoing_messages"]
-        Q3["transfer_requests"]
+    subgraph Storage["Redis 存储"]
+        S1["input-messages:{conv_id}<br/>ZSET"]
+        S2["lock:{conv_id}<br/>分布式锁"]
     end
 
-    subgraph Processor["消息处理器 (Python)"]
-        P1["消费消息"]
-        P2["智能体调用"]
+    subgraph Queue["消息队列"]
+        Q1["inputs<br/>输入事件队列"]
+        Q2["outputs<br/>输出事件队列"]
     end
 
-    subgraph Admin["管理后台 (Laravel)"]
+    subgraph Processor["核心处理器"]
+        P1["消费inputs<br/>(消费者)"]
+        P2["核心处理流程"]
+        P3["发布outputs<br/>(生产者)"]
+    end
+
+    subgraph Admin["管理后台"]
         A1["配置管理"]
     end
 
-    subgraph DB["共享存储"]
+    subgraph DB["数据库"]
         MySQL[("MySQL")]
-        Redis2[("Redis")]
     end
 
-    G1 -->|入队| Q1
-    Q1 -->|消费| P1
-    P1 --> P2
-    P2 -->|回复入队| Q2
-    P2 -->|转人工入队| Q3
-    Q2 -->|消费| G2
-    Q3 -->|消费| G2
+    G1 -->|"1.存储消息"| S1
+    G1 -->|"2.发布事件"| Q1
+    Q1 -->|"3.消费事件"| P1
+    P1 -->|"4.获取锁"| S2
+    P1 -->|"5.获取消息"| S1
+    P1 --> P2 --> P3
+    P3 -->|"6.发布事件"| Q2
+    Q2 -->|"7.消费事件"| G2
 
     Gateway <-->|读写| DB
     Processor <-->|读写| DB
@@ -252,17 +261,51 @@ flowchart LR
 
     %% 样式定义
     classDef gatewayStyle fill:#FFF3E0,stroke:#F57C00,stroke-width:2px,color:#000
-    classDef queueStyle fill:#F3E5F5,stroke:#7B1FA2,stroke-width:2px,color:#000
+    classDef storageStyle fill:#F3E5F5,stroke:#7B1FA2,stroke-width:2px,color:#000
+    classDef queueStyle fill:#FCE4EC,stroke:#C2185B,stroke-width:2px,color:#000
     classDef processorStyle fill:#E8F5E9,stroke:#388E3C,stroke-width:2px,color:#000
-    classDef adminStyle fill:#FCE4EC,stroke:#C2185B,stroke-width:2px,color:#000
+    classDef adminStyle fill:#E3F2FD,stroke:#1976D2,stroke-width:2px,color:#000
     classDef dbStyle fill:#E0F2F1,stroke:#00796B,stroke-width:3px,color:#000
 
     %% 应用样式
     class G1,G2 gatewayStyle
-    class Q1,Q2,Q3 queueStyle
-    class P1,P2 processorStyle
+    class S1,S2 storageStyle
+    class Q1,Q2 queueStyle
+    class P1,P2,P3 processorStyle
     class A1 adminStyle
-    class MySQL,Redis2 dbStyle
+    class MySQL dbStyle
+```
+
+**数据流时序**：
+
+```mermaid
+sequenceDiagram
+    participant C as 渠道
+    participant G as Gateway
+    participant R as Redis
+    participant IQ as inputs队列
+    participant P as Processor
+    participant OQ as outputs队列
+
+    Note over C,OQ: 入站流程
+    C->>G: 1. 渠道回调
+    G->>G: 2. 验签+转换
+    G->>R: 3. ZADD input-messages:{conv_id}
+    G->>IQ: 4. PUBLISH inputs事件
+    G-->>C: 5. 快速响应
+
+    Note over C,OQ: 处理流程
+    IQ->>P: 6. 消费inputs事件
+    P->>R: 7. SETNX lock:{conv_id}
+    P->>R: 8. ZRANGEBYSCORE input-messages:{conv_id}
+    P->>P: 9. 事件处理→预校验→智能体→回复预处理
+    P->>R: 10. ZREMRANGEBYSCORE (删除已处理)
+    P->>R: 11. DEL lock:{conv_id}
+    P->>OQ: 12. PUBLISH outputs事件
+
+    Note over C,OQ: 出站流程
+    OQ->>G: 13. 消费outputs事件
+    G->>C: 14. 发送消息/状态同步
 ```
 
 **支持的消息中间件**：
@@ -271,114 +314,128 @@ flowchart LR
 |--------|----------|------|
 | **Redis Streams** | 小规模/开发测试 | 简单易用，低延迟 |
 | **RabbitMQ** | 中等规模/生产环境 | 功能丰富，可靠性高 |
-| **Kafka** | 大规模/高吞吐 | 高吞吐，持久化强 |
 
-**队列定义**：
+### 3.5 核心数据结构定义
 
-| 队列名 | 方向 | 消息内容 | 说明 |
-|--------|------|----------|------|
-| `conversation_events` | Gateway → Processor | 会话事件消息 | 包含会话ID，触发批量处理 |
-| `incoming_messages` | Gateway → Processor | 统一格式消息 | 待处理的用户消息（已废弃，改用conversation_events） |
-| `outgoing_messages` | Processor → Gateway | 回复消息 | 智能体回复，需发送到渠道 |
-| `transfer_requests` | Processor → Gateway | 转人工请求 | 需调用渠道转人工API |
+#### 3.5.1 队列定义
 
-**Redis ZSET存储**：
+| 队列名 | 方向 | 说明 |
+|--------|------|------|
+| `inputs` | Gateway → Processor | 输入事件通知队列，触发消息处理 |
+| `outputs` | Processor → Gateway | 输出事件队列，包含完整的回复/状态变更消息 |
+
+#### 3.5.2 Redis 存储结构
 
 | Key格式 | 数据结构 | 说明 |
 |---------|----------|------|
-| `conversation:messages:{conversation_id}` | ZSET | 会话待处理消息集合，score为时间戳，value为消息JSON |
+| `input-messages:{conversation_id}` | ZSET | 会话待处理消息集合，score=时间戳，value=消息JSON |
+| `lock:conversation:{conversation_id}` | STRING | 会话处理分布式锁，防止并发处理 |
 
-**MQ 抽象接口**：
+#### 3.5.3 消息 DTO 定义
 
-```python
-# Python MQ 接口
-from abc import ABC, abstractmethod
-from typing import Any, AsyncIterator
+**会话 DTO (ConversationDTO)**：
 
-class MessageQueue(ABC):
-    """消息队列抽象接口"""
-    
-    @abstractmethod
-    async def publish(self, queue: str, message: Any) -> None:
-        """发布消息到队列"""
-        pass
-    
-    @abstractmethod
-    async def subscribe(self, queue: str) -> AsyncIterator[Any]:
-        """订阅队列消息"""
-        pass
-    
-    @abstractmethod
-    async def ack(self, message: Any) -> None:
-        """确认消息消费"""
-        pass
-    
-    @abstractmethod
-    async def nack(self, message: Any) -> None:
-        """拒绝消息，重新入队"""
-        pass
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| conversationId | string | 会话唯一ID |
+| appId | string | 应用ID |
+| channel | string | 渠道类型 (wecom/taobao/douyin) |
+| channelId | string | 渠道配置ID |
+| user | UserInfo | 用户信息 |
+| status | string | 会话状态 (active/transferred/closed) |
+| agentId | int? | 绑定智能体ID |
+| context | array | 会话上下文 |
+| transferReason | string? | 转人工原因 |
+| transferSource | string? | 转人工来源 (rule/agent) |
+| createdAt | DateTime | 创建时间 |
+| updatedAt | DateTime | 更新时间 |
 
-# 具体实现
-class RedisMQ(MessageQueue): ...
-class RabbitMQ(MessageQueue): ...
-class KafkaMQ(MessageQueue): ...
-```
+**消息 DTO (MessageDTO)**：
 
-```go
-// Go MQ 接口
-type MessageQueue interface {
-    Publish(queue string, message interface{}) error
-    Subscribe(queue string) <-chan Message
-    Ack(message Message) error
-    Nack(message Message) error
-    Close() error
-}
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| messageId | string | 消息唯一ID |
+| conversationId | string | 会话ID |
+| type | string | 消息类型 (message/event) |
+| direction | string | 消息方向 (in/out) |
+| messageType | string | 内容类型 (text/image/voice/event) |
+| content | array | 消息内容 |
+| timestamp | int | 时间戳 |
+| metadata | array | 扩展元数据 |
 
-// 具体实现
-type RedisMQ struct { ... }
-type RabbitMQ struct { ... }
-type KafkaMQ struct { ... }
-```
-
-**消息格式示例**：
+**输入事件消息 (inputs 队列)**：
 
 ```json
-// incoming_messages
 {
-  "message_id": "msg_001",
+  "type": "conversation_message",
   "conversation_id": "conv_001",
   "app_id": "app_001",
   "channel": "wecom",
-  "content": { "text": "你好" },
   "timestamp": 1705747200000
 }
+```
 
-// outgoing_messages
+**输出事件消息 (outputs 队列)**：
+
+```json
 {
-  "message_id": "reply_001",
+  "type": "reply",
   "conversation_id": "conv_001",
   "channel": "wecom",
-  "reply": "您好，请问有什么可以帮您？",
-  "reply_type": "text"
+  "messages": [
+    {
+      "message_type": "text",
+      "content": { "text": "您好，请问有什么可以帮您？" }
+    }
+  ],
+  "timestamp": 1705747201000
 }
+```
 
-// transfer_requests
+```json
 {
+  "type": "transfer_human",
   "conversation_id": "conv_001",
   "channel": "wecom",
   "reason": "用户请求转人工",
   "source": "rule",
-  "priority": "normal"
+  "priority": "normal",
+  "timestamp": 1705747201000
 }
 ```
+
+```json
+{
+  "type": "close_conversation",
+  "conversation_id": "conv_001",
+  "channel": "wecom",
+  "reason": "会话超时",
+  "timestamp": 1705747201000
+}
+```
+
+#### 3.5.4 MQ 抽象接口
+
+消息队列接口定义，支持多种实现（Redis Streams、RabbitMQ等）：
+
+| 方法 | 说明 |
+|------|------|
+| `publish(string $queue, array $message): void` | 发布消息到队列 |
+| `consume(string $queue, callable $handler): void` | 消费队列消息 |
+| `ack(string $messageId): void` | 确认消息消费 |
+| `nack(string $messageId): void` | 拒绝消息，重新入队 |
+
+**实现类**：
+- `RedisStreamQueue` - Redis Streams 实现
+- `RabbitMQQueue` - RabbitMQ 实现
 
 ---
 
 ## 4. 功能需求
 
-### 4.1 消息网关模块 (Golang)
+### 4.1 消息网关模块 (Gateway)
 
-消息网关是系统的入口服务，使用 **Golang** 开发，负责与各客服渠道的直接交互。
+消息网关是系统的入口和出口服务，负责与各客服渠道的直接交互，同时消费 outputs 队列处理出站消息。
 
 #### 4.1.1 核心职责
 
@@ -386,11 +443,12 @@ type KafkaMQ struct { ... }
 |------|------|
 | **渠道回调接收** | 接收各渠道推送的客服消息 |
 | **签名验证** | 验证渠道请求的合法性 |
-| **消息格式转换** | 将渠道消息转为统一格式 |
-| **会话记录** | 创建/更新会话信息 |
-| **消息入队** | 将待处理消息推入消息队列 |
-| **消息发送** | 消费回复队列，调用渠道API发送 |
-| **转人工执行** | 消费转人工队列，调用渠道转人工API |
+| **消息格式转换** | 将渠道消息转为统一格式 (MessageDTO) |
+| **会话管理** | 创建/更新会话信息 |
+| **消息入队** | 将消息存入 Redis ZSET，发布事件到 inputs 队列 |
+| **消费 outputs** | 消费输出队列，根据消息类型处理 |
+| **消息发送** | 调用渠道API发送回复消息 |
+| **状态同步** | 处理会话状态变更（转人工、关闭会话等） |
 
 #### 4.1.2 渠道回调接收
 
@@ -414,239 +472,149 @@ POST /api/callback/{channel}/{app_id}
 
 消息回调处理采用**两步处理机制**，优化连续消息的处理效率：
 
-1. **第一步**：将消息推送到以会话ID为key的Redis ZSET中，表示该会话有待处理消息
-2. **第二步**：推送事件消息到队列（包含会话ID），触发消息处理器批量处理该会话的所有未处理消息
-
-这样当用户连续发送多条消息时，消息处理器只需要处理一次，一次性获取该会话的所有未处理消息并统一发送到智能体。
+1. **第一步**：将消息推送到以会话ID为key的Redis ZSET中 (`input-messages:{conversation_id}`)
+2. **第二步**：推送事件消息到 `inputs` 队列，触发核心处理器批量处理该会话的所有未处理消息
 
 ```mermaid
 sequenceDiagram
-    participant P as 客服渠道
-    participant G as 消息网关(Go)
-    participant R as Redis ZSET
-    participant Q as 消息队列(MQ)
-    participant S as MySQL/Redis
+    participant C as 客服渠道
+    participant G as Gateway
+    participant R as Redis
+    participant Q as inputs队列
+    participant DB as MySQL
 
-    P->>G: POST /callback/{channel}/{app_id}
+    C->>G: POST /callback/{channel}/{app_id}
     activate G
-    G->>G: 验证签名/Token
-    G->>G: 解析渠道消息格式
-    G->>G: 转换为统一格式
-    G->>S: 创建/更新会话
-    activate S
-    S-->>G: 会话信息
-    deactivate S
-    G->>S: 保存消息记录
-    activate S
-    S-->>G: 保存成功
-    deactivate S
+    G->>G: 1. 验证签名/Token
+    G->>G: 2. 解析渠道消息格式
+    G->>G: 3. 转换为 MessageDTO
     
-    Note over G,R: 第一步：推送到会话ZSET
-    G->>R: ZADD conversation:{id}:messages<br/>(消息数据, 时间戳)
+    G->>DB: 4. 创建/更新会话
+    activate DB
+    DB-->>G: 会话信息
+    deactivate DB
+    
+    G->>DB: 5. 保存消息记录
+    activate DB
+    DB-->>G: 保存成功
+    deactivate DB
+    
+    Note over G,R: 第一步：存储到会话 ZSET
+    G->>R: 6. ZADD input-messages:{conv_id}<br/>(消息JSON, 时间戳)
     activate R
     R-->>G: 添加成功
     deactivate R
     
-    Note over G,Q: 第二步：推送事件消息
-    G->>Q: 推入 conversation_events 队列<br/>(type, conversation_id)
+    Note over G,Q: 第二步：发布输入事件
+    G->>Q: 7. PUBLISH inputs<br/>{type, conversation_id}
     activate Q
-    Q-->>G: 入队成功
+    Q-->>G: 发布成功
     deactivate Q
     
-    G-->>P: 200 OK (快速响应)
+    G-->>C: 8. 200 OK (快速响应)
     deactivate G
 
-    Note over P,G: 快速响应，异步处理
-    Note over G,R: 会话消息聚合
-    Note over G,Q: 事件触发批量处理
+    Note over C,Q: 快速响应，异步处理
 ```
 
-**Go代码示例**：
+**处理步骤**：
 
-```go
-// 渠道回调处理 - Gin框架
-func (h *CallbackHandler) HandleCallback(c *gin.Context) {
-    channel := c.Param("channel")
-    appID := c.Param("app_id")
-    
-    // 1. 获取渠道适配器
-    adapter, err := h.adapterFactory.Get(channel)
-    if err != nil {
-        c.JSON(400, gin.H{"error": "unsupported channel"})
-        return
-    }
-    
-    // 2. 验证签名
-    if !adapter.VerifySignature(c.Request) {
-        c.JSON(403, gin.H{"error": "invalid signature"})
-        return
-    }
-    
-    // 3. 解析并转换消息
-    rawData, _ := io.ReadAll(c.Request.Body)
-    message, err := adapter.ParseMessage(rawData)
-    if err != nil {
-        c.JSON(400, gin.H{"error": "parse error"})
-        return
-    }
-    message.AppID = appID
-    message.Channel = channel
-    
-    // 4. 更新会话
-    conversation, err := h.conversationService.GetOrCreate(message)
-    if err != nil {
-        c.JSON(500, gin.H{"error": "conversation error"})
-        return
-    }
-    message.ConversationID = conversation.ID
-    
-    // 5. 保存消息记录
-    h.messageService.Save(message)
-    
-    // 6. 第一步：将消息推送到以会话ID为key的Redis ZSET中
-    key := fmt.Sprintf("conversation:messages:%s", conversation.ID)
-    messageData, _ := json.Marshal(message)
-    score := float64(time.Now().UnixNano()) / 1e9 // 微秒时间戳
-    redis.ZAdd(key, score, messageData)
-    
-    // 7. 第二步：推送事件消息到队列，包含会话ID
-    eventMessage := map[string]interface{}{
-        "type": "conversation_message",
-        "conversation_id": conversation.ID,
-        "timestamp": time.Now().Unix(),
-    }
-    h.mq.Publish("conversation_events", eventMessage)
-    
-    // 8. 快速响应渠道
-    c.JSON(200, adapter.GetSuccessResponse())
-}
-```
+1. 获取渠道适配器并验证签名
+2. 解析并转换消息格式为统一 DTO
+3. 创建/更新会话记录
+4. 保存消息记录到数据库
+5. 存储消息到 Redis ZSET (`input-messages:{conversation_id}`)
+6. 发布输入事件到 `inputs` 队列
+7. 快速响应渠道（200 OK）
 
-#### 4.1.3 消息发送（消费回复队列）
+#### 4.1.3 消费 outputs 队列
 
-消息网关负责消费 `outgoing_messages` 队列，将智能体回复发送到对应渠道。
+Gateway 负责消费 `outputs` 队列，根据消息类型执行不同的操作：
+
+| 消息类型 | 操作 |
+|----------|------|
+| `reply` | 调用渠道API发送回复消息 |
+| `transfer_human` | 执行转人工流程 |
+| `close_conversation` | 执行关闭会话流程 |
+| `state_change` | 同步会话状态到渠道 |
 
 ```mermaid
 sequenceDiagram
-    participant Q as 消息队列(MQ)
-    participant G as 消息网关(Go)
-    participant P as 客服渠道
-    participant S as MySQL
+    participant Q as outputs队列
+    participant G as Gateway
+    participant C as 客服渠道
+    participant DB as MySQL
 
     loop 持续消费
-        Q->>G: 消费 outgoing_messages
+        Q->>G: 消费 outputs 事件
         activate G
-        G->>G: 获取渠道适配器
-        G->>G: 转换为渠道消息格式
-        G->>P: 调用渠道发送API
-        activate P
-        P-->>G: 发送结果
-        deactivate P
-        G->>S: 更新消息发送状态
-        activate S
-        S-->>G: 更新成功
-        deactivate S
+        
+        alt type = reply
+            G->>G: 获取渠道适配器
+            G->>G: 转换为渠道消息格式
+            G->>C: 调用渠道发送API
+            C-->>G: 发送结果
+            G->>DB: 保存发送消息记录
+            
+        else type = transfer_human
+            G->>G: 获取渠道适配器
+            G->>C: 发送转人工提示消息
+            G->>C: 调用渠道转人工API
+            C-->>G: 转人工结果
+            G->>DB: 更新会话状态
+            
+        else type = close_conversation
+            G->>G: 获取渠道适配器
+            G->>C: 调用渠道关闭会话API (如有)
+            G->>DB: 更新会话状态为closed
+        end
+        
+        G->>Q: ACK 确认消费
         deactivate G
     end
-
-    Note over Q,G: 异步消费，高并发处理
 ```
 
-```go
-// 消息发送消费者 (通过 MQ 接口消费)
-func (c *MessageSender) Start(ctx context.Context) {
-    // 订阅 outgoing_messages 队列
-    msgChan := c.mq.Subscribe("outgoing_messages")
-    
-    for {
-        select {
-        case <-ctx.Done():
-            return
-        case msg := <-msgChan:
-            // 获取适配器并发送
-            adapter, _ := c.adapterFactory.Get(msg.Channel)
-            channelMsg := adapter.ConvertToChannelFormat(msg)
-            
-            if err := adapter.SendMessage(channelMsg); err != nil {
-                // 发送失败，重新入队或记录
-                c.handleSendError(msg, err)
-            } else {
-                // 更新发送状态
-                c.messageService.UpdateStatus(msg.ID, "sent")
-                c.mq.Ack(msg)  // 确认消费
-            }
-        }
-    }
-}
-```
+**处理逻辑**：
 
-#### 4.1.4 转人工执行（消费转人工队列）
-
-```go
-// 转人工执行消费者 (通过 MQ 接口消费)
-func (c *TransferExecutor) Start(ctx context.Context) {
-    // 订阅 transfer_requests 队列
-    reqChan := c.mq.Subscribe("transfer_requests")
-    
-    for {
-        select {
-        case <-ctx.Done():
-            return
-        case req := <-reqChan:
-            // 获取适配器
-            adapter, _ := c.adapterFactory.Get(req.Channel)
-            
-            // 发送提示消息
-            tipMsg := c.config.GetTransferTipMessage()
-            adapter.SendMessage(req.ConversationID, tipMsg)
-            
-            // 调用渠道转人工API
-            if err := adapter.TransferToHuman(req); err != nil {
-                c.handleTransferError(req, err)
-            } else {
-                c.mq.Ack(req)  // 确认消费
-            }
-            
-            // 更新会话状态
-            c.conversationService.UpdateStatus(req.ConversationID, "pending_human", req.Reason)
-        }
-    }
-}
-```
+- **reply 类型**：转换为渠道消息格式，调用渠道API发送，保存发送记录
+- **transfer_human 类型**：发送转人工提示消息，调用渠道转人工API，更新会话状态
+- **close_conversation 类型**：调用渠道关闭会话API（如支持），更新会话状态为 closed
 
 #### 4.1.5 统一消息格式
 
-**消息结构定义**（Go struct）：
+**消息结构定义**：
 
-```go
-type UnifiedMessage struct {
-    MessageID         string            `json:"message_id"`
-    AppID             string            `json:"app_id"`
-    Channel           string            `json:"channel"`
-    ChannelMessageID string            `json:"channel_message_id"`
-    ConversationID    string            `json:"conversation_id"`
-    User              UserInfo          `json:"user"`
-    MessageType       string            `json:"message_type"`
-    Content           MessageContent    `json:"content"`
-    Timestamp         int64             `json:"timestamp"`
-    RawData           json.RawMessage   `json:"raw_data,omitempty"`
-}
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| message_id | string | 消息唯一ID |
+| app_id | string | 应用ID |
+| channel | string | 渠道类型 |
+| channel_message_id | string | 渠道消息ID |
+| conversation_id | string | 会话ID |
+| user | UserInfo | 用户信息 |
+| message_type | string | 消息类型 |
+| content | MessageContent | 消息内容 |
+| timestamp | int64 | 时间戳 |
+| raw_data | json? | 原始数据（可选） |
 
-type UserInfo struct {
-    ChannelUserID string   `json:"channel_user_id"`
-    Nickname       string   `json:"nickname"`
-    Avatar         string   `json:"avatar"`
-    IsVIP          bool     `json:"is_vip"`
-    Tags           []string `json:"tags"`
-}
+**UserInfo 结构**：
 
-type MessageContent struct {
-    Text      string                 `json:"text,omitempty"`
-    MediaURL  string                 `json:"media_url,omitempty"`
-    MediaType string                 `json:"media_type,omitempty"`
-    Extra     map[string]interface{} `json:"extra,omitempty"`
-}
-```
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| channel_user_id | string | 渠道用户ID |
+| nickname | string | 用户昵称 |
+| avatar | string | 头像URL |
+| is_vip | bool | 是否VIP用户 |
+| tags | []string | 用户标签 |
+
+**MessageContent 结构**：
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| text | string? | 文本内容 |
+| media_url | string? | 媒体URL |
+| media_type | string? | 媒体类型 |
+| extra | object? | 扩展信息 |
 
 **JSON格式示例**：
 
@@ -773,124 +741,140 @@ stateDiagram-v2
 
 ---
 
-### 4.3 消息处理器模块 (Python)
+### 4.3 核心处理器模块 (Processor)
 
-消息处理器是系统的核心AI处理组件，使用 **Python + FastAPI** 开发，充分利用Python丰富的AI生态。
+核心处理器是系统的消息处理中枢，消费 `inputs` 队列，按会话维度批量处理消息，发布结果到 `outputs` 队列。
 
 #### 4.3.1 功能描述
 
 **核心职责**：
-- 消费消息队列中的待处理消息
-- 获取会话上下文
-- **规则预判断**：在调用智能体前进行快速规则匹配
-- 调用智能体层处理消息（利用LangChain/LlamaIndex等AI框架）
-- 将回复消息推入发送队列
-- 将转人工请求推入转人工队列
+- 消费 `inputs` 队列中的事件消息
+- 获取会话级分布式锁，防止并发处理
+- 从 Redis ZSET 获取会话的所有未处理消息
+- **1️⃣ 事件处理**：处理 event 类型消息（结束对话、状态变更等）
+- **2️⃣ 预校验**：对 message 类型消息进行规则预判断
+- **3️⃣ 智能体调用**：调用智能体处理消息
+- **4️⃣ 回复预处理**：判断是否强制转人工
+- 发布处理结果到 `outputs` 队列
 
-**Python技术优势**：
-- LangChain/LlamaIndex 原生支持
-- 丰富的AI/ML库支持
-- OpenAI/Ollama SDK 完整
-- 向量数据库集成便捷
-- 异步支持好（FastAPI + asyncio）
-
-#### 4.3.2 转人工判断的分层协作
-
-转人工判断采用 **规则预判断 + 智能体建议 + 核心层执行** 的分层协作模式：
+#### 4.3.2 核心处理流程
 
 ```mermaid
 flowchart TD
-    A[用户消息] --> B[核心处理层]
+    A["消费 inputs 队列"] --> B["获取 conversation_id"]
+    B --> C["获取会话锁<br/>SETNX lock:conversation:{conv_id}"]
+    C --> D{获取锁成功?}
+    D -->|否| E["稍后重试"]
+    D -->|是| F["ZRANGEBYSCORE<br/>input-messages:{conv_id}"]
     
-    B --> C{规则预判断}
+    F --> G{有未处理消息?}
+    G -->|否| H["释放锁，跳过"]
+    G -->|是| I["解析消息列表"]
     
-    C -->|关键词命中| D[直接转人工]
-    C -->|会话已转人工| E[跳过智能体,等待人工]
-    C -->|智能体异常/超时| D
-    C -->|正常| F[调用智能体]
+    I --> J["1️⃣ 事件处理层"]
     
-    F --> G[智能体处理]
-    G --> H{智能体返回}
+    subgraph EventLayer["事件处理层 (event 类型)"]
+        J --> J1{消息类型?}
+        J1 -->|event:close| J2["处理关闭会话"]
+        J1 -->|event:state_change| J3["同步状态变更"]
+        J1 -->|message| J4["继续处理"]
+        J2 --> JOut["发布 close_conversation<br/>到 outputs"]
+        J3 --> J4
+    end
     
-    H -->|should_transfer=true| I[核心层执行转人工]
-    H -->|should_transfer=false| J[核心层发送回复]
+    J4 --> K["2️⃣ 预校验层"]
     
-    D --> K[执行转人工操作]
-    I --> K
+    subgraph PreCheckLayer["预校验层 (message 类型)"]
+        K --> K1{会话已转人工?}
+        K1 -->|是| K2["跳过处理"]
+        K1 -->|否| K3{内容要求转人工?}
+        K3 -->|是| K4["发布 transfer_human<br/>到 outputs"]
+        K3 -->|否| K5["继续处理"]
+    end
     
-    K --> L[调用渠道转人工API]
-    K --> M[更新会话状态]
-    K --> N[发送提示消息]
+    K5 --> L["3️⃣ 智能体处理层"]
+    
+    subgraph AgentLayer["智能体处理层"]
+        L --> L1["获取智能体配置"]
+        L1 --> L2["AgentFactory.create()"]
+        L2 --> L3["agent.chat(messages)"]
+        L3 --> L4{调用结果}
+        L4 -->|成功| L5["获取回复"]
+        L4 -->|失败/超时| L6["降级处理"]
+        L6 --> L7{降级成功?}
+        L7 -->|是| L5
+        L7 -->|否| L8["发布 transfer_human<br/>到 outputs"]
+    end
+    
+    L5 --> M["4️⃣ 回复预处理层"]
+    
+    subgraph PostLayer["回复预处理层"]
+        M --> M1{回复强制转人工?}
+        M1 -->|是| M2["发布 transfer_human<br/>到 outputs"]
+        M1 -->|否| M3["发布 reply<br/>到 outputs"]
+    end
+    
+    M2 --> N["ZREMRANGEBYSCORE 删除已处理"]
+    M3 --> N
+    K2 --> N
+    K4 --> N
+    JOut --> N
+    L8 --> N
+    
+    N --> O["释放锁<br/>DEL lock:conversation:{conv_id}"]
+    O --> P["ACK 确认消费"]
 
     %% 样式定义
     classDef inputStyle fill:#E3F2FD,stroke:#1976D2,stroke-width:2px,color:#000
-    classDef processStyle fill:#FFF3E0,stroke:#F57C00,stroke-width:2px,color:#000
+    classDef lockStyle fill:#FFECB3,stroke:#FF8F00,stroke-width:2px,color:#000
     classDef decisionStyle fill:#FFF9C4,stroke:#F9A825,stroke-width:2px,color:#000
-    classDef agentStyle fill:#E8F5E9,stroke:#388E3C,stroke-width:2px,color:#000
-    classDef transferStyle fill:#FFEBEE,stroke:#D32F2F,stroke-width:2px,color:#000
-    classDef actionStyle fill:#F3E5F5,stroke:#7B1FA2,stroke-width:2px,color:#000
+    classDef eventStyle fill:#E1BEE7,stroke:#8E24AA,stroke-width:2px,color:#000
+    classDef preCheckStyle fill:#B3E5FC,stroke:#0288D1,stroke-width:2px,color:#000
+    classDef agentStyle fill:#C8E6C9,stroke:#388E3C,stroke-width:2px,color:#000
+    classDef postStyle fill:#FFCCBC,stroke:#E64A19,stroke-width:2px,color:#000
+    classDef outputStyle fill:#F3E5F5,stroke:#7B1FA2,stroke-width:2px,color:#000
 
     %% 应用样式
-    class A inputStyle
-    class B processStyle
-    class C,H decisionStyle
-    class F,G agentStyle
-    class D,I,K transferStyle
-    class E,J,L,M,N actionStyle
+    class A,B inputStyle
+    class C,D,O lockStyle
+    class G,J1,K1,K3,L4,L7,M1 decisionStyle
+    class J,J2,J3,JOut eventStyle
+    class K,K2,K4,K5 preCheckStyle
+    class L,L1,L2,L3,L5,L6,L8 agentStyle
+    class M,M2,M3 postStyle
+    class N,P outputStyle
 ```
 
-**职责划分**：
+#### 4.3.3 事件处理层
 
-| 层级 | 职责 | 判断类型 |
-|------|------|----------|
-| **核心处理层** | 规则预判断 + 执行转人工操作 | 关键词匹配、会话状态、异常兜底 |
-| **智能体层** | 返回转人工建议（不执行） | 语义理解、情绪分析、置信度判断 |
+处理 event 类型的消息，同步外部状态变更到内部系统：
 
-#### 4.3.3 规则预判断
+| 事件类型 | 处理逻辑 |
+|----------|----------|
+| `event:close_conversation` | 外部结束对话 → 发布 close_conversation 到 outputs |
+| `event:transfer_human` | 外部触发转人工 → 发布 transfer_human 到 outputs |
+| `event:state_change` | 外部状态变更 → 同步更新内部会话状态 |
+| `event:user_enter` | 用户进入会话 → 可选发送欢迎语 |
 
-在调用智能体之前，消息处理器先进行规则预判断，可快速处理明确的转人工请求，减少不必要的智能体调用。
+**处理逻辑**：
 
-```python
-from enum import Enum
-from dataclasses import dataclass
-from typing import Optional
+- `event:close_conversation` → 发布 `close_conversation` 到 outputs
+- `event:transfer_human` → 发布 `transfer_human` 到 outputs
+- `event:state_change` → 同步更新内部会话状态
+- `event:user_enter` → 可选发送欢迎语
 
-class PreCheckAction(Enum):
-    CALL_AGENT = "call_agent"
-    TRANSFER_HUMAN = "transfer_human"
-    SKIP = "skip"
+#### 4.3.4 预校验层
 
-@dataclass
-class PreCheckResult:
-    action: PreCheckAction
-    reason: Optional[str] = None
+对 message 类型消息进行规则预判断，快速处理明确的转人工请求：
 
-def pre_check(
-    message: UnifiedMessage, 
-    conversation: Conversation, 
-    config: AppConfig
-) -> PreCheckResult:
-    """规则预判断"""
-    
-    # 1. 会话已转人工，跳过智能体
-    if conversation.status == "transferred":
-        return PreCheckResult(PreCheckAction.SKIP, "already_transferred")
-    
-    # 2. 关键词匹配，直接转人工
-    transfer_keywords = config.transfer_keywords or ["转人工", "人工客服", "找人工", "真人客服"]
-    text = message.content.text or ""
-    if any(kw in text for kw in transfer_keywords):
-        return PreCheckResult(PreCheckAction.TRANSFER_HUMAN, "keyword_match")
-    
-    # 3. VIP用户直接转人工策略（可配置）
-    if conversation.is_vip and config.vip_direct_transfer:
-        return PreCheckResult(PreCheckAction.TRANSFER_HUMAN, "vip_policy")
-    
-    # 4. 正常调用智能体
-    return PreCheckResult(PreCheckAction.CALL_AGENT)
-```
+**预校验规则**：
 
-**预判断规则配置**：
+1. **会话已转人工** → 跳过处理，等待人工
+2. **关键词匹配** → 直接转人工（如"转人工"、"人工客服"等）
+3. **VIP策略** → 如配置了VIP用户直接转人工，则触发转人工
+4. **继续处理** → 通过预校验，继续后续智能体处理
+
+**预校验规则配置**：
 
 ```json
 {
@@ -898,256 +882,57 @@ def pre_check(
     "transfer_keywords": ["转人工", "人工客服", "找人工", "真人客服", "投诉"],
     "vip_direct_transfer": false,
     "max_agent_retries": 2,
-    "agent_timeout_action": "transfer_human"
+    "agent_timeout_seconds": 30
   }
 }
 ```
 
-#### 4.3.4 处理流程
+#### 4.3.5 消息处理主流程
 
-消息处理器消费 `conversation_events` 队列中的事件消息，获取会话ID后，一次性从Redis ZSET中获取该会话的所有未处理消息，统一发送到智能体处理。这样用户连续发送多条消息时，只需要处理一次即可。
+**处理步骤**：
 
-```mermaid
-flowchart TD
-    A[从MQ消费conversation_events] --> B[获取会话ID]
-    B --> C[从Redis ZSET获取会话所有未处理消息]
-    C --> D{是否有未处理消息?}
-    D -->|无| E[跳过处理]
-    D -->|有| F[批量获取消息列表]
-    F --> G[获取/创建会话上下文]
-    G --> H[规则预判断 preCheck]
-    
-    H --> I{预判断结果}
-    
-    I -->|skip| J[跳过,等待人工]
-    I -->|transfer_human| K[推入转人工队列]
-    I -->|call_agent| L[获取智能体实例]
-    
-    L --> M[AgentFactory.create]
-    M --> N[agent.chat<br/>批量处理所有消息]
-    
-    N --> O{调用结果}
-    
-    O -->|成功| P{检查 should_transfer}
-    O -->|失败/超时| Q[获取降级智能体]
-    
-    P -->|true| K
-    P -->|false| R[推入回复队列]
-    
-    Q --> S[fallbackAgent.chat]
-    S --> T{降级结果}
-    T -->|成功| P
-    T -->|失败| K
-    
-    R --> U[outgoing_messages]
-    K --> V[transfer_requests]
-    
-    U --> W[移除已处理消息<br/>从Redis ZSET]
-    V --> W
-    W --> X[更新会话状态]
+1. 消费 `inputs` 队列事件
+2. 获取会话级分布式锁（防止并发处理）
+3. 从 Redis ZSET 获取会话的所有未处理消息
+4. 执行核心处理流程（事件处理 → 预校验 → 智能体调用 → 回复预处理）
+5. 发布处理结果到 `outputs` 队列
+6. 删除已处理的消息
+7. 释放锁并确认消费
 
-    %% 样式定义
-    classDef inputStyle fill:#E3F2FD,stroke:#1976D2,stroke-width:2px,color:#000
-    classDef processStyle fill:#FFF3E0,stroke:#F57C00,stroke-width:2px,color:#000
-    classDef decisionStyle fill:#FFF9C4,stroke:#F9A825,stroke-width:2px,color:#000
-    classDef agentStyle fill:#E8F5E9,stroke:#388E3C,stroke-width:2px,color:#000
-    classDef transferStyle fill:#FFEBEE,stroke:#D32F2F,stroke-width:2px,color:#000
-    classDef queueStyle fill:#F3E5F5,stroke:#7B1FA2,stroke-width:2px,color:#000
-    classDef actionStyle fill:#E0F2F1,stroke:#00796B,stroke-width:2px,color:#000
+**核心处理流程**：
 
-    %% 应用样式
-    class A inputStyle
-    class B,C,G,H processStyle
-    class D,J,K,O decisionStyle
-    class I,N agentStyle
-    class F transferStyle
-    class E,M,P,Q queueStyle
-    class R actionStyle
-```
+- **1️⃣ 事件处理层**：先处理 event 类型消息，如关闭会话则直接返回
+- **2️⃣ 预校验层**：检查会话状态、关键词匹配、VIP策略等
+- **3️⃣ 智能体处理层**：调用智能体处理消息，获取回复
+- **4️⃣ 回复预处理层**：判断是否强制转人工，封装 OutputEvent
 
-**Python 消息消费主循环**：
+#### 4.3.6 转人工处理
 
-```python
-import asyncio
-import redis
-from app.mq import MessageQueue  # MQ 抽象接口
+转人工由 Processor 生成 `transfer_human` 类型的 OutputEvent，发布到 `outputs` 队列，由 Gateway 消费并执行实际的转人工操作。
 
-async def conversation_event_consumer(mq: MessageQueue, redis_client: redis.Redis):
-    """会话事件消费主循环"""
-    # 订阅 conversation_events 队列
-    async for event_data in mq.subscribe("conversation_events"):
-        try:
-            event = json.loads(event_data)
-            conversation_id = event.get("conversation_id")
-            
-            if not conversation_id:
-                continue
-            
-            # 批量处理会话中的所有未处理消息
-            await process_conversation_messages(conversation_id, mq, redis_client)
-            
-            # 确认消费
-            await mq.ack(event_data)
-            
-        except Exception as e:
-            logger.error(f"会话事件处理异常: {e}")
-            await mq.nack(event_data)  # 消费失败，重新入队
+**转人工触发来源**：
 
-async def process_conversation_messages(
-    conversation_id: str, 
-    mq: MessageQueue, 
-    redis_client: redis.Redis
-):
-    """批量处理会话中的所有未处理消息"""
-    # 1. 从Redis ZSET获取该会话的所有未处理消息
-    key = f"conversation:messages:{conversation_id}"
-    messages_data = redis_client.zrange(key, 0, -1)
-    
-    if not messages_data:
-        return  # 没有未处理消息，跳过
-    
-    # 2. 解析消息列表
-    messages = []
-    for msg_data in messages_data:
-        try:
-            message = UnifiedMessage.parse_raw(msg_data)
-            messages.append(message)
-        except Exception as e:
-            logger.error(f"解析消息失败: {e}")
-            continue
-    
-    if not messages:
-        return
-    
-    # 3. 获取会话上下文（使用第一条消息）
-    first_message = messages[0]
-    conversation = await conversation_service.get_or_create(first_message)
-    
-    # 4. 规则预判断（基于第一条消息）
-    check_result = pre_check(first_message, conversation, app_config)
-    
-    if check_result.action == PreCheckAction.SKIP:
-        # 移除已处理的消息
-        max_score = time.time()
-        redis_client.zremrangebyscore(key, '-inf', max_score)
-        return  # 跳过，等待人工
-    
-    if check_result.action == PreCheckAction.TRANSFER_HUMAN:
-        await request_transfer_human(conversation, TransferRequest(
-            conversation_id=conversation.id,
-            channel=conversation.channel,
-            reason=check_result.reason,
-            source="rule"
-        ), mq)
-        # 移除已处理的消息
-        max_score = time.time()
-        redis_client.zremrangebyscore(key, '-inf', max_score)
-        return
-    
-    # 5. 获取渠道绑定的智能体
-    channel_config = await channel_repository.get_by_id(conversation.channel_id)
-    agent_config = await agent_repository.get_by_id(channel_config.agent_id)
-    agent = AgentFactory.create(agent_config)
-    await agent.initialize(agent_config)
-    
-    try:
-        # 6. 批量处理所有消息，统一发送到智能体
-        # 构建包含所有消息的聊天请求
-        chat_request = build_batch_chat_request(messages, conversation)
-        
-        response = await asyncio.wait_for(
-            agent.chat(chat_request),
-            timeout=app_config.agent_timeout
-        )
-        
-        # 7. 处理响应
-        if response.should_transfer:
-            await request_transfer_human(conversation, TransferRequest(
-                conversation_id=conversation.id,
-                channel=conversation.channel,
-                reason=response.transfer_reason or "agent_suggestion",
-                source="agent"
-            ), mq)
-        else:
-            # 推入回复队列 (通过 MQ 接口)
-            await mq.publish("outgoing_messages", {
-                "conversation_id": conversation.id,
-                "channel": conversation.channel,
-                "reply": response.reply,
-                "reply_type": response.reply_type
-            })
-        
-        # 8. 移除已处理的消息（从Redis ZSET中删除）
-        max_score = time.time()
-        removed_count = redis_client.zremrangebyscore(key, '-inf', max_score)
-        logger.info(f"会话 {conversation_id} 处理完成，移除 {removed_count} 条消息")
-        
-        # 9. 更新会话
-        await conversation_service.update(conversation.id, {"updated_at": datetime.now()})
-        
-    except asyncio.TimeoutError:
-        # 超时降级处理
-        await handle_agent_timeout(conversation, mq)
-        # 移除已处理的消息
-        max_score = time.time()
-        redis_client.zremrangebyscore(key, '-inf', max_score)
-```
+| 来源 | 触发条件 | source 值 |
+|------|----------|-----------|
+| **规则触发** | 关键词匹配、VIP策略、会话超时 | `rule` |
+| **智能体建议** | 置信度低、情绪激动、复杂问题 | `agent` |
+| **外部触发** | 渠道侧触发转人工事件 | `external` |
+| **异常兜底** | 智能体超时/异常 | `rule` |
 
-#### 4.3.5 转人工处理
+**OutputEvent 结构**：
 
-消息处理器检测到需要转人工时，将请求推入转人工队列，由消息网关（Go）负责实际执行。
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| type | string | 事件类型 (reply/transfer_human/close_conversation) |
+| conversation_id | string | 会话ID |
+| channel | string | 渠道类型 |
+| reason | string? | 原因（转人工/关闭会话） |
+| source | string? | 触发来源 (rule/agent/external) |
+| messages | array? | 回复消息列表（reply类型） |
+| priority | string | 优先级 (high/normal/low) |
+| timestamp | int | 时间戳 |
 
-```python
-from dataclasses import dataclass
-from typing import Optional, Literal
-from datetime import datetime
-
-@dataclass
-class TransferRequest:
-    conversation_id: str
-    channel: str
-    reason: str
-    source: Literal["rule", "agent"]  # 触发来源
-    agent_transfer_reason: Optional[str] = None
-    priority: Literal["high", "normal", "low"] = "normal"
-
-async def request_transfer_human(
-    conversation: Conversation,
-    request: TransferRequest,
-    mq: MessageQueue
-) -> None:
-    """
-    请求转人工 - 推入队列，由消息网关执行
-    """
-    # 1. 更新会话状态
-    await conversation_manager.update(
-        conversation.id,
-        status="pending_human",
-        transfer_reason=request.reason,
-        transfer_source=request.source,
-        transfer_time=datetime.now()
-    )
-    
-    # 2. 构建转人工请求
-    transfer_data = {
-        "conversation_id": conversation.id,
-        "channel": conversation.channel,
-        "reason": request.reason,
-        "source": request.source,
-        "agent_reason": request.agent_transfer_reason,
-        "priority": request.priority if not conversation.is_vip else "high",
-        "context": conversation.context,
-        "timestamp": datetime.now().isoformat()
-    }
-    
-    # 3. 推入转人工队列，由消息网关消费并执行 (通过 MQ 接口)
-    await mq.publish("transfer_requests", transfer_data)
-    
-    # 4. 记录转人工日志
-    await log_transfer(transfer_data)
-```
-
-#### 4.3.6 异常处理与兜底
+#### 4.3.7 异常处理与兜底
 
 ```mermaid
 flowchart TD
@@ -1163,7 +948,7 @@ flowchart TD
     E --> A
     
     F -->|有| G[调用降级智能体]
-    F -->|无| H[执行转人工]
+    F -->|无| H[发布 transfer_human 到 outputs]
     
     G --> I{降级结果}
     I -->|成功| C
@@ -1195,12 +980,18 @@ flowchart TD
   "fallback_strategy": {
     "max_retries": 2,
     "retry_delay_ms": 500,
-    "timeout_ms": 10000,
+    "timeout_seconds": 30,
     "on_all_fail": "transfer_human",
     "fallback_message": "抱歉，系统繁忙，正在为您转接人工客服..."
   }
 }
 ```
+
+**异常处理策略**：
+
+1. **主智能体调用**：带重试机制（可配置重试次数和延迟）
+2. **降级智能体**：主智能体失败后，尝试调用降级智能体
+3. **最终兜底**：所有尝试失败后，发布 `transfer_human` 到 outputs 队列
 
 ---
 
@@ -1294,101 +1085,49 @@ flowchart TB
     Hybrid --> Remote
 ```
 
-#### 4.4.2 统一接口定义 (Python)
+#### 4.4.2 统一接口定义
 
-```python
-from abc import ABC, abstractmethod
-from enum import Enum
-from dataclasses import dataclass, field
-from typing import Optional, List, Dict, Any, AsyncIterator
+**智能体类型枚举**：
+- `LOCAL` - 本地智能体
+- `REMOTE` - 远程智能体
+- `HYBRID` - 组合智能体
 
-class AgentType(Enum):
-    """智能体类型枚举"""
-    LOCAL = "local"      # 本地智能体
-    REMOTE = "remote"    # 远程智能体
-    HYBRID = "hybrid"    # 组合智能体
+**ChatRequest 结构**：
 
-@dataclass
-class UserInfo:
-    """用户信息"""
-    channel_user_id: str
-    nickname: str
-    avatar: Optional[str] = None
-    is_vip: bool = False
-    tags: List[str] = field(default_factory=list)
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| conversation_id | string | 会话ID |
+| message_type | string | 消息类型 (text/image/voice) |
+| content | MessageContent | 消息内容 |
+| history | array | 对话历史 |
+| context | object | 上下文信息 |
+| user_info | UserInfo | 用户信息 |
+| timestamp | int | 时间戳 |
 
-@dataclass
-class MessageContent:
-    """消息内容"""
-    text: Optional[str] = None
-    media_url: Optional[str] = None
-    media_type: Optional[str] = None
+**ChatResponse 结构**：
 
-@dataclass
-class ChatRequest:
-    """聊天请求"""
-    conversation_id: str
-    message_type: str                    # text|image|voice|...
-    content: MessageContent
-    history: List[Dict[str, Any]]        # 对话历史
-    context: Dict[str, Any]              # 上下文信息
-    user_info: UserInfo
-    timestamp: int
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| reply | string | 回复内容 |
+| reply_type | string | 回复类型 (text/rich) |
+| rich_content | object? | 富文本内容 |
+| action | object? | 需要执行的动作 |
+| confidence | float | 置信度 0-1 |
+| should_transfer | bool | 是否建议转人工（仅建议） |
+| transfer_reason | string? | 转人工原因 |
+| processed_by | string | 处理者标识 |
+| metadata | object? | 扩展元数据 |
 
-@dataclass
-class ChatResponse:
-    """
-    聊天响应
-    注意：智能体只返回建议，不执行转人工操作
-    转人工的实际执行由消息处理器推入队列，消息网关执行
-    """
-    reply: str                           # 回复内容
-    reply_type: str = "text"             # text | rich
-    rich_content: Optional[Dict] = None  # 富文本内容
-    action: Optional[Dict] = None        # 需要执行的动作
-    confidence: float = 1.0              # 置信度 0-1
-    should_transfer: bool = False        # 是否建议转人工（仅建议）
-    transfer_reason: Optional[str] = None
-    processed_by: str = ""               # 处理者标识
-    metadata: Optional[Dict] = None
+**IAgentAdapter 接口方法**：
 
-
-class IAgentAdapter(ABC):
-    """
-    智能体适配器接口
-    所有智能体实现都必须遵循此接口
-    """
-    
-    @property
-    @abstractmethod
-    def type(self) -> AgentType:
-        """智能体类型标识"""
-        pass
-    
-    @abstractmethod
-    async def initialize(self, config: Dict[str, Any]) -> None:
-        """初始化配置"""
-        pass
-    
-    @abstractmethod
-    async def chat(self, request: ChatRequest) -> ChatResponse:
-        """发送消息并获取回复"""
-        pass
-    
-    async def chat_stream(self, request: ChatRequest) -> AsyncIterator[str]:
-        """流式响应（可选实现）"""
-        response = await self.chat(request)
-        yield response.reply
-    
-    @abstractmethod
-    async def health_check(self) -> bool:
-        """健康检查"""
-        pass
-    
-    async def destroy(self) -> None:
-        """销毁/释放资源"""
-        pass
-```
+| 方法 | 说明 |
+|------|------|
+| `type() -> AgentType` | 智能体类型标识 |
+| `initialize(config) -> void` | 初始化配置 |
+| `chat(request) -> ChatResponse` | 发送消息并获取回复 |
+| `chat_stream(request) -> AsyncIterator` | 流式响应（可选实现） |
+| `health_check() -> bool` | 健康检查 |
+| `destroy() -> void` | 销毁/释放资源 |
 
 #### 4.4.3 本地智能体 (LocalAgentAdapter)
 
@@ -1589,69 +1328,13 @@ flowchart TB
 
 智能体在处理消息时，会根据多种因素判断是否建议转人工。**注意：智能体只返回建议，不执行转人工操作，实际执行由消息处理器推入队列，消息网关执行。**
 
-```python
-from dataclasses import dataclass
-from typing import Optional
+**转人工判断逻辑**：
 
-@dataclass
-class TransferRecommendation:
-    should_transfer: bool
-    reason: Optional[str] = None
-    message: Optional[str] = None
-
-def evaluate_transfer_need(
-    request: ChatRequest,
-    response: GeneratedResponse,
-    context: AgentContext
-) -> TransferRecommendation:
-    """
-    智能体内部判断转人工的逻辑
-    返回建议，由消息处理器决定是否执行
-    """
-    
-    # 1. 置信度过低
-    if response.confidence < 0.3:
-        return TransferRecommendation(
-            should_transfer=True,
-            reason="low_confidence",
-            message="无法确定回答的准确性"
-        )
-    
-    # 2. 识别到强烈负面情绪
-    if context.sentiment == "negative" and context.sentiment_intensity > 0.7:
-        return TransferRecommendation(
-            should_transfer=True,
-            reason="negative_emotion",
-            message="检测到用户情绪激动"
-        )
-    
-    # 3. 多轮对话未解决问题
-    if context.unresolved_turns >= 3:
-        return TransferRecommendation(
-            should_transfer=True,
-            reason="unresolved_issue",
-            message="多轮对话未能解决用户问题"
-        )
-    
-    # 4. 识别到复杂业务场景
-    complex_intents = ["complaint", "refund_dispute", "legal_issue"]
-    if context.intent in complex_intents:
-        return TransferRecommendation(
-            should_transfer=True,
-            reason="complex_issue",
-            message=f"识别到复杂问题类型: {context.intent}"
-        )
-    
-    # 5. 涉及敏感操作
-    if context.requires_human_verification:
-        return TransferRecommendation(
-            should_transfer=True,
-            reason="sensitive_operation",
-            message="涉及需要人工确认的敏感操作"
-        )
-    
-    return TransferRecommendation(should_transfer=False)
-```
+1. **置信度过低**：回答置信度 < 0.3 → 建议转人工
+2. **负面情绪**：检测到用户情绪激动（sentiment=negative & intensity > 0.7）→ 建议转人工
+3. **多轮未解决**：连续多轮对话未解决问题（unresolved_turns >= 3）→ 建议转人工
+4. **复杂问题**：识别到复杂业务场景（投诉、退款纠纷等）→ 建议转人工
+5. **敏感操作**：涉及需要人工确认的敏感操作 → 建议转人工
 
 **转人工判断条件**：
 
@@ -1665,71 +1348,21 @@ def evaluate_transfer_need(
 
 #### 4.4.7 智能体工厂
 
-```python
-from typing import Dict, Any
+智能体工厂根据配置创建对应的智能体实例：
 
-class AgentFactory:
-    """
-    智能体工厂类
-    根据配置创建对应的智能体实例
-    """
-    
-    _remote_adapters = {
-        "openai": "OpenAIAdapter",
-        "azure": "AzureOpenAIAdapter",
-        "qwen": "QwenAdapter",
-        "coze": "CozeAdapter",
-        "dify": "DifyAdapter",
-    }
-    
-    @classmethod
-    def create(cls, config: Dict[str, Any]) -> IAgentAdapter:
-        """创建智能体实例"""
-        agent_type = config.get("agent_type")
-        
-        if agent_type == "local":
-            return LocalAgentAdapter(config)
-        elif agent_type == "remote":
-            return cls._create_remote_agent(config)
-        elif agent_type == "hybrid":
-            return HybridAgentAdapter(config)
-        else:
-            raise ValueError(f"Unknown agent type: {agent_type}")
-    
-    @classmethod
-    def _create_remote_agent(cls, config: Dict[str, Any]) -> RemoteAgentAdapter:
-        """创建远程智能体实例"""
-        provider = config.get("config", {}).get("provider")
-        
-        if provider == "openai":
-            return OpenAIAdapter(config)
-        elif provider == "azure":
-            return AzureOpenAIAdapter(config)
-        elif provider == "qwen":
-            return QwenAdapter(config)
-        elif provider == "coze":
-            return CozeAdapter(config)
-        elif provider == "dify":
-            return DifyAdapter(config)
-        else:
-            return CustomHttpAdapter(config)
+**支持的远程适配器**：
+- OpenAI → OpenAIAdapter
+- Azure OpenAI → AzureOpenAIAdapter
+- 通义千问 → QwenAdapter
+- Coze → CozeAdapter
+- Dify → DifyAdapter
+- 自定义HTTP → CustomHttpAdapter
 
-
-# 使用示例
-async def get_agent_for_channel(channel_id: str) -> IAgentAdapter:
-    """获取渠道绑定的智能体"""
-    # 从数据库获取渠道配置
-    channel = await channel_repository.get_by_id(channel_id)
-    
-    # 获取渠道绑定的智能体配置
-    agent_config = await agent_repository.get_by_id(channel.agent_id)
-    
-    # 创建智能体实例
-    agent = AgentFactory.create(agent_config)
-    await agent.initialize(agent_config)
-    
-    return agent
-```
+**创建流程**：
+1. 根据 `agent_type` 判断类型（local/remote/hybrid）
+2. 对于 remote 类型，根据 `provider` 创建对应的适配器
+3. 初始化智能体配置
+4. 返回智能体实例
 
 #### 4.4.8 处理流程（含转人工分层协作）
 
@@ -1843,139 +1476,109 @@ sequenceDiagram
 
 #### 4.6.1 转接触发来源
 
-转人工操作由 **核心处理层统一执行**，触发来源分为两类：
+转人工操作由 **Processor 生成 OutputEvent**，通过 `outputs` 队列传递给 **Gateway 执行**。触发来源分为三类：
 
-**规则触发（核心处理层预判断）**：
+| 来源类型 | 触发条件 | source 值 |
+|----------|----------|-----------|
+| **规则触发** | 关键词匹配、VIP策略、智能体异常 | `rule` |
+| **智能体建议** | 置信度低、情绪激动、复杂问题 | `agent` |
+| **外部触发** | 渠道侧推送转人工事件 | `external` |
 
-| 触发条件 | 判断位置 | 说明 |
-|----------|----------|------|
-| 关键词匹配 | 核心处理层 | 用户发送"转人工"等关键词，不调用智能体 |
-| 会话已转人工 | 核心处理层 | 会话状态为 transferred，跳过智能体 |
-| VIP策略 | 核心处理层 | 配置了VIP用户直接转人工 |
-| 智能体异常 | 核心处理层 | 智能体超时/异常，兜底转人工 |
+**规则触发（Processor 预校验层）**：
 
-**智能体建议（智能体返回 should_transfer=true）**：
+| 触发条件 | 说明 |
+|----------|------|
+| 关键词匹配 | 用户发送"转人工"等关键词，不调用智能体 |
+| 会话已转人工 | 会话状态为 transferred，跳过处理 |
+| VIP策略 | 配置了VIP用户直接转人工 |
+| 智能体异常 | 智能体超时/异常，兜底转人工 |
 
-| 触发条件 | 判断位置 | 说明 |
-|----------|----------|------|
-| 置信度过低 | 智能体层 | 回答置信度 < 0.3 |
-| 负面情绪 | 智能体层 | 检测到用户情绪激动 |
-| 多轮未解决 | 智能体层 | 连续多轮未解决用户问题 |
-| 复杂问题 | 智能体层 | 投诉、退款纠纷等复杂场景 |
-| 敏感操作 | 智能体层 | 涉及资金、隐私等敏感操作 |
+**智能体建议（智能体返回 shouldTransfer=true）**：
+
+| 触发条件 | 说明 |
+|----------|------|
+| 置信度过低 | 回答置信度 < 0.3 |
+| 负面情绪 | 检测到用户情绪激动 |
+| 多轮未解决 | 连续多轮未解决用户问题 |
+| 复杂问题 | 投诉、退款纠纷等复杂场景 |
 
 #### 4.6.2 转接流程
 
 ```mermaid
 flowchart TD
-    A[用户消息] --> B[核心处理层]
+    A[用户消息] --> B[Processor 核心处理]
     
-    B --> C{规则预判断}
-    C -->|关键词命中| D[触发转人工]
+    B --> C{预校验}
+    C -->|关键词命中| D["生成 transfer_human OutputEvent"]
     C -->|会话已转人工| E[跳过,等待人工]
     C -->|正常| F[调用智能体]
     
     F --> G[智能体处理]
     G --> H{检查响应}
     
-    H -->|should_transfer=true| D
-    H -->|should_transfer=false| I[发送回复]
+    H -->|shouldTransfer=true| D
+    H -->|shouldTransfer=false| I["生成 reply OutputEvent"]
     
-    D --> J[核心层执行转人工]
+    D --> J["发布到 outputs 队列"]
+    I --> J
     
-    J --> K[更新会话状态]
-    J --> L[发送提示消息]
-    J --> M{转接模式}
+    J --> K[Gateway 消费 outputs]
     
-    M -->|队列分配| N[渠道分配接口]
-    M -->|指定客服| O[渠道指定接口]
+    K --> L{消息类型}
+    L -->|transfer_human| M[执行转人工]
+    L -->|reply| N[发送回复]
     
-    N --> P[人工客服接入]
-    O --> P
+    M --> O[发送提示消息]
+    M --> P[调用渠道转人工API]
+    M --> Q[更新会话状态]
+    
+    P --> R[人工客服接入]
 
     %% 样式定义
     classDef inputStyle fill:#E3F2FD,stroke:#1976D2,stroke-width:2px,color:#000
-    classDef processStyle fill:#FFF3E0,stroke:#F57C00,stroke-width:2px,color:#000
+    classDef processorStyle fill:#E8F5E9,stroke:#388E3C,stroke-width:2px,color:#000
     classDef decisionStyle fill:#FFF9C4,stroke:#F9A825,stroke-width:2px,color:#000
-    classDef agentStyle fill:#E8F5E9,stroke:#388E3C,stroke-width:2px,color:#000
+    classDef outputStyle fill:#F3E5F5,stroke:#7B1FA2,stroke-width:2px,color:#000
+    classDef gatewayStyle fill:#FFF3E0,stroke:#F57C00,stroke-width:2px,color:#000
     classDef transferStyle fill:#FFEBEE,stroke:#D32F2F,stroke-width:2px,color:#000
-    classDef actionStyle fill:#F3E5F5,stroke:#7B1FA2,stroke-width:2px,color:#000
-    classDef channelStyle fill:#E0F2F1,stroke:#00796B,stroke-width:2px,color:#000
     classDef successStyle fill:#C8E6C9,stroke:#2E7D32,stroke-width:2px,color:#000
 
     %% 应用样式
     class A inputStyle
-    class B processStyle
-    class C,H,M decisionStyle
-    class F,G agentStyle
-    class D,J transferStyle
-    class E,I,K,L actionStyle
-    class N,O channelStyle
-    class P successStyle
+    class B,F,G processorStyle
+    class C,H,L decisionStyle
+    class D,I,J outputStyle
+    class K,N gatewayStyle
+    class M,O,P,Q transferStyle
+    class E,R successStyle
 ```
 
-#### 4.6.3 执行转人工（消息网关）
+#### 4.6.3 执行转人工（Gateway）
 
-转人工操作由 **消息网关（Go）** 统一执行，消息处理器（Python）只负责将转人工请求推入队列：
+转人工操作由 **Gateway** 消费 `outputs` 队列后执行：
 
-```go
-// 消息网关中的转人工执行器 (Go)
-type TransferExecution struct {
-    ConversationID    string `json:"conversation_id"`
-    Source           string `json:"source"`            // rule | agent
-    Reason           string `json:"reason"`
-    AgentReason      string `json:"agent_reason,omitempty"`
-    Mode             string `json:"mode"`              // queue | specific
-    SpecificServicer string `json:"specific_servicer,omitempty"`
-    Priority         string `json:"priority"`          // high | normal | low
-}
+**执行步骤**：
 
-func (e *TransferExecutor) Execute(ctx context.Context, params TransferExecution) error {
-    // 1. 获取会话信息
-    conversation, err := e.conversationService.Get(params.ConversationID)
-    if err != nil {
-        return err
-    }
-    
-    // 2. 发送提示消息
-    tipMsg := e.config.GetTransferTipMessage()
-    adapter, _ := e.adapterFactory.Get(conversation.Channel)
-    adapter.SendMessage(conversation.ID, tipMsg)
-    
-    // 3. 调用渠道转人工API
-    if params.Mode == "queue" {
-        err = adapter.TransferToQueue(conversation.ID, params.Priority)
-    } else {
-        err = adapter.TransferToSpecific(conversation.ID, params.SpecificServicer, params.Priority)
-    }
-    if err != nil {
-        return err
-    }
-    
-    // 4. 更新会话状态
-    e.conversationService.Update(params.ConversationID, map[string]interface{}{
-        "status":          "pending_human",
-        "transfer_reason": params.Reason,
-        "transfer_source": params.Source,
-        "transfer_time":   time.Now(),
-    })
-    
-    // 5. 记录转人工日志
-    e.logService.RecordTransfer(params)
-    
-    return nil
-}
-```
+1. 发送转人工提示消息（如"正在为您转接人工客服，请稍候..."）
+2. 调用渠道转人工API（传递原因、优先级等信息）
+3. 更新会话状态为 `transferred`，记录转人工原因、来源、时间
+4. 记录转人工日志
 
-#### 4.6.3 各渠道转接API
+#### 4.6.4 各渠道转接API
 
-**企业微信**：
-- 接口：转接会话到客服
-- 支持：指定客服、技能组分配
+| 渠道 | 转接接口 | 支持功能 |
+|------|----------|----------|
+| **企业微信** | 转接会话到客服 | 指定客服、技能组分配 |
+| **淘宝** | 千牛转接 | 指定客服分组 |
+| **抖音** | 抖店转人工 | 队列分配 |
 
-**淘宝**：
-- 接口：千牛转接
-- 支持：指定客服分组
+**渠道适配器接口方法**：
+
+| 方法 | 说明 |
+|------|------|
+| `transferToHuman(conversationId, options) -> void` | 转接到人工客服 |
+| `supportsCloseConversation() -> bool` | 是否支持关闭会话 |
+| `closeConversation(conversationId) -> void` | 关闭会话 |
 
 ---
 
@@ -1996,265 +1599,32 @@ func (e *TransferExecutor) Execute(ctx context.Context, params TransferExecution
 
 **应用管理 (ApplicationResource)**：
 
-```php
-<?php
+- 表单字段：应用名称、应用描述、绑定智能体、启用状态
+- 列表字段：应用ID、应用名称、状态、创建时间
 
-namespace App\Filament\Resources;
+**渠道配置 (ChannelResource)**：
 
-use App\Models\Application;
-use Filament\Forms;
-use Filament\Resources\Resource;
-use Filament\Tables;
+- 表单字段：所属应用、渠道类型（企业微信/淘宝/抖音等）
+- 根据渠道类型动态显示配置项：
+  - 企业微信：企业ID、应用Secret、回调Token、加密Key
+  - 淘宝：App Key、App Secret、Session Key
 
-class ApplicationResource extends Resource
-{
-    protected static ?string $model = Application::class;
-    protected static ?string $navigationIcon = 'heroicon-o-rectangle-stack';
-    protected static ?string $navigationLabel = '应用管理';
+**智能体管理 (AgentResource)**：
 
-    public static function form(Forms\Form $form): Forms\Form
-    {
-        return $form->schema([
-            Forms\Components\TextInput::make('app_name')
-                ->label('应用名称')
-                ->required()
-                ->maxLength(100),
-                
-            Forms\Components\Textarea::make('description')
-                ->label('应用描述')
-                ->rows(3),
-                
-            Forms\Components\Select::make('agent_id')
-                ->label('绑定智能体')
-                ->relationship('agent', 'name')
-                ->searchable()
-                ->required(),
-                
-            Forms\Components\Toggle::make('status')
-                ->label('启用状态')
-                ->default(true),
-        ]);
-    }
+- 表单字段：智能体名称、所属人、智能体类型
+- 根据智能体类型动态显示配置：
+  - 本地智能体：提供者（Ollama/llama.cpp/vLLM）、服务地址、模型名称
+  - 远程智能体：提供者（OpenAI/Azure/通义千问/Coze/Dify）、API Key、API Base URL、模型
+  - 通用配置：系统提示词、Temperature、Max Tokens、降级智能体
 
-    public static function table(Tables\Table $table): Tables\Table
-    {
-        return $table->columns([
-            Tables\Columns\TextColumn::make('app_id')->label('应用ID'),
-            Tables\Columns\TextColumn::make('app_name')->label('应用名称'),
-            Tables\Columns\IconColumn::make('status')->boolean()->label('状态'),
-            Tables\Columns\TextColumn::make('created_at')->dateTime()->label('创建时间'),
-        ]);
-    }
-}
-```
+#### 4.7.3 数据统计仪表板
 
-#### 4.7.3 渠道配置 (ChannelResource)
+**统计指标**：
 
-```php
-<?php
-
-namespace App\Filament\Resources;
-
-use App\Models\Channel;
-use Filament\Forms;
-use Filament\Resources\Resource;
-
-class ChannelResource extends Resource
-{
-    protected static ?string $model = Channel::class;
-    protected static ?string $navigationLabel = '渠道配置';
-
-    public static function form(Forms\Form $form): Forms\Form
-    {
-        return $form->schema([
-            Forms\Components\Select::make('app_id')
-                ->label('所属应用')
-                ->relationship('application', 'app_name')
-                ->required(),
-                
-            Forms\Components\Select::make('channel')
-                ->label('渠道类型')
-                ->options([
-                    'wecom' => '企业微信',
-                    'taobao' => '淘宝/天猫',
-                    'douyin' => '抖音',
-                    'jd' => '京东',
-                    'pdd' => '拼多多',
-                    'webhook' => '自定义Webhook',
-                ])
-                ->reactive()
-                ->required(),
-                
-            // 企业微信配置
-            Forms\Components\Section::make('企业微信配置')
-                ->schema([
-                    Forms\Components\TextInput::make('config.corp_id')
-                        ->label('企业ID'),
-                    Forms\Components\TextInput::make('config.secret')
-                        ->label('应用Secret')
-                        ->password(),
-                    Forms\Components\TextInput::make('config.token')
-                        ->label('回调Token'),
-                    Forms\Components\TextInput::make('config.encoding_aes_key')
-                        ->label('加密Key'),
-                ])
-                ->visible(fn ($get) => $get('channel') === 'wecom'),
-                
-            // 淘宝配置
-            Forms\Components\Section::make('淘宝配置')
-                ->schema([
-                    Forms\Components\TextInput::make('config.app_key')
-                        ->label('App Key'),
-                    Forms\Components\TextInput::make('config.app_secret')
-                        ->label('App Secret')
-                        ->password(),
-                    Forms\Components\TextInput::make('config.session_key')
-                        ->label('Session Key'),
-                ])
-                ->visible(fn ($get) => $get('channel') === 'taobao'),
-        ]);
-    }
-}
-```
-
-#### 4.7.4 智能体管理 (AgentResource)
-
-```php
-<?php
-
-namespace App\Filament\Resources;
-
-use App\Models\Agent;
-use Filament\Forms;
-use Filament\Resources\Resource;
-
-class AgentResource extends Resource
-{
-    protected static ?string $model = Agent::class;
-    protected static ?string $navigationLabel = '智能体管理';
-
-    public static function form(Forms\Form $form): Forms\Form
-    {
-        return $form->schema([
-            Forms\Components\TextInput::make('name')
-                ->label('智能体名称')
-                ->required(),
-                
-            Forms\Components\Select::make('owner_id')
-                ->label('所属人')
-                ->relationship('owner', 'name')
-                ->searchable()
-                ->required(),
-                
-            Forms\Components\Select::make('agent_type')
-                ->label('智能体类型')
-                ->options([
-                    'local' => '本地智能体',
-                    'remote' => '远程智能体',
-                    'hybrid' => '组合智能体',
-                ])
-                ->reactive()
-                ->required(),
-                
-            // 本地智能体配置
-            Forms\Components\Section::make('本地智能体配置')
-                ->schema([
-                    Forms\Components\Select::make('config.provider')
-                        ->label('提供者')
-                        ->options([
-                            'ollama' => 'Ollama',
-                            'llama_cpp' => 'llama.cpp',
-                            'vllm' => 'vLLM',
-                        ]),
-                    Forms\Components\TextInput::make('config.endpoint')
-                        ->label('服务地址')
-                        ->default('http://localhost:11434'),
-                    Forms\Components\TextInput::make('config.model')
-                        ->label('模型名称')
-                        ->default('qwen2:7b'),
-                ])
-                ->visible(fn ($get) => $get('agent_type') === 'local'),
-                
-            // 远程智能体配置
-            Forms\Components\Section::make('远程智能体配置')
-                ->schema([
-                    Forms\Components\Select::make('config.provider')
-                        ->label('提供者')
-                        ->options([
-                            'openai' => 'OpenAI',
-                            'azure' => 'Azure OpenAI',
-                            'qwen' => '通义千问',
-                            'coze' => 'Coze',
-                            'dify' => 'Dify',
-                        ]),
-                    Forms\Components\TextInput::make('config.api_key')
-                        ->label('API Key')
-                        ->password(),
-                    Forms\Components\TextInput::make('config.api_base')
-                        ->label('API Base URL'),
-                    Forms\Components\TextInput::make('config.model')
-                        ->label('模型'),
-                ])
-                ->visible(fn ($get) => $get('agent_type') === 'remote'),
-                
-            // 通用配置
-            Forms\Components\Section::make('通用配置')
-                ->schema([
-                    Forms\Components\Textarea::make('config.system_prompt')
-                        ->label('系统提示词')
-                        ->rows(5),
-                    Forms\Components\TextInput::make('config.temperature')
-                        ->label('Temperature')
-                        ->numeric()
-                        ->default(0.7),
-                    Forms\Components\TextInput::make('config.max_tokens')
-                        ->label('Max Tokens')
-                        ->numeric()
-                        ->default(2000),
-                    Forms\Components\Select::make('fallback_agent_id')
-                        ->label('降级智能体')
-                        ->relationship('fallbackAgent', 'name'),
-                ]),
-        ]);
-    }
-}
-```
-
-#### 4.7.5 数据统计仪表板
-
-```php
-<?php
-
-namespace App\Filament\Widgets;
-
-use Filament\Widgets\StatsOverviewWidget;
-use Filament\Widgets\StatsOverviewWidget\Stat;
-
-class StatsOverview extends StatsOverviewWidget
-{
-    protected function getStats(): array
-    {
-        return [
-            Stat::make('今日消息数', $this->getTodayMessageCount())
-                ->description('较昨日 +12%')
-                ->color('success')
-                ->chart([7, 3, 4, 5, 6, 3, 5, 8]),
-                
-            Stat::make('活跃会话', $this->getActiveConversationCount())
-                ->description('当前在线')
-                ->color('primary'),
-                
-            Stat::make('智能体处理率', $this->getAgentHandleRate() . '%')
-                ->description('AI自动处理比例')
-                ->color('info'),
-                
-            Stat::make('转人工率', $this->getTransferRate() . '%')
-                ->description('需人工介入比例')
-                ->color('warning'),
-        ];
-    }
-}
-```
+- 今日消息数（含趋势图表）
+- 活跃会话数
+- 智能体处理率
+- 转人工率
 
 **统计维度**：
 - 消息总量（按时间段）
@@ -2543,16 +1913,13 @@ erDiagram
 ```mermaid
 flowchart TB
     subgraph Server["单机服务器 (Docker Compose)"]
-        subgraph Gateway["消息网关 (Go)"]
-            GatewayApp["hzd-gateway<br/>:8080"]
+        subgraph LaravelApp["Laravel 应用"]
+            App["app<br/>(Web/API/Admin)<br/>:8080"]
         end
         
-        subgraph Processor["消息处理器 (Python)"]
-            ProcessorApp["hzd-processor<br/>:8081"]
-        end
-        
-        subgraph Admin["管理后台 (Laravel)"]
-            AdminApp["hzd-admin<br/>:8082"]
+        subgraph QueueWorkers["队列消费者"]
+            Processor["processor<br/>(消费 inputs)"]
+            GatewayConsumer["gateway-consumer<br/>(消费 outputs)"]
         end
         
         subgraph LocalAI["本地AI"]
@@ -2565,29 +1932,28 @@ flowchart TB
         end
     end
     
-    GatewayApp -->|入队| Redis
-    Redis -->|消费| ProcessorApp
-    ProcessorApp -->|回复入队| Redis
-    Redis -->|消费发送| GatewayApp
+    App -->|"发布 inputs"| Redis
+    Redis -->|"消费 inputs"| Processor
+    Processor -->|"发布 outputs"| Redis
+    Redis -->|"消费 outputs"| GatewayConsumer
     
-    ProcessorApp --> Ollama
+    Processor --> Ollama
     
-    GatewayApp --> MySQL
-    ProcessorApp --> MySQL
-    AdminApp --> MySQL
-    AdminApp --> Redis
+    App --> MySQL
+    Processor --> MySQL
+    GatewayConsumer --> MySQL
 
     %% 样式定义
-    classDef gatewayStyle fill:#FFF3E0,stroke:#F57C00,stroke-width:2px,color:#000
+    classDef appStyle fill:#E3F2FD,stroke:#1976D2,stroke-width:2px,color:#000
     classDef processorStyle fill:#E8F5E9,stroke:#388E3C,stroke-width:2px,color:#000
-    classDef adminStyle fill:#FCE4EC,stroke:#C2185B,stroke-width:2px,color:#000
+    classDef gatewayStyle fill:#FFF3E0,stroke:#F57C00,stroke-width:2px,color:#000
     classDef aiStyle fill:#FFF9C4,stroke:#F9A825,stroke-width:2px,color:#000
     classDef dbStyle fill:#E0F2F1,stroke:#00796B,stroke-width:3px,color:#000
 
     %% 应用样式
-    class GatewayApp gatewayStyle
-    class ProcessorApp processorStyle
-    class AdminApp adminStyle
+    class App appStyle
+    class Processor processorStyle
+    class GatewayConsumer gatewayStyle
     class Ollama aiStyle
     class MySQL,Redis dbStyle
 ```
@@ -2598,44 +1964,75 @@ flowchart TB
 version: '3.8'
 
 services:
-  # 消息网关 (Go)
-  gateway:
-    build: ./gateway
+  # Laravel 应用 (Web + API + Admin)
+  app:
+    build:
+      context: ./admin
+      dockerfile: Dockerfile
     ports:
-      - "8080:8080"
+      - "8080:80"
     environment:
-      - MYSQL_DSN=root:password@tcp(mysql:3306)/ai_cs
-      - REDIS_ADDR=redis:6379
+      - APP_ENV=local
+      - APP_DEBUG=true
+      - DB_CONNECTION=mysql
+      - DB_HOST=mysql
+      - DB_PORT=3306
+      - DB_DATABASE=huizhida
+      - DB_USERNAME=root
+      - DB_PASSWORD=password
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - QUEUE_CONNECTION=redis
+      - OLLAMA_HOST=http://ollama:11434
+    volumes:
+      - ./admin:/var/www/html
     depends_on:
       - mysql
       - redis
 
-  # 消息处理器 (Python)
+  # Processor 队列消费者 (消费 inputs 队列)
   processor:
-    build: ./processor
-    ports:
-      - "8081:8081"
+    build:
+      context: ./admin
+      dockerfile: Dockerfile
+    command: php artisan queue:process-inputs
     environment:
-      - DATABASE_URL=mysql+asyncmy://root:password@mysql:3306/ai_cs
-      - REDIS_URL=redis://redis:6379
+      - APP_ENV=local
+      - DB_HOST=mysql
+      - DB_DATABASE=huizhida
+      - DB_USERNAME=root
+      - DB_PASSWORD=password
+      - REDIS_HOST=redis
       - OLLAMA_HOST=http://ollama:11434
+    volumes:
+      - ./admin:/var/www/html
     depends_on:
       - mysql
       - redis
       - ollama
+    deploy:
+      replicas: 2  # 可根据负载调整
 
-  # 管理后台 (Laravel)
-  admin:
-    build: ./admin
-    ports:
-      - "8082:80"
+  # Gateway 队列消费者 (消费 outputs 队列)
+  gateway-consumer:
+    build:
+      context: ./admin
+      dockerfile: Dockerfile
+    command: php artisan queue:consume-outputs
     environment:
+      - APP_ENV=local
       - DB_HOST=mysql
-      - DB_DATABASE=ai_cs
+      - DB_DATABASE=huizhida
+      - DB_USERNAME=root
+      - DB_PASSWORD=password
       - REDIS_HOST=redis
+    volumes:
+      - ./admin:/var/www/html
     depends_on:
       - mysql
       - redis
+    deploy:
+      replicas: 2  # 可根据负载调整
 
   # Ollama 本地模型
   ollama:
@@ -2655,7 +2052,7 @@ services:
     image: mysql:8.0
     environment:
       - MYSQL_ROOT_PASSWORD=password
-      - MYSQL_DATABASE=ai_cs
+      - MYSQL_DATABASE=huizhida
     volumes:
       - mysql_data:/var/lib/mysql
     ports:
@@ -2674,6 +2071,15 @@ volumes:
   ollama_data:
 ```
 
+**服务说明**：
+
+| 服务 | 说明 | 扩容方式 |
+|------|------|----------|
+| `app` | Laravel 主应用，处理 HTTP 请求（回调、管理后台） | 水平扩展 |
+| `processor` | 消费 inputs 队列，处理消息 | 增加 replicas |
+| `gateway-consumer` | 消费 outputs 队列，发送消息 | 增加 replicas |
+| `ollama` | 本地 LLM 推理服务 | 需 GPU 支持 |
+
 ### 8.2 集群部署 (Kubernetes)
 
 适用于生产环境：
@@ -2682,21 +2088,21 @@ volumes:
 flowchart TB
     LB["负载均衡<br/>Ingress / SLB"]
     
-    subgraph GatewayCluster["消息网关集群 (Go)"]
-        GW1["gateway-1"]
-        GW2["gateway-2"]
-        GWN["gateway-n"]
+    subgraph AppCluster["Laravel 应用集群"]
+        App1["app-1<br/>(Web/API)"]
+        App2["app-2<br/>(Web/API)"]
+        AppN["app-n<br/>(Web/API)"]
     end
     
-    subgraph ProcessorCluster["消息处理器集群 (Python)"]
+    subgraph ProcessorCluster["Processor 消费者集群"]
         Proc1["processor-1"]
         Proc2["processor-2"]
         ProcN["processor-n"]
     end
     
-    subgraph AdminCluster["管理后台 (Laravel)"]
-        Admin1["admin-1"]
-        Admin2["admin-2"]
+    subgraph GatewayConsumerCluster["Gateway 消费者集群"]
+        GWC1["gateway-consumer-1"]
+        GWC2["gateway-consumer-2"]
     end
     
     subgraph LocalAICluster["本地AI集群"]
@@ -2714,111 +2120,156 @@ flowchart TB
         MySQL[("MySQL 主从<br/>RDS")]
         Redis[("Redis 集群<br/>ElastiCache")]
         VectorDB[("向量数据库<br/>Milvus")]
-        OSS[("对象存储<br/>S3/OSS")]
     end
     
-    LB --> GatewayCluster
-    LB --> AdminCluster
+    LB --> AppCluster
     
-    GatewayCluster <-->|消息队列| DataLayer
-    ProcessorCluster <-->|消息队列| DataLayer
+    AppCluster -->|"发布 inputs"| Redis
+    Redis -->|"消费 inputs"| ProcessorCluster
+    ProcessorCluster -->|"发布 outputs"| Redis
+    Redis -->|"消费 outputs"| GatewayConsumerCluster
     
     ProcessorCluster <--> LocalAICluster
     ProcessorCluster <--> RemoteAI
     ProcessorCluster <--> VectorDB
     
-    GatewayCluster --> MySQL
+    AppCluster --> MySQL
     ProcessorCluster --> MySQL
-    AdminCluster --> MySQL
+    GatewayConsumerCluster --> MySQL
 
     %% 样式定义
     classDef lbStyle fill:#E1F5FE,stroke:#0277BD,stroke-width:3px,color:#000
-    classDef gatewayStyle fill:#FFF3E0,stroke:#F57C00,stroke-width:2px,color:#000
+    classDef appStyle fill:#E3F2FD,stroke:#1976D2,stroke-width:2px,color:#000
     classDef processorStyle fill:#E8F5E9,stroke:#388E3C,stroke-width:2px,color:#000
-    classDef adminStyle fill:#FCE4EC,stroke:#C2185B,stroke-width:2px,color:#000
+    classDef gatewayStyle fill:#FFF3E0,stroke:#F57C00,stroke-width:2px,color:#000
     classDef localAIStyle fill:#FFF9C4,stroke:#F9A825,stroke-width:2px,color:#000
     classDef remoteAIStyle fill:#FFE0B2,stroke:#E65100,stroke-width:2px,color:#000
     classDef dbStyle fill:#E0F2F1,stroke:#00796B,stroke-width:3px,color:#000
 
     %% 应用样式
     class LB lbStyle
-    class GW1,GW2,GWN gatewayStyle
+    class App1,App2,AppN appStyle
     class Proc1,Proc2,ProcN processorStyle
-    class Admin1,Admin2 adminStyle
+    class GWC1,GWC2 gatewayStyle
     class Ollama1,Ollama2 localAIStyle
     class OpenAI,Qwen,Coze remoteAIStyle
-    class MySQL,Redis,VectorDB,OSS dbStyle
+    class MySQL,Redis,VectorDB dbStyle
 ```
 
 ### 8.3 服务扩缩容策略
 
 | 服务 | 扩容条件 | 缩容条件 | 说明 |
 |------|----------|----------|------|
-| 消息网关 (Go) | CPU > 70% 或 QPS > 5000 | CPU < 30% | 无状态，可水平扩展 |
-| 消息处理器 (Python) | 队列积压 > 1000 | 队列空闲 | 按消费能力扩展 |
-| 管理后台 (Laravel) | 并发 > 100 | 并发 < 20 | 一般 2 副本即可 |
-| Ollama | GPU利用率 > 80% | - | 需 GPU 节点 |
+| **app** (Laravel Web) | CPU > 70% 或 QPS > 1000 | CPU < 30% | 无状态，可水平扩展 |
+| **processor** (inputs消费者) | inputs 队列积压 > 1000 | 队列空闲 | 按消费能力扩展 |
+| **gateway-consumer** (outputs消费者) | outputs 队列积压 > 500 | 队列空闲 | 一般 2-4 副本即可 |
+| **ollama** | GPU利用率 > 80% | - | 需 GPU 节点 |
+
+**队列监控指标**：
+
+| 指标 | 告警阈值 | 说明 |
+|------|----------|------|
+| `inputs` 队列长度 | > 1000 | 需扩容 processor |
+| `outputs` 队列长度 | > 500 | 需扩容 gateway-consumer |
+| 消息处理延迟 | > 5s | 检查智能体响应时间 |
+| 消息发送失败率 | > 1% | 检查渠道 API 状态 |
 
 ### 8.4 项目目录结构
 
+系统采用 **PHP Laravel Monorepo** 架构，通过 packages 实现模块化：
+
 ```
-huizhida/                       # 汇智答
-├── gateway/                    # 消息网关 (Go)
-│   ├── cmd/
-│   │   └── main.go
-│   ├── internal/
-│   │   ├── adapter/           # 渠道适配器
-│   │   │   ├── wecom.go
-│   │   │   ├── taobao.go
-│   │   │   └── factory.go
-│   │   ├── handler/           # HTTP处理器
-│   │   ├── service/           # 业务服务
-│   │   ├── queue/             # 队列操作
-│   │   └── model/             # 数据模型
-│   ├── pkg/
-│   ├── configs/
-│   ├── go.mod
-│   └── Dockerfile
-│
-├── processor/                  # 消息处理器 (Python)
+huizhida-chatbot/               # 汇智答
+├── admin/                      # Laravel 主应用
 │   ├── app/
-│   │   ├── main.py            # FastAPI入口
-│   │   ├── core/
-│   │   │   ├── processor.py   # 消息处理器
-│   │   │   └── precheck.py    # 规则预判断
-│   │   ├── agent/
-│   │   │   ├── base.py        # IAgentAdapter
-│   │   │   ├── local.py       # 本地智能体
-│   │   │   ├── remote/        # 远程智能体
-│   │   │   │   ├── openai.py
-│   │   │   │   ├── qwen.py
-│   │   │   │   └── coze.py
-│   │   │   ├── hybrid.py      # 组合智能体
-│   │   │   └── factory.py     # 智能体工厂
-│   │   ├── ai/
-│   │   │   ├── rag.py         # RAG检索
-│   │   │   ├── intent.py      # 意图识别
-│   │   │   └── emotion.py     # 情绪分析
-│   │   ├── models/            # SQLAlchemy模型
-│   │   ├── schemas/           # Pydantic模型
-│   │   └── services/
-│   ├── tests/
-│   ├── configs/
-│   ├── requirements.txt
-│   └── Dockerfile
-│
-├── admin/                      # 管理后台 (Laravel + Filament)
-│   ├── app/
-│   │   ├── Filament/
+│   │   ├── Filament/          # Filament 管理后台
 │   │   │   ├── Resources/     # Filament资源
 │   │   │   │   ├── ApplicationResource.php
 │   │   │   │   ├── ChannelResource.php
 │   │   │   │   └── AgentResource.php
 │   │   │   └── Widgets/       # 仪表板组件
-│   │   ├── Models/
-│   │   └── Services/
-│   ├── resources/
+│   │   ├── Console/
+│   │   │   └── Commands/      # 队列消费命令
+│   │   ├── Models/            # Eloquent 模型
+│   │   └── Providers/
+│   │
+│   ├── packages/              # 模块化包
+│   │   │
+│   │   ├── core/              # 核心包 - 共享DTO、接口、模型
+│   │   │   ├── src/
+│   │   │   │   ├── Domain/
+│   │   │   │   │   ├── Conversation/
+│   │   │   │   │   │   ├── DTO/
+│   │   │   │   │   │   │   ├── ConversationDTO.php
+│   │   │   │   │   │   │   ├── MessageDTO.php
+│   │   │   │   │   │   │   └── ChannelMessage.php
+│   │   │   │   │   │   ├── Contracts/
+│   │   │   │   │   │   │   └── ConversationQueueInterface.php
+│   │   │   │   │   │   └── Models/
+│   │   │   │   │   └── Agent/
+│   │   │   │   │       └── Contracts/
+│   │   │   │   │           └── AgentAdapterInterface.php
+│   │   │   │   └── Infrastructure/
+│   │   │   │       └── Queue/
+│   │   │   │           ├── RedisStreamQueue.php
+│   │   │   │           └── RabbitMQQueue.php
+│   │   │   └── composer.json
+│   │   │
+│   │   ├── gateway/           # 消息网关包
+│   │   │   ├── src/
+│   │   │   │   ├── Domain/
+│   │   │   │   │   └── Contracts/
+│   │   │   │   │       └── ChannelAdapterInterface.php
+│   │   │   │   ├── Application/
+│   │   │   │   │   └── Services/
+│   │   │   │   │       └── CallbackService.php
+│   │   │   │   ├── Infrastructure/
+│   │   │   │   │   └── Adapters/
+│   │   │   │   │       ├── WeComAdapter.php
+│   │   │   │   │       ├── TaobaoAdapter.php
+│   │   │   │   │       ├── DouyinAdapter.php
+│   │   │   │   │       └── ChannelAdapterFactory.php
+│   │   │   │   ├── Http/
+│   │   │   │   │   └── Controllers/
+│   │   │   │   │       └── CallbackController.php
+│   │   │   │   └── Console/
+│   │   │   │       └── Commands/
+│   │   │   │           └── ConsumeOutputsCommand.php
+│   │   │   ├── routes/
+│   │   │   │   └── api.php
+│   │   │   └── composer.json
+│   │   │
+│   │   └── agent-processor/   # 核心处理器包
+│   │       ├── src/
+│   │       │   ├── Domain/
+│   │       │   │   ├── Contracts/
+│   │       │   │   │   └── AgentAdapterInterface.php
+│   │       │   │   └── Events/
+│   │       │   │       └── OutputEvent.php
+│   │       │   ├── Application/
+│   │       │   │   └── Services/
+│   │       │   │       ├── MessageProcessorService.php
+│   │       │   │       ├── EventHandler.php
+│   │       │   │       ├── PreCheckService.php
+│   │       │   │       └── AgentInvoker.php
+│   │       │   ├── Infrastructure/
+│   │       │   │   └── Agents/
+│   │       │   │       ├── LocalAgentAdapter.php
+│   │       │   │       ├── RemoteAgentAdapter.php
+│   │       │   │       ├── OpenAIAdapter.php
+│   │       │   │       ├── CozeAdapter.php
+│   │       │   │       └── AgentFactory.php
+│   │       │   └── Console/
+│   │       │       └── Commands/
+│   │       │           └── ProcessConversationEventsCommand.php
+│   │       └── composer.json
+│   │
+│   ├── config/
+│   ├── database/
+│   │   └── migrations/
 │   ├── routes/
+│   ├── resources/
+│   ├── tests/
 │   ├── composer.json
 │   └── Dockerfile
 │
@@ -2827,6 +2278,29 @@ huizhida/                       # 汇智答
 ├── docker-compose.yml          # 本地开发
 ├── docker-compose.prod.yml     # 生产部署
 └── README.md
+```
+
+**包依赖关系**：
+
+```mermaid
+flowchart TB
+    Admin["admin<br/>(Laravel主应用)"]
+    Gateway["gateway<br/>(消息网关包)"]
+    Processor["agent-processor<br/>(核心处理器包)"]
+    Core["core<br/>(核心共享包)"]
+    
+    Admin --> Gateway
+    Admin --> Processor
+    Gateway --> Core
+    Processor --> Core
+    
+    classDef mainApp fill:#E3F2FD,stroke:#1976D2,stroke-width:2px
+    classDef package fill:#E8F5E9,stroke:#388E3C,stroke-width:2px
+    classDef core fill:#FFF3E0,stroke:#F57C00,stroke-width:2px
+    
+    class Admin mainApp
+    class Gateway,Processor package
+    class Core core
 ```
 
 ---
