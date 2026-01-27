@@ -7,9 +7,9 @@ services:
     env_file:
       - 1panel.env
 
-  agent-processor:
+  processor:
     image: registry.cn-shenzhen.aliyuncs.com/xlankeji/huizhida:latest
-    command: ["php", "/var/www/html/artisan", "agent-processor:consume"]
+    command: ["php", "/var/www/html/artisan", "processor:consume"]
     stop_signal: SIGTERM
     depends_on:
       - web
