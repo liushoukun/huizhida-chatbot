@@ -2,8 +2,8 @@
 
 namespace App\Console\Commands;
 
-use HuiZhiDa\AgentProcessor\Application\Services\AgentService;
-use HuiZhiDa\AgentProcessor\Application\Services\MessageProcessorService;
+use HuiZhiDa\Processor\Application\Services\AgentService;
+use HuiZhiDa\Processor\Application\Services\MessageProcessorService;
 use HuiZhiDa\Core\Application\Services\ConversationApplicationService;
 use HuiZhiDa\Core\Domain\Conversation\DTO\ChannelMessage;
 use HuiZhiDa\Core\Domain\Conversation\DTO\ConversationData;

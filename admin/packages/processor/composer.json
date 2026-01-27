@@ -1,6 +1,6 @@
 {
-    "name": "huizhida/agent-processor",
-    "description": "HuiZhiDa Agent Processor Package",
+    "name": "huizhida/processor",
+    "description": "HuiZhiDa Processor Package",
     "type": "library",
     "license": "MIT",
     "authors": [
@@ -24,18 +24,18 @@
     },
     "autoload": {
         "psr-4": {
-            "HuiZhiDa\\AgentProcessor\\": "src/"
+            "HuiZhiDa\\Processor\\": "src/"
         }
     },
     "autoload-dev": {
         "psr-4": {
-            "HuiZhiDa\\AgentProcessor\\Tests\\": "tests/"
+            "HuiZhiDa\\Processor\\Tests\\": "tests/"
         }
     },
     "extra": {
         "laravel": {
             "providers": [
-                "HuiZhiDa\\AgentProcessor\\AgentProcessorServiceProvider"
+                "HuiZhiDa\\Processor\\ProcessorServiceProvider"
             ]
         },
         "branch-alias": {

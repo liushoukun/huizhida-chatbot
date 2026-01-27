@@ -1,9 +1,9 @@
 <?php
 
-namespace HuiZhiDa\AgentProcessor\Console\Commands;
+namespace HuiZhiDa\Processor\UI\Consoles\Commands;
 
 use Exception;
-use HuiZhiDa\AgentProcessor\Application\Services\MessageProcessorService;
+use HuiZhiDa\Processor\Application\Services\MessageProcessorService;
 use HuiZhiDa\Core\Application\Services\ConversationApplicationService;
 use HuiZhiDa\Core\Domain\Conversation\Contracts\ConversationQueueInterface;
 use HuiZhiDa\Core\Domain\Conversation\DTO\Events\ConversationEvent;
@@ -21,7 +21,7 @@ class ProcessConversationEventsCommand extends Command
      *
      * @var string
      */
-    protected $signature = 'agent-processor:consume 
+    protected $signature = 'processor:consume 
                             {--queue= : 队列名称}
                             {--timeout=5 : 阻塞超时时间（秒）}
                             {--max-jobs=0 : 最大处理任务数，0表示无限制}';

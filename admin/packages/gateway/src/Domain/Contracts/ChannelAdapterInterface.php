@@ -2,7 +2,7 @@
 
 namespace HuiZhiDa\Gateway\Domain\Contracts;
 
-use HuiZhiDa\AgentProcessor\Domain\Data\AgentChatResponse;
+use HuiZhiDa\Processor\Domain\Data\AgentChatResponse;
 use HuiZhiDa\Core\Domain\Conversation\DTO\ConversationAnswerData;
 use HuiZhiDa\Core\Domain\Conversation\DTO\ConversationData;
 use Illuminate\Http\Request;

@@ -1,13 +1,13 @@
 <?php
 
-namespace HuiZhiDa\AgentProcessor\Application\Services;
+namespace HuiZhiDa\Processor\Application\Services;
 
 use Exception;
-use HuiZhiDa\AgentProcessor\Domain\Contracts\AgentAdapterInterface;
-use HuiZhiDa\AgentProcessor\Domain\Data\AgentChatRequest;
-use HuiZhiDa\AgentProcessor\Domain\Data\AgentChatResponse;
-use HuiZhiDa\AgentProcessor\Domain\Data\Message;
-use HuiZhiDa\AgentProcessor\Infrastructure\Adapters\AgentAdapterFactory;
+use HuiZhiDa\Processor\Domain\Contracts\AgentAdapterInterface;
+use HuiZhiDa\Processor\Domain\Data\AgentChatRequest;
+use HuiZhiDa\Processor\Domain\Data\AgentChatResponse;
+use HuiZhiDa\Processor\Domain\Data\Message;
+use HuiZhiDa\Processor\Infrastructure\Adapters\AgentAdapterFactory;
 use HuiZhiDa\Core\Domain\Agent\Models\Agent;
 use HuiZhiDa\Core\Domain\Agent\Repositories\AgentRepositoryInterface;
 use HuiZhiDa\Core\Domain\Conversation\DTO\ChannelMessage;
@@ -58,7 +58,7 @@ class AgentService
         Log::debug('Building chat request', ['conversation_id' => $conversation->conversationId]);
 
         // 4. 调用智能体
-        $timeout = config('agent-processor.agent.timeout', 30);
+        $timeout = config('processor.agent.timeout', 30);
         Log::debug('Agent processing completed', ['conversation_id' => $conversation->conversationId]);
         // 5. 格式化响应，返回数据
         $agentChatResponse = $this->agentChat($adapter, $request, $timeout);

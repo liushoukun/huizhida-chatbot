@@ -3,7 +3,7 @@
 namespace HuiZhiDa\Gateway\Infrastructure\Adapters;
 
 use Exception;
-use HuiZhiDa\AgentProcessor\Domain\Data\AgentChatResponse;
+use HuiZhiDa\Processor\Domain\Data\AgentChatResponse;
 use HuiZhiDa\Core\Domain\Conversation\DTO\ChannelMessage;
 use HuiZhiDa\Core\Domain\Conversation\DTO\Contents\TextContent;
 use HuiZhiDa\Core\Domain\Conversation\DTO\ConversationAnswerData;

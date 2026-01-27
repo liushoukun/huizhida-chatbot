@@ -1,6 +1,6 @@
 <?php
 
-namespace HuiZhiDa\AgentProcessor\Domain\Data;
+namespace HuiZhiDa\Processor\Domain\Data;
 
 use HuiZhiDa\Core\Domain\Conversation\DTO\ChannelMessage;
 use RedJasmine\Support\Domain\Contracts\UserInterface;

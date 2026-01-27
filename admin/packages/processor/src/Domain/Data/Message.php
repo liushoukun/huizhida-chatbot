@@ -1,6 +1,6 @@
 <?php
 
-namespace HuiZhiDa\AgentProcessor\Domain\Data;
+namespace HuiZhiDa\Processor\Domain\Data;
 
 use RedJasmine\Support\Foundation\Data\Data;
 

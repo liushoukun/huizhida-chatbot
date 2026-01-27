@@ -1,6 +1,6 @@
 <?php
 
-namespace HuiZhiDa\AgentProcessor\Application\Services;
+namespace HuiZhiDa\Processor\Domain\Enums;
 
 use RedJasmine\Support\Helpers\Enums\EnumsHelper;
 

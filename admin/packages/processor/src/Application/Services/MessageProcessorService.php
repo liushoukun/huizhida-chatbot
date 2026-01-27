@@ -1,8 +1,11 @@
 <?php
 
-namespace HuiZhiDa\AgentProcessor\Application\Services;
+namespace HuiZhiDa\Processor\Application\Services;
 
 use Exception;
+use HuiZhiDa\Processor\Domain\Data\PreCheckResult;
+use HuiZhiDa\Processor\Domain\Enums\ActionType;
+use HuiZhiDa\Processor\Domain\Services\PreCheckService;
 use HuiZhiDa\Core\Application\Services\ConversationApplicationService;
 use HuiZhiDa\Core\Domain\Conversation\Contracts\ConversationQueueInterface;
 use HuiZhiDa\Core\Domain\Conversation\DTO\ConversationAnswerData;
@@ -162,7 +165,7 @@ class MessageProcessorService
     /**
      * 请求转人工
      */
-    protected function requestTransferHuman(ConversationData $conversation, ?CheckResult $checkResult = null) : void
+    protected function requestTransferHuman(ConversationData $conversation, ?PreCheckResult $checkResult = null) : void
     {
         $conversationId = $conversation->conversationId;
 

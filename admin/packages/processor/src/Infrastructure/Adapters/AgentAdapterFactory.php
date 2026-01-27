@@ -1,8 +1,8 @@
 <?php
 
-namespace HuiZhiDa\AgentProcessor\Infrastructure\Adapters;
+namespace HuiZhiDa\Processor\Infrastructure\Adapters;
 
-use HuiZhiDa\AgentProcessor\Domain\Contracts\AgentAdapterInterface;
+use HuiZhiDa\Processor\Domain\Contracts\AgentAdapterInterface;
 use HuiZhiDa\Core\Domain\Agent\Models\Agent;
 use Illuminate\Support\Facades\Log;
 use InvalidArgumentException;

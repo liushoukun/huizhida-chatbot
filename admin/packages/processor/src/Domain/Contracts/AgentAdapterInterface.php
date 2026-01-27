@@ -1,9 +1,9 @@
 <?php
 
-namespace HuiZhiDa\AgentProcessor\Domain\Contracts;
+namespace HuiZhiDa\Processor\Domain\Contracts;
 
-use HuiZhiDa\AgentProcessor\Domain\Data\AgentChatRequest;
-use HuiZhiDa\AgentProcessor\Domain\Data\AgentChatResponse;
+use HuiZhiDa\Processor\Domain\Data\AgentChatRequest;
+use HuiZhiDa\Processor\Domain\Data\AgentChatResponse;
 
 /**
  * 智能体适配器接口

@@ -1,6 +1,6 @@
 <?php
 
-namespace HuiZhiDa\AgentProcessor\Infrastructure\Utils;
+namespace HuiZhiDa\Processor\Infrastructure\Utils;
 
 use Psr\Http\Message\StreamInterface;
 

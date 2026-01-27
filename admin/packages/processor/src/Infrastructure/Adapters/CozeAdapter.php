@@ -1,12 +1,12 @@
 <?php
 
-namespace HuiZhiDa\AgentProcessor\Infrastructure\Adapters;
+namespace HuiZhiDa\Processor\Infrastructure\Adapters;
 
 use Exception;
 use GuzzleHttp\Client;
-use HuiZhiDa\AgentProcessor\Domain\Contracts\AgentAdapterInterface;
-use HuiZhiDa\AgentProcessor\Domain\Data\AgentChatRequest;
-use HuiZhiDa\AgentProcessor\Domain\Data\AgentChatResponse;
+use HuiZhiDa\Processor\Domain\Contracts\AgentAdapterInterface;
+use HuiZhiDa\Processor\Domain\Data\AgentChatRequest;
+use HuiZhiDa\Processor\Domain\Data\AgentChatResponse;
 use HuiZhiDa\Core\Domain\Conversation\DTO\AgentMessage;
 use HuiZhiDa\Core\Domain\Conversation\Enums\ContentType;
 use HuiZhiDa\Core\Domain\Conversation\Enums\MessageType;

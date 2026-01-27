@@ -33,7 +33,7 @@ class MessageRepository implements MessageRepositoryInterface
 
     protected function getRedisConnection() : string
     {
-        return config('agent-processor.redis.connection', 'default');
+        return config('processor.redis.connection', 'default');
     }
 
     public function pending(ChannelMessage $message) : void
@@ -42,7 +42,7 @@ class MessageRepository implements MessageRepositoryInterface
         $messageData = $message->toJson();
         $score       = microtime(true);
 
-        $redisConnection = config('gateway.redis.connection', 'default');
+        $redisConnection = $this->getRedisConnection();
         Redis::connection($redisConnection)->zadd($key, $score, $messageData);
     }
 
@@ -60,7 +60,8 @@ class MessageRepository implements MessageRepositoryInterface
         foreach ($messages as $message) {
             $dictionary[$message->toJson()] = microtime(true);
         }
-        Redis::zadd($key, $dictionary);
+        $redisConnection = $this->getRedisConnection();
+        Redis::connection($redisConnection)->zadd($key, $dictionary);
     }
 
     /**

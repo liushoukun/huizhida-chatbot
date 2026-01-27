@@ -1,17 +1,17 @@
 <?php
 
-namespace HuiZhiDa\AgentProcessor;
+namespace HuiZhiDa\Processor;
 
-use HuiZhiDa\AgentProcessor\Application\Services\AgentService;
-use HuiZhiDa\AgentProcessor\Application\Services\PreCheckService;
-use HuiZhiDa\AgentProcessor\Infrastructure\Adapters\AgentAdapterFactory;
+use HuiZhiDa\Processor\Application\Services\AgentService;
+use HuiZhiDa\Processor\Domain\Services\PreCheckService;
+use HuiZhiDa\Processor\Infrastructure\Adapters\AgentAdapterFactory;
+use HuiZhiDa\Processor\UI\Consoles\Commands\ProcessConversationEventsCommand;
 use HuiZhiDa\Core\Domain\Agent\Repositories\AgentRepositoryInterface;
 use HuiZhiDa\Core\Domain\Conversation\Contracts\ConversationQueueInterface;
 use HuiZhiDa\Gateway\Infrastructure\Queue\RedisQueue;
 use Illuminate\Support\ServiceProvider;
-use HuiZhiDa\AgentProcessor\Console\Commands\ProcessConversationEventsCommand;
 
-class AgentProcessorServiceProvider extends ServiceProvider
+class ProcessorServiceProvider extends ServiceProvider
 {
     /**
      * Register services.
@@ -19,8 +19,8 @@ class AgentProcessorServiceProvider extends ServiceProvider
     public function register() : void
     {
         $this->mergeConfigFrom(
-            __DIR__.'/../config/agent-processor.php',
-            'agent-processor'
+            __DIR__.'/../config/processor.php',
+            'processor'
         );
 
         // 注册服务
@@ -45,7 +45,7 @@ class AgentProcessorServiceProvider extends ServiceProvider
 
         // 注册消息队列接口实现
         $this->app->singleton(ConversationQueueInterface::class, function ($app) {
-            $config = config('agent-processor.queue', []);
+            $config = config('processor.queue', []);
             return new RedisQueue($config);
         });
     }
@@ -56,13 +56,13 @@ class AgentProcessorServiceProvider extends ServiceProvider
     public function boot() : void
     {
         $this->publishes([
-            __DIR__.'/../config/agent-processor.php' => config_path('agent-processor.php'),
-        ], 'agent-processor-config');
+            __DIR__.'/../config/processor.php' => config_path('processor.php'),
+        ], 'processor-config');
 
         // 发布数据库迁移
         $this->publishes([
             __DIR__.'/../database/migrations' => database_path('migrations'),
-        ], 'agent-processor-migrations');
+        ], 'processor-migrations');
 
         // 加载数据库迁移
         $this->loadMigrationsFrom(__DIR__.'/../database/migrations');
