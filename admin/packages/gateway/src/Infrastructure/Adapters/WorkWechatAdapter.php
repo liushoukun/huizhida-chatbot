@@ -122,12 +122,12 @@ class WorkWechatAdapter implements ChannelAdapterInterface
         }
         // 支持的消息类型
         $supportedMsgTypes = ['text', 'image', 'voice', 'video', 'file', 'event'];
-        
+
         // 处理消息列表，返回最后一条消息（最新的）
         $messages = [];
         foreach ($msgList as $msgData) {
             $msgType = $msgData['msgtype'] ?? 'text';
-            
+
             // 过滤不支持的消息类型
             if (!in_array($msgType, $supportedMsgTypes, true)) {
                 Log::debug('跳过不支持的消息类型', [
@@ -136,7 +136,7 @@ class WorkWechatAdapter implements ChannelAdapterInterface
                 ]);
                 continue;
             }
-            
+
             // 转换消息
             $message    = $this->convertToChannelMessage($msgData, $openKfId);
             $messages[] = $message;
@@ -188,12 +188,12 @@ class WorkWechatAdapter implements ChannelAdapterInterface
     protected function mapMessageType(string $wecomType) : MessageType
     {
         $map = [
-            'text'     => MessageType::Chat,
-            'image'    => MessageType::Chat,
-            'voice'    => MessageType::Chat,
-            'video'    => MessageType::Chat,
-            'file'     => MessageType::Chat,
-            'event'    => MessageType::Event,
+            'text'  => MessageType::Chat,
+            'image' => MessageType::Chat,
+            'voice' => MessageType::Chat,
+            'video' => MessageType::Chat,
+            'file'  => MessageType::Chat,
+            'event' => MessageType::Event,
         ];
 
         return $map[$wecomType] ?? MessageType::Chat;
@@ -273,7 +273,11 @@ class WorkWechatAdapter implements ChannelAdapterInterface
         // 下载图片文件
         $filePath = $this->downloadMedia($mediaId, 'image');
         if ($filePath) {
-            $content->url = Storage::url($filePath);
+            $content->url = Storage::disk('public')->url($filePath);
+            // 设置媒体内容属性
+            $content->disk = 'public';
+            $content->path = $filePath;
+            $content->type = 'image';
         }
 
         // 解析图片信息
@@ -342,17 +346,20 @@ class WorkWechatAdapter implements ChannelAdapterInterface
             $extension = $this->getExtensionFromContentType($contentType, $type);
 
             // 生成文件路径
-            $directory = "workwechat/media/{$type}/".date('Y/m/d');
+            $directory = date('Y/m/d')."/workwechat/media/{$type}";
             $filename  = Str::uuid().'.'.$extension;
             $filePath  = $directory.'/'.$filename;
 
+            // 使用 public 磁盘存储媒体文件（需要生成公共 URL）
+            $disk = Storage::disk('public');
+
             // 确保目录存在
-            if (!Storage::exists($directory)) {
-                Storage::makeDirectory($directory, 0755, true);
+            if (!$disk->exists($directory)) {
+                $disk->makeDirectory($directory, 0755, true);
             }
 
             // 保存文件
-            Storage::put($filePath, $content);
+            $disk->put($filePath, $content);
 
             Log::info('Media downloaded successfully', [
                 'media_id' => $mediaId,
@@ -416,7 +423,11 @@ class WorkWechatAdapter implements ChannelAdapterInterface
         // 下载语音文件
         $filePath = $this->downloadMedia($mediaId, 'voice');
         if ($filePath) {
-            $content->url = Storage::url($filePath);
+            $content->url = Storage::disk('public')->url($filePath);
+            // 设置媒体内容属性
+            $content->disk = 'public';
+            $content->path = $filePath;
+            $content->type = 'voice';
         }
 
         return $content;
@@ -433,7 +444,11 @@ class WorkWechatAdapter implements ChannelAdapterInterface
         // 下载视频文件
         $filePath = $this->downloadMedia($mediaId, 'video');
         if ($filePath) {
-            $content->url = Storage::url($filePath);
+            $content->url = Storage::disk('public')->url($filePath);
+            // 设置媒体内容属性
+            $content->disk = 'public';
+            $content->path = $filePath;
+            $content->type = 'video';
         }
 
         // 下载视频缩略图
@@ -441,7 +456,7 @@ class WorkWechatAdapter implements ChannelAdapterInterface
         if ($thumbMediaId) {
             $thumbPath = $this->downloadMedia($thumbMediaId, 'image');
             if ($thumbPath) {
-                $content->thumbUrl = Storage::url($thumbPath);
+                $content->thumbUrl = Storage::disk('public')->url($thumbPath);
             }
         }
 
@@ -459,9 +474,13 @@ class WorkWechatAdapter implements ChannelAdapterInterface
         // 下载文件
         $filePath = $this->downloadMedia($mediaId, 'file');
         if ($filePath) {
-            $content->url       = Storage::url($filePath);
+            $content->url       = Storage::disk('public')->url($filePath);
             $content->filename  = basename($filePath);
             $content->extension = pathinfo($filePath, PATHINFO_EXTENSION);
+            // 设置媒体内容属性
+            $content->disk = 'public';
+            $content->path = $filePath;
+            $content->type = 'file';
         }
 
         return $content;
@@ -478,18 +497,18 @@ class WorkWechatAdapter implements ChannelAdapterInterface
     protected function parseEventContent(array $msgData) : EventContent
     {
         $content = new EventContent();
-        
+
         // 获取事件类型，可能直接在顶层或 event 字段中
         $eventType = $msgData['event'] ?? '';
-        
+
         // 获取事件数据，可能在 event_data 字段中，也可能直接在顶层
         $eventData = $msgData['event_data'] ?? $msgData;
-        
+
         // 根据企业微信事件类型映射到 EventType 枚举
         if ($eventType === 'status_change_event' || isset($eventData['service_state'])) {
             // 会话状态变更事件
             $serviceState = $eventData['service_state'] ?? null;
-            
+
             // 根据 service_state 映射到相应的事件类型
             // service_state: 2 表示转人工排队
             // service_state: 3 或 4 表示会话结束
@@ -520,7 +539,7 @@ class WorkWechatAdapter implements ChannelAdapterInterface
             // 默认使用 Closed
             $content->event = EventType::Closed;
         }
-        
+
         return $content;
     }
 

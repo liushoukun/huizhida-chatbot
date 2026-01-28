@@ -5,7 +5,7 @@ namespace HuiZhiDa\Core\Domain\Conversation\DTO\Contents;
 /**
  * 文件内容DTO
  */
-class FileContent extends Content
+class FileContent extends MediaContent
 {
     /**
      * 文件URL

@@ -5,7 +5,7 @@ namespace HuiZhiDa\Core\Domain\Conversation\DTO\Contents;
 /**
  * 语音内容DTO
  */
-class VoiceContent extends Content
+class VoiceContent extends MediaContent
 {
     /**
      * 语音文件URL

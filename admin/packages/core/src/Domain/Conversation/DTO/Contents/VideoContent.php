@@ -5,7 +5,7 @@ namespace HuiZhiDa\Core\Domain\Conversation\DTO\Contents;
 /**
  * 视频内容DTO
  */
-class VideoContent extends Content
+class VideoContent extends MediaContent
 {
     /**
      * 视频文件URL

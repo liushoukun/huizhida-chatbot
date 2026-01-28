@@ -5,7 +5,7 @@ namespace HuiZhiDa\Core\Domain\Conversation\DTO\Contents;
 /**
  * 图片内容DTO
  */
-class ImageContent extends Content
+class ImageContent extends MediaContent
 {
     /**
      * 图片URL
