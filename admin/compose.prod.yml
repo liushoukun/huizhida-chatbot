@@ -18,6 +18,8 @@ services:
       - web
     env_file:
       - 1panel.env
+    deploy:
+      replicas: 2  # 可根据负载调整 processor 实例数量
 
   message-sender:
     image: huizhida:latest

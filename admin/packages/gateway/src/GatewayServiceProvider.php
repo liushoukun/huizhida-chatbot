@@ -3,6 +3,7 @@
 namespace HuiZhiDa\Gateway;
 
 use HuiZhiDa\Core\Domain\Conversation\Contracts\ConversationQueueInterface;
+use HuiZhiDa\Gateway\Http\Controllers\CallbackController;
 use HuiZhiDa\Gateway\Infrastructure\Adapters\AdapterFactory;
 use HuiZhiDa\Gateway\Infrastructure\Queue\RedisQueue;
 use Illuminate\Support\Facades\Route;
@@ -13,9 +14,9 @@ class GatewayServiceProvider extends ServiceProvider
     /**
      * Register services.
      */
-    public function register(): void
+    public function register() : void
     {
-        $this->mergeConfigFrom(__DIR__ . '/../config/gateway.php', 'gateway');
+        $this->mergeConfigFrom(__DIR__.'/../config/gateway.php', 'gateway');
 
         // 注册适配器工厂
         $this->app->singleton(AdapterFactory::class, function ($app) {
@@ -32,14 +33,12 @@ class GatewayServiceProvider extends ServiceProvider
     /**
      * Bootstrap services.
      */
-    public function boot(): void
+    public function boot() : void
     {
         // 发布配置文件
         $this->publishes([
-            __DIR__ . '/../config/gateway.php' => config_path('gateway.php'),
+            __DIR__.'/../config/gateway.php' => config_path('gateway.php'),
         ], 'gateway-config');
-
-
 
 
         // 加载路由
@@ -49,7 +48,6 @@ class GatewayServiceProvider extends ServiceProvider
         if ($this->app->runningInConsole()) {
             $this->commands([
                 UI\Consoles\Commands\ConversationOutputQueueCommand::class,
-                UI\Consoles\Commands\TransferExecutorCommand::class,
             ]);
         }
     }
@@ -57,15 +55,15 @@ class GatewayServiceProvider extends ServiceProvider
     /**
      * 加载路由
      */
-    protected function loadRoutes(): void
+    protected function loadRoutes() : void
     {
         Route::middleware('api')
-            ->prefix('api/gateway')
-            ->group(function () {
-                Route::post('/callback/{channel}/{appId}', [
-                    \HuiZhiDa\Gateway\Http\Controllers\CallbackController::class,
-                    'handle'
-                ]);
-            });
+             ->prefix('api/gateway')
+             ->group(function () {
+                 Route::post('/callback/{channel}/{appId}', [
+                     CallbackController::class,
+                     'handle'
+                 ]);
+             });
     }
 }
