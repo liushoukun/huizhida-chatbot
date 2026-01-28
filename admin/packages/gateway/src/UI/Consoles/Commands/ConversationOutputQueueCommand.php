@@ -35,7 +35,7 @@ class ConversationOutputQueueCommand extends Command
 
         $this->mq->subscribe(ConversationQueueType::Outputs, function ($data) {
 
-            $this->info('处理MQ',$data);
+            $this->info('处理MQ');
             $conversationOutputQueue = ConversationOutputQueue::from($data);
 
             $this->handleOutputQueue($conversationOutputQueue);

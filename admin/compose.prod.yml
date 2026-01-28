@@ -5,6 +5,8 @@ services:
   web:
     # Use your custom image instead of the base image
     image: huizhida:latest
+    networks:
+      - 1panel-network
     ports:
       - "8078:8080"
     env_file:
@@ -14,6 +16,8 @@ services:
     image: huizhida:latest
     command: ["php", "/var/www/html/artisan", "conversation:inputs:consume"]
     stop_signal: SIGTERM
+    networks:
+      - 1panel-network
     depends_on:
       - web
     env_file:
@@ -21,10 +25,12 @@ services:
     deploy:
       replicas: 2  # 可根据负载调整 processor 实例数量
 
-  message-sender:
+  gateway:
     image: huizhida:latest
     command: ["php", "/var/www/html/artisan", "conversation:outputs:consume"]
     stop_signal: SIGTERM
+    networks:
+      - 1panel-network
     depends_on:
       - web
     env_file:
