@@ -311,8 +311,8 @@ class WorkWechatAdapter implements ChannelAdapterInterface
 
             // 调用企业微信客服API获取媒体文件
             // 根据文档：https://developer.work.weixin.qq.com/document/path/90254
-            // 客服消息使用 /cgi-bin/kf/media/get
-            $response = $api->get('/cgi-bin/kf/media/get', [
+            // 客服消息使用 /cgi-bin/media/get
+            $response = $api->get('/cgi-bin/media/get', [
                 'media_id' => $mediaId,
             ]);
 
