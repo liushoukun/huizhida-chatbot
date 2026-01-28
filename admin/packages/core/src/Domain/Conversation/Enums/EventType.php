@@ -14,6 +14,9 @@ enum EventType: string
 
     // 转入人工处理处理池子
     case TransferToHumanQueue = 'transferToHumanQueue';
+
+    // 已转人工
+    case TransferToHuman = 'transferToHuman';
     // 关闭会话
     case Closed = 'closed';
 }

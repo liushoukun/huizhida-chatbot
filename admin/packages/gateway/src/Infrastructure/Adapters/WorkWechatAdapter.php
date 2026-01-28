@@ -120,9 +120,23 @@ class WorkWechatAdapter implements ChannelAdapterInterface
         if (empty($msgList)) {
             throw new Exception('No messages in response');
         }
+        // 支持的消息类型
+        $supportedMsgTypes = ['text', 'image', 'voice', 'video', 'file', 'event'];
+        
         // 处理消息列表，返回最后一条消息（最新的）
         $messages = [];
         foreach ($msgList as $msgData) {
+            $msgType = $msgData['msgtype'] ?? 'text';
+            
+            // 过滤不支持的消息类型
+            if (!in_array($msgType, $supportedMsgTypes, true)) {
+                Log::debug('跳过不支持的消息类型', [
+                    'msgtype' => $msgType,
+                    'msgid'   => $msgData['msgid'] ?? '',
+                ]);
+                continue;
+            }
+            
             // 转换消息
             $message    = $this->convertToChannelMessage($msgData, $openKfId);
             $messages[] = $message;
@@ -179,8 +193,6 @@ class WorkWechatAdapter implements ChannelAdapterInterface
             'voice'    => MessageType::Chat,
             'video'    => MessageType::Chat,
             'file'     => MessageType::Chat,
-            'location' => MessageType::Chat,
-            'link'     => MessageType::Chat,
             'event'    => MessageType::Event,
         ];
 
@@ -195,6 +207,7 @@ class WorkWechatAdapter implements ChannelAdapterInterface
             'voice' => ContentType::Voice,
             'video' => ContentType::Video,
             'file'  => ContentType::File,
+            'event' => ContentType::Event,
         ];
 
         return $map[$wecomType] ?? ContentType::Text;
@@ -206,7 +219,7 @@ class WorkWechatAdapter implements ChannelAdapterInterface
      * @param  array  $msgData  消息数据
      * @param  ContentType  $contentType  内容类型
      *
-     * @return TextContent|ImageContent|VoiceContent|FileContent|VideoContent|null
+     * @return TextContent|ImageContent|VoiceContent|FileContent|VideoContent|EventContent|null
      * @throws Exception
      */
     protected function parseMessageContent(array $msgData, ContentType $contentType)
@@ -228,6 +241,9 @@ class WorkWechatAdapter implements ChannelAdapterInterface
 
             case ContentType::File:
                 return $this->parseFileContent($msgData);
+
+            case ContentType::Event:
+                return $this->parseEventContent($msgData);
 
             default:
                 Log::warning('Unsupported message type', ['msgtype' => $msgType]);
@@ -452,6 +468,63 @@ class WorkWechatAdapter implements ChannelAdapterInterface
     }
 
     /**
+     * 解析事件消息
+     *
+     * @param  array  $msgData  消息数据
+     *
+     * @return EventContent
+     * @throws Exception
+     */
+    protected function parseEventContent(array $msgData) : EventContent
+    {
+        $content = new EventContent();
+        
+        // 获取事件类型，可能直接在顶层或 event 字段中
+        $eventType = $msgData['event'] ?? '';
+        
+        // 获取事件数据，可能在 event_data 字段中，也可能直接在顶层
+        $eventData = $msgData['event_data'] ?? $msgData;
+        
+        // 根据企业微信事件类型映射到 EventType 枚举
+        if ($eventType === 'status_change_event' || isset($eventData['service_state'])) {
+            // 会话状态变更事件
+            $serviceState = $eventData['service_state'] ?? null;
+            
+            // 根据 service_state 映射到相应的事件类型
+            // service_state: 2 表示转人工排队
+            // service_state: 3 或 4 表示会话结束
+            // service_state: 1 表示已转人工（有客服接入）
+            if ($serviceState === 2) {
+                $content->event = EventType::TransferToHumanQueue;
+            } elseif ($serviceState === 1) {
+                $content->event = EventType::TransferToHuman;
+            } elseif ($serviceState === 3 || $serviceState === 4) {
+                $content->event = EventType::Closed;
+            } else {
+                // 未知状态，记录日志并使用默认值
+                Log::warning('未知的会话状态', [
+                    'service_state' => $serviceState,
+                    'event_data'    => $eventData,
+                    'msg_data'      => $msgData,
+                ]);
+                // 默认使用 Closed
+                $content->event = EventType::Closed;
+            }
+        } else {
+            // 其他事件类型，记录日志
+            Log::warning('未知的事件类型', [
+                'event'      => $eventType,
+                'event_data' => $eventData,
+                'msg_data'   => $msgData,
+            ]);
+            // 默认使用 Closed
+            $content->event = EventType::Closed;
+        }
+        
+        return $content;
+    }
+
+    /**
      * 将Content对象转换为数组
      */
     protected function contentToArray($content) : array
@@ -546,8 +619,8 @@ class WorkWechatAdapter implements ChannelAdapterInterface
         // 判断事件类型
         $eventType = $content->event;
         Log::info('处理事件消息', [
-            'message_id'  => $message->getMessageId(),
-            'event_type'  => $eventType->value,
+            'message_id'      => $message->getMessageId(),
+            'event_type'      => $eventType->value,
             'conversation_id' => $conversationAnswer->conversationId,
         ]);
 
