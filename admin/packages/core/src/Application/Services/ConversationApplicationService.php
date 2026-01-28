@@ -98,28 +98,18 @@ class ConversationApplicationService extends ApplicationService
      *
      * @return void
      */
-    public function savePendingMessages(string $conversationId, array $messages) : void
+    public function savePendingInputMessages(string $conversationId, array $messages) : void
     {
         // 持久化保存
         foreach ($messages as $message) {
             $this->messageRepository->save($message);
         }
 
-        $this->messageRepository->pendingMessages($conversationId, $messages);
+        $this->messageRepository->pendingInputMessages($conversationId, $messages);
 
     }
 
-    /**
-     * Save pending message.
-     *
-     * @param  ChannelMessage  $message
-     *
-     * @return null
-     */
-    public function savePendingMessage(ChannelMessage $message) : null
-    {
-        return $this->messageRepository->pending($message);
-    }
+
 
     /**
      * Get pending messages.
@@ -128,15 +118,15 @@ class ConversationApplicationService extends ApplicationService
      *
      * @return ChannelMessage[]
      */
-    public function getPendingMessages(string $conversationId) : array
+    public function getPendingInputMessages(string $conversationId) : array
     {
         return $this->messageRepository->getPendingMessages($conversationId);
     }
 
 
-    public function removePendingMessages(string $conversationId) : null
+    public function removePendingInputMessages(string $conversationId) : null
     {
-        return $this->messageRepository->removePendingMessages($conversationId);
+        return $this->messageRepository->removePendingInputMessages($conversationId);
     }
 
     /**

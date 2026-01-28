@@ -21,7 +21,7 @@ class MessageRepository implements MessageRepositoryInterface
     public function getPendingMessages(string $conversationId) : array
     {
         // TODO 获取一定时间内的数据
-        $key             = $this->generatePendingMessagesKey($conversationId);
+        $key             = $this->generatePendingInputMessagesKey($conversationId);
         $messages        = Redis::connection($this->getRedisConnection())
                                 ->zrange($key, 0, -1);
         $channelMessages = [];
@@ -38,7 +38,7 @@ class MessageRepository implements MessageRepositoryInterface
 
     public function pending(ChannelMessage $message) : void
     {
-        $key         = $this->generatePendingMessagesKey($message->conversationId);
+        $key         = $this->generatePendingInputMessagesKey($message->conversationId);
         $messageData = $message->toJson();
         $score       = microtime(true);
 
@@ -53,9 +53,9 @@ class MessageRepository implements MessageRepositoryInterface
      *
      * @return void
      */
-    public function pendingMessages(string $conversationId, array $messages) : void
+    public function pendingInputMessages(string $conversationId, array $messages) : void
     {
-        $key        = $this->generatePendingMessagesKey($conversationId);
+        $key        = $this->generatePendingInputMessagesKey($conversationId);
         $dictionary = [];
         foreach ($messages as $message) {
             $dictionary[$message->toJson()] = microtime(true);
@@ -71,9 +71,9 @@ class MessageRepository implements MessageRepositoryInterface
      *
      * @return void
      */
-    public function removePendingMessages(string $conversationId) : void
+    public function removePendingInputMessages(string $conversationId) : void
     {
-        $key = $this->generatePendingMessagesKey($conversationId);
+        $key = $this->generatePendingInputMessagesKey($conversationId);
         Redis::connection($this->getRedisConnection())->del($key);
     }
 
@@ -84,9 +84,9 @@ class MessageRepository implements MessageRepositoryInterface
      *
      * @return string
      */
-    public function generatePendingMessagesKey(string $conversationId) : string
+    public function generatePendingInputMessagesKey(string $conversationId) : string
     {
-        return "conversations:pending-messages:$conversationId";
+        return "conversations:pending-input-messages:$conversationId";
     }
 
 

@@ -49,7 +49,7 @@ class MessageProcessorService
         try {
             // 1. 获取未处理消息
             // 按当前时间去获取 未处理消息 TODO
-            $messages = $this->conversationApplicationService->getPendingMessages($conversationId);
+            $messages = $this->conversationApplicationService->getPendingInputMessages($conversationId);
             if (empty($messages)) {
                 Log::info('No unprocessed messages', ['conversation_id' => $conversationId]);
                 return;
@@ -146,7 +146,7 @@ class MessageProcessorService
      */
     protected function removeProcessedMessages(string $conversationId) : void
     {
-        $this->conversationApplicationService->removePendingMessages($conversationId);
+        $this->conversationApplicationService->removePendingInputMessages($conversationId);
     }
 
     /**

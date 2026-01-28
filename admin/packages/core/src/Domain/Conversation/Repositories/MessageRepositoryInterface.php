@@ -30,7 +30,7 @@ interface MessageRepositoryInterface
      */
     public function pending(ChannelMessage $message) : void;
 
-    public function pendingMessages(string $conversationId, array $messages) : void;
+    public function pendingInputMessages(string $conversationId, array $messages) : void;
 
     /**
      * @param  string  $conversationId
@@ -39,5 +39,5 @@ interface MessageRepositoryInterface
      */
     public function getPendingMessages(string $conversationId) : array;
 
-    public function removePendingMessages(string $conversationId) : void;
+    public function removePendingInputMessages(string $conversationId) : void;
 }

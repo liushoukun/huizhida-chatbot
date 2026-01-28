@@ -4,7 +4,7 @@ namespace HuiZhiDa\Gateway\Http\Controllers;
 
 use HuiZhiDa\Core\Application\Services\ConversationApplicationService;
 use HuiZhiDa\Core\Domain\Channel\Repositories\ChannelRepositoryInterface;
-use HuiZhiDa\Gateway\Applications\Services\GatewayApplicationService;
+use HuiZhiDa\Gateway\Application\Services\GatewayApplicationService;
 use HuiZhiDa\Gateway\Infrastructure\Adapters\AdapterFactory;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;

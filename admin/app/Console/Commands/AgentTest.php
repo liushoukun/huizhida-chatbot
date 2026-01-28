@@ -45,7 +45,7 @@ class AgentTest extends Command
 
         $conversationApplicationService = app(ConversationApplicationService::class);
 
-        $message = $conversationApplicationService->getPendingMessages('f3c13f68-f39b-4174-b88d-7439f8af0d1a');
+        $message = $conversationApplicationService->getPendingInputMessages('f3c13f68-f39b-4174-b88d-7439f8af0d1a');
         dd($message);
         $this->agentService     = app(AgentService::class);
         $channelMessage         = new ChannelMessage();

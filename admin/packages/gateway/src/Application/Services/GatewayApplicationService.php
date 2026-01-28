@@ -1,6 +1,6 @@
 <?php
 
-namespace HuiZhiDa\Gateway\Applications\Services;
+namespace HuiZhiDa\Gateway\Application\Services;
 
 use HuiZhiDa\Core\Application\Services\ConversationApplicationService;
 use HuiZhiDa\Core\Domain\Channel\Models\Channel;
@@ -8,12 +8,14 @@ use HuiZhiDa\Core\Domain\Channel\Repositories\ChannelRepositoryInterface;
 use HuiZhiDa\Core\Domain\Conversation\DTO\ChannelMessage;
 use HuiZhiDa\Core\Domain\Conversation\DTO\Events\ConversationEvent;
 use HuiZhiDa\Core\Domain\Conversation\Models\Conversation;
+use HuiZhiDa\Gateway\Applications\Services\Exception;
+use HuiZhiDa\Gateway\Applications\Services\InvalidArgumentException;
 use HuiZhiDa\Gateway\Infrastructure\Adapters\AdapterFactory;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Log;
 use RedJasmine\Support\Application\ApplicationService;
-use Illuminate\Http\JsonResponse;
 
 class GatewayApplicationService extends ApplicationService
 {
@@ -152,7 +154,7 @@ class GatewayApplicationService extends ApplicationService
         }
 
         // 7. 存储会话待处理消息
-        $this->conversationApplicationService->savePendingMessages($conversation->conversation_id, $messages);
+        $this->conversationApplicationService->savePendingInputMessages($conversation->conversation_id, $messages);
 
         // 8. 第二步：推送事件消息到队列，包含会话ID
         $this->conversationApplicationService->triggerEvent(new ConversationEvent($conversation->conversation_id));
