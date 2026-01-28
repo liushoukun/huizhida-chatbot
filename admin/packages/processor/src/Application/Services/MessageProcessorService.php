@@ -6,13 +6,15 @@ use Exception;
 use HuiZhiDa\Core\Application\Services\ConversationApplicationService;
 use HuiZhiDa\Core\Domain\Conversation\Contracts\ConversationQueueInterface;
 use HuiZhiDa\Core\Domain\Conversation\DTO\ChannelMessage;
-use HuiZhiDa\Core\Domain\Conversation\DTO\ConversationOutputQueue;
+use HuiZhiDa\Core\Domain\Conversation\DTO\Contents\EventContent;
 use HuiZhiDa\Core\Domain\Conversation\DTO\ConversationData;
+use HuiZhiDa\Core\Domain\Conversation\DTO\ConversationOutputQueue;
 use HuiZhiDa\Core\Domain\Conversation\DTO\Events\ConversationEvent;
+use HuiZhiDa\Core\Domain\Conversation\Enums\ContentType;
 use HuiZhiDa\Core\Domain\Conversation\Enums\ConversationQueueType;
 use HuiZhiDa\Core\Domain\Conversation\Enums\ConversationStatus;
+use HuiZhiDa\Core\Domain\Conversation\Enums\EventType;
 use HuiZhiDa\Core\Domain\Conversation\Enums\MessageType;
-use HuiZhiDa\Core\Domain\Conversation\Models\Conversation;
 use HuiZhiDa\Processor\Domain\Data\PreCheckResult;
 use HuiZhiDa\Processor\Domain\Enums\ActionType;
 use HuiZhiDa\Processor\Domain\Services\PreCheckService;
@@ -226,7 +228,31 @@ class MessageProcessorService
 
         $this->conversationApplicationService->transfer($conversation->conversationId, ConversationStatus::HumanQueuing);
 
-        $this->messageQueue->publish(ConversationQueueType::Transfer, $conversation);
+        $outputQueue = new ConversationOutputQueue();
+
+        $outputQueue->conversationId        = $conversation->conversationId;
+        $outputQueue->channelConversationId = $conversation->channelConversationId;
+        $outputQueue->channelId             = $conversation->channelId;
+        $outputQueue->user                  = $conversation->user;
+        $outputQueue->channelAppId          = $conversation->channelAppId;
+
+        // TODO 更具配置判断是否转入工处理队列，还是指定人员处理
+        $channelMessage                        = new ChannelMessage();
+        $channelMessage->channelId             = $conversation->channelId;
+        $channelMessage->channelConversationId = $conversation->channelConversationId;
+        $channelMessage->channelAppId          = $conversation->channelAppId;
+        $channelMessage->messageType           = MessageType::Event;
+        $channelMessage->contentType           = ContentType::Event;
+        $channelMessage->setContentData(ContentType::Event,
+            EventContent::from([
+                'event' => EventType::TransferToHumanQueue,
+            ])->toArray()
+        );
+
+        $outputQueue->messages = [$channelMessage];
+        //
+
+        $this->messageQueue->publish(ConversationQueueType::Outputs, $outputQueue);
 
         Log::info('转换人工处理');
     }

@@ -5,11 +5,13 @@ namespace HuiZhiDa\Gateway\Infrastructure\Adapters;
 use EasyWeChat\Work\Application;
 use Exception;
 use HuiZhiDa\Core\Domain\Conversation\DTO\ChannelMessage;
+use HuiZhiDa\Core\Domain\Conversation\DTO\Contents\EventContent;
 use HuiZhiDa\Core\Domain\Conversation\DTO\Contents\FileContent;
 use HuiZhiDa\Core\Domain\Conversation\DTO\Contents\ImageContent;
 use HuiZhiDa\Core\Domain\Conversation\DTO\Contents\TextContent;
 use HuiZhiDa\Core\Domain\Conversation\DTO\Contents\VideoContent;
 use HuiZhiDa\Core\Domain\Conversation\DTO\Contents\VoiceContent;
+use HuiZhiDa\Core\Domain\Conversation\Enums\EventType;
 use HuiZhiDa\Core\Domain\Conversation\DTO\ConversationOutputQueue;
 use HuiZhiDa\Core\Domain\Conversation\DTO\ConversationData;
 use HuiZhiDa\Core\Domain\Conversation\Enums\ContentType;
@@ -486,28 +488,104 @@ class WorkWechatAdapter implements ChannelAdapterInterface
 
     public function sendMessages(ConversationOutputQueue $conversationAnswer) : void
     {
-
         $api = $this->workWechatApp->getClient();
 
         foreach ($conversationAnswer->messages as $message) {
+            // 根据消息类型处理
+            if ($message->messageType === MessageType::Chat) {
+                // 处理聊天消息
+                $this->sendChatMessage($api, $message, $conversationAnswer);
+            } elseif ($message->messageType === MessageType::Event) {
+                // 处理事件消息
+                $this->handleEventMessage($message, $conversationAnswer);
+            } else {
+                Log::warning('未知的消息类型', [
+                    'message_id'   => $message->getMessageId(),
+                    'message_type' => $message->messageType->value ?? null,
+                ]);
+            }
+        }
+    }
 
-            $workWechatMessage = $this->convertToWorkWechatMessage($message);
+    /**
+     * 发送聊天消息
+     */
+    protected function sendChatMessage($api, ChannelMessage $message, ConversationOutputQueue $conversationAnswer) : void
+    {
+        $workWechatMessage = $this->convertToWorkWechatMessage($message);
 
-            $workWechatMessage['touser']    = $conversationAnswer->user->getID();
-            $workWechatMessage['open_kfid'] = $conversationAnswer->channelAppId;
-            $workWechatMessage['msgid']     = $message->getMessageId();
-            Log::debug('发送消息到企业微信', $workWechatMessage);
-            $response = $api->postJson(
-                '/cgi-bin/kf/send_msg',
-                $workWechatMessage,
-            );
-            Log::debug('发送结果', [
-                'status' => $response->getStatusCode(),
-                'body'   => json_decode($response->getContent(), true)
+        $workWechatMessage['touser']    = $conversationAnswer->user->getID();
+        $workWechatMessage['open_kfid'] = $conversationAnswer->channelAppId;
+        $workWechatMessage['msgid']     = $message->getMessageId();
+        Log::debug('发送消息到企业微信', $workWechatMessage);
+        $response = $api->postJson(
+            '/cgi-bin/kf/send_msg',
+            $workWechatMessage,
+        );
+        Log::debug('发送结果', [
+            'status' => $response->getStatusCode(),
+            'body'   => json_decode($response->getContent(), true)
+        ]);
+    }
+
+    /**
+     * 处理事件消息
+     */
+    protected function handleEventMessage(ChannelMessage $message, ConversationOutputQueue $conversationAnswer) : void
+    {
+        // 获取事件内容
+        $content = $message->getContent();
+        if (!$content instanceof EventContent) {
+            Log::warning('事件消息内容类型不正确', [
+                'message_id'   => $message->getMessageId(),
+                'content_type' => get_class($content),
             ]);
+            return;
         }
 
+        // 判断事件类型
+        $eventType = $content->event;
+        Log::info('处理事件消息', [
+            'message_id'  => $message->getMessageId(),
+            'event_type'  => $eventType->value,
+            'conversation_id' => $conversationAnswer->conversationId,
+        ]);
 
+        // 根据事件类型处理
+        if ($eventType === EventType::TransferToHumanQueue) {
+            // 转人工
+            $this->transferToHumanQueuing($conversationAnswer);
+        } elseif ($eventType === EventType::Closed) {
+            // 关闭会话
+            $this->closeConversation($conversationAnswer);
+        } else {
+            Log::warning('未知的事件类型', [
+                'message_id' => $message->getMessageId(),
+                'event_type' => $eventType->value,
+            ]);
+        }
+    }
+
+    /**
+     * 关闭会话
+     */
+    protected function closeConversation(ConversationOutputQueue $conversationAnswer) : void
+    {
+        $api = $this->workWechatApp->getClient();
+        // /cgi-bin/kf/service_state/trans
+        // 文档: https://developer.work.weixin.qq.com/document/path/94669#%E5%8F%98%E6%9B%B4%E4%BC%9A%E8%AF%9D%E7%8A%B6%E6%80%81
+        // service_state: 3 表示会话结束
+        $data = [
+            'open_kfid'       => $conversationAnswer->channelAppId,
+            'external_userid' => $conversationAnswer->user->getID(),
+            'service_state'   => 4, // 3 表示会话结束
+        ];
+        Log::info('关闭会话', $data);
+        $response = $api->postJson('/cgi-bin/kf/service_state/trans', $data);
+        Log::info('关闭会话返回', [
+            'status'  => $response->getStatusCode(),
+            'content' => $response->getContent(),
+        ]);
     }
 
     protected function convertToWorkWechatMessage(ChannelMessage $channelMessage) : array
@@ -515,9 +593,12 @@ class WorkWechatAdapter implements ChannelAdapterInterface
         $message            = [];
         $message['msgtype'] = $channelMessage->contentType->value;
         if ($channelMessage->contentType === ContentType::Text) {
-            $message['text'] = [
-                'content' => $channelMessage->getContent()->text,
-            ];
+            $content = $channelMessage->getContent();
+            if ($content instanceof TextContent) {
+                $message['text'] = [
+                    'content' => $content->text,
+                ];
+            }
         }
 
         // TODO 转换更多消息
@@ -528,7 +609,7 @@ class WorkWechatAdapter implements ChannelAdapterInterface
 
     public function transferToHumanQueuing(ConversationData $conversation) : void
     {
-        // TODO: 实现转接到客服队列
+
         $api = $this->workWechatApp->getClient();
         // /cgi-bin/kf/service_state/trans
         // 文档

@@ -3,6 +3,7 @@
 namespace HuiZhiDa\Core\Domain\Conversation\DTO;
 
 use HuiZhiDa\Core\Domain\Conversation\DTO\Contents\Content;
+use HuiZhiDa\Core\Domain\Conversation\DTO\Contents\EventContent;
 use HuiZhiDa\Core\Domain\Conversation\DTO\Contents\FileContent;
 use HuiZhiDa\Core\Domain\Conversation\DTO\Contents\ImageContent;
 use HuiZhiDa\Core\Domain\Conversation\DTO\Contents\TextContent;
@@ -114,6 +115,7 @@ class Message extends Data
             ContentType::Voice => VoiceContent::from($this->content),
             ContentType::Video => VideoContent::from($this->content),
             ContentType::File => FileContent::from($this->content),
+            ContentType::Event => EventContent::from($this->content),
             ContentType::Unknown => UnknownContent::from($this->content),
             default => null, // Card, Event, Combination 等类型暂不支持
         };

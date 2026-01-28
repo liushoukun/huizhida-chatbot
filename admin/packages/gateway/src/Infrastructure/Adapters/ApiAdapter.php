@@ -100,61 +100,11 @@ class ApiAdapter implements ChannelAdapterInterface
         return [$message];
     }
 
-    public function sendMessages(ConversationOutputQueue $conversationAnswer) : void
+    public function sendMessages(ConversationOutputQueue $conversationOutputQueue) : void
     {
-        $apiUrl = $this->config['api_url'] ?? '';
 
-        if (empty($apiUrl)) {
-            throw new RuntimeException('API URL is not configured');
-        }
-
-        $payload = $this->convertToChannelFormat($message);
-
-        // 构建请求头
-        $headers = [
-            'Content-Type' => 'application/json',
-            'Accept'       => 'application/json',
-        ];
-
-        // 如果配置了 API Key，添加到请求头
-        $apiKey = $this->config['api_key'] ?? '';
-        if (!empty($apiKey)) {
-            $headers['X-API-Key'] = $apiKey;
-        }
-
-        // 如果配置了 API Secret，生成签名
-        $apiSecret = $this->config['api_secret'] ?? '';
-        if (!empty($apiSecret) && !empty($apiKey)) {
-            $timestamp  = (string) time();
-            $nonce      = uniqid();
-            $body       = json_encode($payload);
-            $signString = $timestamp.$nonce.$body.$apiSecret;
-            $signature  = hash_hmac('sha256', $signString, $apiKey);
-
-            $headers['X-API-Timestamp'] = $timestamp;
-            $headers['X-API-Nonce']     = $nonce;
-            $headers['X-API-Signature'] = $signature;
-        }
-
-        try {
-            $response = Http::withHeaders($headers)
-                            ->timeout(30)
-                            ->post($apiUrl, $payload);
-
-            if (!$response->successful()) {
-                Log::error('API adapter send message failed', [
-                    'url'      => $apiUrl,
-                    'status'   => $response->status(),
-                    'response' => $response->body(),
-                ]);
-                throw new RuntimeException('Failed to send message to API: '.$response->body());
-            }
-        } catch (Exception $e) {
-            Log::error('API adapter send message exception', [
-                'url'   => $apiUrl,
-                'error' => $e->getMessage(),
-            ]);
-            throw $e;
+        foreach ($conversationOutputQueue->messages as $message){
+            Log::debug('输出消息',$message->toArray());
         }
     }
 

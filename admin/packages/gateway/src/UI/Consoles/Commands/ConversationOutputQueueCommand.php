@@ -14,14 +14,13 @@ use Illuminate\Support\Facades\Log;
 use RedJasmine\Payment\Domain\Models\ChannelApp;
 use RedJasmine\Support\Domain\Queries\FindQuery;
 
-class MessageSenderCommand extends Command
+class ConversationOutputQueueCommand extends Command
 {
-    protected $signature   = 'gateway:message-sender';
+    protected $signature   = 'conversation:outputs:consume';
     protected $description = 'Start message sender consumer';
 
     public function __construct(
         protected AdapterFactory $adapterFactory,
-
         protected ConversationApplicationService $conversationApplicationService,
         protected ChannelApplicationService $channelApplicationService,
         protected ConversationQueueInterface $mq
@@ -34,46 +33,30 @@ class MessageSenderCommand extends Command
         $this->info('Message sender consumer started');
 
 
-        $this->mq->subscribe(ConversationQueueType::Sending, function ($data) {
+        $this->mq->subscribe(ConversationQueueType::Outputs, function ($data) {
 
+            $this->info('处理MQ',$data);
+            $conversationOutputQueue = ConversationOutputQueue::from($data);
 
-            $conversationAnswer = ConversationOutputQueue::from($data);
-
-            $this->handleMessage($conversationAnswer);
+            $this->handleOutputQueue($conversationOutputQueue);
         });
 
         return 0;
     }
 
-    protected function handleMessage(ConversationOutputQueue $conversationAnswer) : void
+    protected function handleOutputQueue(ConversationOutputQueue $conversationOutputQueue) : void
     {
         try {
 
-
-            $channel = $this->channelApplicationService->find(FindQuery::make($conversationAnswer->channelId));
-
+            //
+            $channel = $this->channelApplicationService->find(FindQuery::make($conversationOutputQueue->channelId));
 
             $adapter = $this->adapterFactory->get($channel->channel, $channel->config);
 
-
             // 发送消息
-            $adapter->sendMessages($conversationAnswer);
+            $adapter->sendMessages($conversationOutputQueue);
             Log::info('发送结束');
-            // 更新消息状态
-            // try {
-            //     $this->messageService->updateStatus($message->messageId ?? '', 'sent');
-            // } catch (Exception $e) {
-            //     Log::warning('Update message status failed', [
-            //         'message_id' => $message->messageId,
-            //         'error'      => $e->getMessage(),
-            //     ]);
-            // }
 
-            // $this->info('Message sent successfully', [
-            //     'message_id'      => $message->messageId,
-            //     'conversation_id' => $message->conversationId,
-            //     'channel_id'      => $message->channelId,
-            // ]);
         } catch (Exception $e) {
             throw $e;
             // Log::error('Handle message failed', [
@@ -84,13 +67,5 @@ class MessageSenderCommand extends Command
         }
     }
 
-    /**
-     * 根据channelId获取channel类型
-     * TODO: 从数据库查询
-     */
-    protected function getChannelType(?string $channelId) : string
-    {
-        // TODO: 从数据库查询channels表获取channel类型
-        return 'api'; // 默认返回api
-    }
+
 }

@@ -37,7 +37,7 @@ interface ChannelAdapterInterface
     /**
      * 发送消息到渠道
      */
-    public function sendMessages(ConversationOutputQueue $conversationAnswer) : void;
+    public function sendMessages(ConversationOutputQueue $conversationOutputQueue) : void;
 
 
     public function transferToHumanQueuing(ConversationData $conversation) : void;

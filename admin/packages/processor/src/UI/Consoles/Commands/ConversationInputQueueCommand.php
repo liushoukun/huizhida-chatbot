@@ -22,10 +22,7 @@ class ConversationInputQueueCommand extends Command
      *
      * @var string
      */
-    protected $signature = 'conversation:inputs:consume 
-                            {--queue= : 队列名称}
-                            {--timeout=5 : 阻塞超时时间（秒）}
-                            {--max-jobs=0 : 最大处理任务数，0表示无限制}';
+    protected $signature = 'conversation:inputs:consume';
 
     /**
      * The console command description.
@@ -51,17 +48,14 @@ class ConversationInputQueueCommand extends Command
      */
     public function handle() : int
     {
-        $queue = ConversationQueueType::Processor->getQueueName();
 
-        $timeout       = (int) $this->option('timeout');
-        $this->maxJobs = (int) $this->option('max-jobs');
-
-        $this->info("开始消费队列: {$queue}");
+        $timeout       = (int) 10;
+        $this->maxJobs = (int) 100;
         $this->info("阻塞超时: {$timeout}秒");
 
 
         // 订阅队列
-        $this->mq->subscribe(ConversationQueueType::Inputs, function ($eventData) use ($queue) {
+        $this->mq->subscribe(ConversationQueueType::Inputs, function ($eventData) {
             $event = null;
 
 
@@ -74,7 +68,7 @@ class ConversationInputQueueCommand extends Command
 
                 // 获取会话级分布式锁
                 $lockKey = "conversation:lock:{$event->conversationId}";
-                $lock = Cache::lock($lockKey, 3600); // 锁超时时间1小时
+                $lock    = Cache::lock($lockKey, 3600); // 锁超时时间1小时
 
                 // 等待获取锁，最多等待10分钟
                 $lock->block(600, function () use ($event) {

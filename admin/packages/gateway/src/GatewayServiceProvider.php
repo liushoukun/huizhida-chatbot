@@ -48,7 +48,7 @@ class GatewayServiceProvider extends ServiceProvider
         // 注册命令
         if ($this->app->runningInConsole()) {
             $this->commands([
-                UI\Consoles\Commands\MessageSenderCommand::class,
+                UI\Consoles\Commands\ConversationOutputQueueCommand::class,
                 UI\Consoles\Commands\TransferExecutorCommand::class,
             ]);
         }

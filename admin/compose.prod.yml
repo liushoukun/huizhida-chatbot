@@ -1,15 +1,18 @@
+networks:
+  1panel-network:
+    external: true
 services:
   web:
     # Use your custom image instead of the base image
-    image: registry.cn-shenzhen.aliyuncs.com/xlankeji/huizhida:latest
+    image: huizhida:latest
     ports:
       - "8078:8080"
     env_file:
       - 1panel.env
 
   processor:
-    image: registry.cn-shenzhen.aliyuncs.com/xlankeji/huizhida:latest
-    command: ["php", "/var/www/html/artisan", "processor:consume"]
+    image: huizhida:latest
+    command: ["php", "/var/www/html/artisan", "conversation:inputs:consume"]
     stop_signal: SIGTERM
     depends_on:
       - web
@@ -17,17 +20,8 @@ services:
       - 1panel.env
 
   message-sender:
-    image: registry.cn-shenzhen.aliyuncs.com/xlankeji/huizhida:latest
-    command: ["php", "/var/www/html/artisan", "gateway:message-sender"]
-    stop_signal: SIGTERM
-    depends_on:
-      - web
-    env_file:
-      - 1panel.env
-
-  transfer-executor:
-    image: registry.cn-shenzhen.aliyuncs.com/xlankeji/huizhida:latest
-    command: ["php", "/var/www/html/artisan", "gateway:transfer-executor"]
+    image: huizhida:latest
+    command: ["php", "/var/www/html/artisan", "conversation:outputs:consume"]
     stop_signal: SIGTERM
     depends_on:
       - web
