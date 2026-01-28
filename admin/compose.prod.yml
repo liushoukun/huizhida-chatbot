@@ -1,6 +1,8 @@
 networks:
   1panel-network:
     external: true
+
+
 services:
   web:
     # Use your custom image instead of the base image
@@ -11,6 +13,10 @@ services:
       - "8078:8080"
     env_file:
       - 1panel.env
+    volumes:
+      # 持久化存储目录（上传文件、日志、会话、视图缓存等）
+      - ./storage/app:/var/www/html/storage/app
+      - ./storage/logs:/var/www/html/storage/logs
 
   processor:
     image: huizhida:latest
@@ -23,7 +29,11 @@ services:
     env_file:
       - 1panel.env
     deploy:
-      replicas: 2  # 可根据负载调整 processor 实例数量
+      replicas: 1  # 可根据负载调整 processor 实例数量
+    volumes:
+      # 持久化存储目录（上传文件、日志、会话、视图缓存等）
+      - ./storage/app:/var/www/html/storage/app
+      - ./storage/logs:/var/www/html/storage/logs
 
   gateway:
     image: huizhida:latest
@@ -35,4 +45,8 @@ services:
       - web
     env_file:
       - 1panel.env
+    volumes:
+      # 持久化存储目录（上传文件、日志、会话、视图缓存等）
+      - ./storage/app:/var/www/html/storage/app
+      - ./storage/logs:/var/www/html/storage/logs
 
