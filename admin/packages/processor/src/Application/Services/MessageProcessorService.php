@@ -110,20 +110,78 @@ class MessageProcessorService
      */
     protected function processEventMessages(ConversationData $conversation, array $eventMessages) : void
     {
+        $conversationId = $conversation->conversationId;
 
         foreach ($eventMessages as $message) {
-            // 根据事件类型处理
-            // TODO: 根据实际的事件类型进行相应处理
-            // 例如：close_conversation, transfer_human, state_change 等
             Log::debug('处理事件消息', [
-                'conversation_id' => $conversation->conversationId,
+                'conversation_id' => $conversationId,
                 'message_id'      => $message->messageId,
                 'content_type'    => $message->contentType->value ?? null,
             ]);
 
-            // 这里可以根据消息内容类型或内容数据来判断具体的事件类型
-            // 暂时记录日志，后续根据实际需求完善
+            // 获取事件内容
+            $content = $message->getContent();
+            if (!$content instanceof EventContent) {
+                Log::warning('事件消息内容类型不正确', [
+                    'conversation_id' => $conversationId,
+                    'message_id'      => $message->messageId,
+                    'content_type'    => $message->contentType->value ?? null,
+                ]);
+                continue;
+            }
+
+            $eventType = $content->event;
+
+            // 根据事件类型更新会话状态
+            match ($eventType) {
+                EventType::TransferToHumanQueue => $this->handleTransferToHumanQueue($conversationId),
+                EventType::TransferToHuman => $this->handleTransferToHuman($conversationId),
+                EventType::Closed => $this->handleClosed($conversationId),
+                default => Log::debug('未处理的事件类型', [
+                    'conversation_id' => $conversationId,
+                    'event_type'      => $eventType->value,
+                ]),
+            };
         }
+    }
+
+    /**
+     * 处理转入人工处理队列事件
+     *
+     * @param  string  $conversationId
+     *
+     * @return void
+     */
+    protected function handleTransferToHumanQueue(string $conversationId) : void
+    {
+        Log::info('处理转入人工处理队列事件', ['conversation_id' => $conversationId]);
+        $this->conversationApplicationService->transfer($conversationId, ConversationStatus::HumanQueuing);
+    }
+
+    /**
+     * 处理已转人工事件
+     *
+     * @param  string  $conversationId
+     *
+     * @return void
+     */
+    protected function handleTransferToHuman(string $conversationId) : void
+    {
+        Log::info('处理已转人工事件', ['conversation_id' => $conversationId]);
+        $this->conversationApplicationService->transfer($conversationId, ConversationStatus::Human);
+    }
+
+    /**
+     * 处理关闭会话事件
+     *
+     * @param  string  $conversationId
+     *
+     * @return void
+     */
+    protected function handleClosed(string $conversationId) : void
+    {
+        Log::info('处理关闭会话事件', ['conversation_id' => $conversationId]);
+        $this->conversationApplicationService->transfer($conversationId, ConversationStatus::Closed);
     }
 
     /**
