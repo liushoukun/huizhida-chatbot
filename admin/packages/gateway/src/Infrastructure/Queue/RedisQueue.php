@@ -31,8 +31,9 @@ class RedisQueue implements ConversationQueueInterface
      */
     public function isLastEvent(ConversationEvent $event) : bool
     {
-        $key = "{$event->queue->getQueueName()}-last:{$event->conversationId}";
-        return Redis::get($key) === $event->id;
+        $key         = "{$event->queue->getQueueName()}-last:{$event->conversationId}";
+        $lastEventId = Redis::get($key);
+        return ($lastEventId === $event->id) || !$lastEventId;
     }
 
 
