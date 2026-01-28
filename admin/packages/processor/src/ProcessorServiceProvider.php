@@ -5,7 +5,7 @@ namespace HuiZhiDa\Processor;
 use HuiZhiDa\Processor\Application\Services\AgentService;
 use HuiZhiDa\Processor\Domain\Services\PreCheckService;
 use HuiZhiDa\Processor\Infrastructure\Adapters\AgentAdapterFactory;
-use HuiZhiDa\Processor\UI\Consoles\Commands\ProcessConversationEventsCommand;
+use HuiZhiDa\Processor\UI\Consoles\Commands\ConversationInputQueueCommand;
 use HuiZhiDa\Core\Domain\Agent\Repositories\AgentRepositoryInterface;
 use HuiZhiDa\Core\Domain\Conversation\Contracts\ConversationQueueInterface;
 use HuiZhiDa\Gateway\Infrastructure\Queue\RedisQueue;
@@ -69,7 +69,7 @@ class ProcessorServiceProvider extends ServiceProvider
 
         if ($this->app->runningInConsole()) {
             $this->commands([
-                ProcessConversationEventsCommand::class,
+                ConversationInputQueueCommand::class,
             ]);
         }
     }

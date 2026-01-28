@@ -10,7 +10,7 @@ use HuiZhiDa\Core\Domain\Conversation\DTO\Contents\ImageContent;
 use HuiZhiDa\Core\Domain\Conversation\DTO\Contents\TextContent;
 use HuiZhiDa\Core\Domain\Conversation\DTO\Contents\VideoContent;
 use HuiZhiDa\Core\Domain\Conversation\DTO\Contents\VoiceContent;
-use HuiZhiDa\Core\Domain\Conversation\DTO\ConversationAnswerData;
+use HuiZhiDa\Core\Domain\Conversation\DTO\ConversationOutputQueue;
 use HuiZhiDa\Core\Domain\Conversation\DTO\ConversationData;
 use HuiZhiDa\Core\Domain\Conversation\Enums\ContentType;
 use HuiZhiDa\Core\Domain\Conversation\Enums\MessageType;
@@ -484,7 +484,7 @@ class WorkWechatAdapter implements ChannelAdapterInterface
         return $data;
     }
 
-    public function sendMessages(ConversationAnswerData $conversationAnswer) : void
+    public function sendMessages(ConversationOutputQueue $conversationAnswer) : void
     {
 
         $api = $this->workWechatApp->getClient();

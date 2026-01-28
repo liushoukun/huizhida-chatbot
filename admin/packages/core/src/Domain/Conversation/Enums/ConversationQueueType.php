@@ -24,6 +24,6 @@ enum ConversationQueueType: string
      */
     public function getQueueName() : string
     {
-        return "conversations:queue-{$this->value}";
+        return "conversations:queue:{$this->value}";
     }
 }

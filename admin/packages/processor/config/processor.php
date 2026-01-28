@@ -7,10 +7,7 @@ return [
     |--------------------------------------------------------------------------
     */
     'queue' => [
-        'connection' => env('QUEUE_CONNECTION', 'redis'),
-        'conversation_events_queue' => env('CONVERSATION_EVENTS_QUEUE', 'conversation_events'),
-        'outgoing_messages_queue' => env('OUTGOING_MESSAGES_QUEUE', 'outgoing_messages'),
-        'transfer_requests_queue' => env('TRANSFER_REQUESTS_QUEUE', 'transfer_requests'),
+        'connection' => env('QUEUE_CONNECTION', 'default'),
     ],
 
     /*

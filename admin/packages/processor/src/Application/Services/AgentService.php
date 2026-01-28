@@ -11,7 +11,7 @@ use HuiZhiDa\Processor\Infrastructure\Adapters\AgentAdapterFactory;
 use HuiZhiDa\Core\Domain\Agent\Models\Agent;
 use HuiZhiDa\Core\Domain\Agent\Repositories\AgentRepositoryInterface;
 use HuiZhiDa\Core\Domain\Conversation\DTO\ChannelMessage;
-use HuiZhiDa\Core\Domain\Conversation\DTO\ConversationAnswerData;
+use HuiZhiDa\Core\Domain\Conversation\DTO\ConversationOutputQueue;
 use HuiZhiDa\Core\Domain\Conversation\DTO\ConversationData;
 use Illuminate\Support\Facades\Log;
 use RuntimeException;
@@ -35,10 +35,10 @@ class AgentService
      * @param  ConversationData  $conversation  会话数据
      * @param  int  $agentId  智能体ID
      *
-     * @return ConversationAnswerData 回答数据
+     * @return ConversationOutputQueue 回答数据
      * @throws Exception
      */
-    public function processMessages(array $messages, ConversationData $conversation, int $agentId) : ConversationAnswerData
+    public function processMessages(array $messages, ConversationData $conversation, int $agentId) : ConversationOutputQueue
     {
 
         // 1. 获取智能体配置
@@ -110,9 +110,9 @@ class AgentService
     /**
      * 格式化响应
      */
-    protected function formatResponse(ConversationData $conversation, AgentChatResponse $response) : ConversationAnswerData
+    protected function formatResponse(ConversationData $conversation, AgentChatResponse $response) : ConversationOutputQueue
     {
-        $answer = new ConversationAnswerData();
+        $answer = new ConversationOutputQueue();
 
         $answer->conversationId        = $conversation->conversationId;
         $answer->channelConversationId = $conversation->channelConversationId;

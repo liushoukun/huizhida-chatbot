@@ -86,7 +86,7 @@ class MessageRepository implements MessageRepositoryInterface
      */
     public function generatePendingInputMessagesKey(string $conversationId) : string
     {
-        return "conversations:pending-input-messages:$conversationId";
+        return "conversations:messages:pending-input:$conversationId";
     }
 
 

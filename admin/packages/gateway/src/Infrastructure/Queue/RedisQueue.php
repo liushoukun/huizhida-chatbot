@@ -31,14 +31,15 @@ class RedisQueue implements ConversationQueueInterface
      */
     public function isLastEvent(ConversationEvent $event) : bool
     {
-        $key = "conversations:events:{$event->queue->value}:{$event->conversationId}";
+        $key = "{$event->queue->getQueueName()}-last:{$event->conversationId}";
         return Redis::get($key) === $event->id;
     }
 
 
     public function recordLastEvent(ConversationEvent $event) : void
     {
-        $key = "conversations:events:{$event->queue->value}:{$event->conversationId}";
+
+        $key = "{$event->queue->getQueueName()}-last:{$event->conversationId}";
 
         Redis::setex($key, 60 * 60 * 24, $event->id);
     }
@@ -47,7 +48,6 @@ class RedisQueue implements ConversationQueueInterface
     public function publish(ConversationQueueType $queueType, Data $message) : void
     {
         $data = $message->toJson();
-
         try {
 
             Redis::connection($this->connection)->lpush($queueType->getQueueName(), $data);

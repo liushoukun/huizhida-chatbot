@@ -3,7 +3,7 @@
 namespace HuiZhiDa\Gateway\Domain\Contracts;
 
 use HuiZhiDa\Processor\Domain\Data\AgentChatResponse;
-use HuiZhiDa\Core\Domain\Conversation\DTO\ConversationAnswerData;
+use HuiZhiDa\Core\Domain\Conversation\DTO\ConversationOutputQueue;
 use HuiZhiDa\Core\Domain\Conversation\DTO\ConversationData;
 use Illuminate\Http\Request;
 use HuiZhiDa\Core\Domain\Conversation\DTO\ChannelMessage;
@@ -37,7 +37,7 @@ interface ChannelAdapterInterface
     /**
      * 发送消息到渠道
      */
-    public function sendMessages(ConversationAnswerData $conversationAnswer) : void;
+    public function sendMessages(ConversationOutputQueue $conversationAnswer) : void;
 
 
     public function transferToHumanQueuing(ConversationData $conversation) : void;

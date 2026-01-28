@@ -6,7 +6,7 @@ use Exception;
 use HuiZhiDa\Processor\Domain\Data\AgentChatResponse;
 use HuiZhiDa\Core\Domain\Conversation\DTO\ChannelMessage;
 use HuiZhiDa\Core\Domain\Conversation\DTO\Contents\TextContent;
-use HuiZhiDa\Core\Domain\Conversation\DTO\ConversationAnswerData;
+use HuiZhiDa\Core\Domain\Conversation\DTO\ConversationOutputQueue;
 use HuiZhiDa\Core\Domain\Conversation\DTO\ConversationData;
 use HuiZhiDa\Core\Domain\Conversation\Enums\ContentType;
 use HuiZhiDa\Core\Domain\Conversation\Enums\MessageType;
@@ -100,7 +100,7 @@ class ApiAdapter implements ChannelAdapterInterface
         return [$message];
     }
 
-    public function sendMessages(ConversationAnswerData $conversationAnswer) : void
+    public function sendMessages(ConversationOutputQueue $conversationAnswer) : void
     {
         $apiUrl = $this->config['api_url'] ?? '';
 

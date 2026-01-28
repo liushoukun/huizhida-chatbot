@@ -9,19 +9,20 @@ use HuiZhiDa\Core\Domain\Conversation\Contracts\ConversationQueueInterface;
 use HuiZhiDa\Core\Domain\Conversation\DTO\Events\ConversationEvent;
 use HuiZhiDa\Core\Domain\Conversation\Enums\ConversationQueueType;
 use Illuminate\Console\Command;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 
 /**
  * 处理会话事件队列命令
  */
-class ProcessConversationEventsCommand extends Command
+class ConversationInputQueueCommand extends Command
 {
     /**
      * The name and signature of the console command.
      *
      * @var string
      */
-    protected $signature = 'processor:consume 
+    protected $signature = 'conversation:inputs:consume 
                             {--queue= : 队列名称}
                             {--timeout=5 : 阻塞超时时间（秒）}
                             {--max-jobs=0 : 最大处理任务数，0表示无限制}';
@@ -60,23 +61,32 @@ class ProcessConversationEventsCommand extends Command
 
 
         // 订阅队列
-        $this->mq->subscribe(ConversationQueueType::Processor, function ($eventData) use ($queue) {
+        $this->mq->subscribe(ConversationQueueType::Inputs, function ($eventData) use ($queue) {
+            $event = null;
+
 
             try {
-
                 $this->info("收到事件: ".json_encode($eventData, JSON_UNESCAPED_UNICODE));
                 $event = ConversationEvent::from($eventData);
                 Log::withContext([
                     'conversationId' => $event->conversationId,
                 ]);
-                // 防抖处理，只处理最后一次
-                if (!$this->mq->isLastEvent($event)) {
-                    $this->info("非最后一次事件，忽略");
-                    return;
-                }
 
-                // 处理会话事件
-                $this->processorService->processConversationEvent($event);
+                // 获取会话级分布式锁
+                $lockKey = "conversation:lock:{$event->conversationId}";
+                $lock = Cache::lock($lockKey, 3600); // 锁超时时间1小时
+
+                // 等待获取锁，最多等待10分钟
+                $lock->block(600, function () use ($event) {
+                    // 再次检查是否是最新事件（获取锁后可能已经有新事件）
+                    if (!$this->mq->isLastEvent($event)) {
+                        $this->info("获取锁后检测到非最新事件，跳过处理");
+                        return;
+                    }
+
+                    // 处理会话事件
+                    $this->processorService->processConversationEvent($event);
+                });
 
                 // 确认消息
                 $this->mq->ack($event);
@@ -93,13 +103,15 @@ class ProcessConversationEventsCommand extends Command
             } catch (Exception $e) {
                 $this->error("处理事件失败: ".$e->getMessage());
                 Log::error('Process conversation event failed', [
-                    'event' => $event,
+                    'event' => $event ? $event->toArray() : null,
                     'error' => $e->getMessage(),
                     'trace' => $e->getTraceAsString(),
                 ]);
 
                 // 拒绝消息，重新入队
-                $this->mq->nack($event);
+                if ($event) {
+                    $this->mq->nack($event);
+                }
             }
         });
 

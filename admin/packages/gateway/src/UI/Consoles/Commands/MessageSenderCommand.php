@@ -6,7 +6,7 @@ use Exception;
 use HuiZhiDa\Core\Application\Services\ChannelApplicationService;
 use HuiZhiDa\Core\Application\Services\ConversationApplicationService;
 use HuiZhiDa\Core\Domain\Conversation\Contracts\ConversationQueueInterface;
-use HuiZhiDa\Core\Domain\Conversation\DTO\ConversationAnswerData;
+use HuiZhiDa\Core\Domain\Conversation\DTO\ConversationOutputQueue;
 use HuiZhiDa\Core\Domain\Conversation\Enums\ConversationQueueType;
 use HuiZhiDa\Gateway\Infrastructure\Adapters\AdapterFactory;
 use Illuminate\Console\Command;
@@ -37,7 +37,7 @@ class MessageSenderCommand extends Command
         $this->mq->subscribe(ConversationQueueType::Sending, function ($data) {
 
 
-            $conversationAnswer = ConversationAnswerData::from($data);
+            $conversationAnswer = ConversationOutputQueue::from($data);
 
             $this->handleMessage($conversationAnswer);
         });
@@ -45,7 +45,7 @@ class MessageSenderCommand extends Command
         return 0;
     }
 
-    protected function handleMessage(ConversationAnswerData $conversationAnswer) : void
+    protected function handleMessage(ConversationOutputQueue $conversationAnswer) : void
     {
         try {
 
