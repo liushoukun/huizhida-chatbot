@@ -298,9 +298,12 @@ class WorkWechatAdapter implements ChannelAdapterInterface
      * @param  string  $type  媒体类型 (image, voice, video, file)
      *
      * @return string|null 保存的文件路径（相对于storage），失败返回null
+     * @throws ClientExceptionInterface
+     * @throws RedirectionExceptionInterface
+     * @throws ServerExceptionInterface
      * @throws TransportExceptionInterface
      */
-    protected function downloadMedia(string $mediaId, string $type) : ?string
+    public function downloadMedia(string $mediaId, string $type) : ?string
     {
         if (empty($mediaId)) {
             return null;
@@ -326,7 +329,7 @@ class WorkWechatAdapter implements ChannelAdapterInterface
             }
 
             // 检查响应内容，企业微信可能返回JSON错误
-            $content     = $response->getBody()->getContents();
+            $content     = $response->getContent();
             $contentType = $response->getHeader('Content-Type')[0] ?? '';
 
             // 如果返回的是JSON（错误响应），解析错误信息
