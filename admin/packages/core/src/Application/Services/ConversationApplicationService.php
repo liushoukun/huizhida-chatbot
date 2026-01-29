@@ -10,6 +10,7 @@ use HuiZhiDa\Core\Domain\Conversation\Enums\ConversationStatus;
 use HuiZhiDa\Core\Domain\Conversation\Models\Conversation;
 use HuiZhiDa\Core\Domain\Conversation\Repositories\ConversationRepositoryInterface;
 use HuiZhiDa\Core\Domain\Conversation\Repositories\MessageRepositoryInterface;
+use InvalidArgumentException;
 use RedJasmine\Support\Application\ApplicationService;
 use RedJasmine\Support\Domain\Queries\FindQuery;
 
@@ -130,18 +131,25 @@ class ConversationApplicationService extends ApplicationService
      * Get pending messages.
      *
      * @param  string  $conversationId
+     * @param  int|null  $beforeTimestamp  只获取此时间戳之前的消息（不包含此时间戳）
      *
      * @return ChannelMessage[]
      */
-    public function getPendingInputMessages(string $conversationId) : array
+    public function getPendingInputMessages(string $conversationId, ?int $beforeTimestamp = null) : array
     {
-        return $this->messageRepository->getPendingMessages($conversationId);
+        return $this->messageRepository->getPendingMessages($conversationId, $beforeTimestamp);
     }
 
 
-    public function removePendingInputMessages(string $conversationId) : null
+    /**
+     * @param  string  $conversationId
+     * @param  int|null  $beforeTimestamp  只删除此时间戳之前的消息（不包含此时间戳）
+     *
+     * @return null
+     */
+    public function removePendingInputMessages(string $conversationId, ?int $beforeTimestamp = null) : null
     {
-        return $this->messageRepository->removePendingInputMessages($conversationId);
+        return $this->messageRepository->removePendingInputMessages($conversationId, $beforeTimestamp);
     }
 
     /**

@@ -223,7 +223,7 @@ class WorkWechatAdapter implements ChannelAdapterInterface
         $message->channelMessageId      = $msgData['msgid'] ?? '';
         $message->messageType           = $this->mapMessageType($msgData['msgtype'] ?? 'text');
         $message->contentType           = $this->mapContentType($msgData['msgtype'] ?? 'text');
-        $message->timestamp             = $msgData['send_time'] ?? time();
+        $message->timestamp             = (int)($msgData['send_time'] ?? time());
         $message->rawData               = json_encode($msgData, JSON_UNESCAPED_UNICODE);
         $message->channelAppId          = $openKfId;
 

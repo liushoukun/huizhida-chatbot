@@ -16,14 +16,24 @@ class MessageRepository implements MessageRepositoryInterface
 
     /**
      * 获取待处理消息
+     * @param  string  $conversationId
+     * @param  int|null  $beforeTimestamp  只获取此时间戳之前的消息（不包含此时间戳）
      * @return ChannelMessage[]
      */
-    public function getPendingMessages(string $conversationId) : array
+    public function getPendingMessages(string $conversationId, ?int $beforeTimestamp = null) : array
     {
-        // TODO 获取一定时间内的数据
-        $key             = $this->generatePendingInputMessagesKey($conversationId);
-        $messages        = Redis::connection($this->getRedisConnection())
-                                ->zrange($key, 0, -1);
+        $key      = $this->generatePendingInputMessagesKey($conversationId);
+        $redis    = Redis::connection($this->getRedisConnection());
+
+        // 如果指定了时间戳，使用 zrangebyscore 获取该时间之前的消息
+        if ($beforeTimestamp !== null) {
+            // 使用 beforeTimestamp - 1 确保不包含该时间戳，-inf 表示从负无穷开始
+            $messages = $redis->zrangebyscore($key, '-inf', $beforeTimestamp - 1);
+        } else {
+            // 如果没有指定时间戳，获取所有消息
+            $messages = $redis->zrange($key, 0, -1);
+        }
+
         $channelMessages = [];
         foreach ($messages as $messageJson) {
             $channelMessages[] = ChannelMessage::from(json_decode($messageJson, true));
@@ -58,7 +68,7 @@ class MessageRepository implements MessageRepositoryInterface
         $key        = $this->generatePendingInputMessagesKey($conversationId);
         $dictionary = [];
         foreach ($messages as $message) {
-            $dictionary[$message->toJson()] = microtime(true);
+            $dictionary[$message->toJson()] = $message->timestamp;
         }
         $redisConnection = $this->getRedisConnection();
         Redis::connection($redisConnection)->zadd($key, $dictionary);
@@ -68,13 +78,23 @@ class MessageRepository implements MessageRepositoryInterface
      * 移除待处理消息
      *
      * @param  string  $conversationId
+     * @param  int|null  $beforeTimestamp  只删除此时间戳之前的消息（不包含此时间戳）
      *
      * @return void
      */
-    public function removePendingInputMessages(string $conversationId) : void
+    public function removePendingInputMessages(string $conversationId, ?int $beforeTimestamp = null) : void
     {
-        $key = $this->generatePendingInputMessagesKey($conversationId);
-        Redis::connection($this->getRedisConnection())->del($key);
+        $key   = $this->generatePendingInputMessagesKey($conversationId);
+        $redis = Redis::connection($this->getRedisConnection());
+
+        // 如果指定了时间戳，使用 zremrangebyscore 删除该时间之前的消息
+        if ($beforeTimestamp !== null) {
+            // 使用 beforeTimestamp - 1 确保不包含该时间戳，-inf 表示从负无穷开始
+            $redis->zremrangebyscore($key, '-inf', $beforeTimestamp - 1);
+        } else {
+            // 如果没有指定时间戳，删除所有消息
+            $redis->del($key);
+        }
     }
 
     /**

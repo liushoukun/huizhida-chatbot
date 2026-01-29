@@ -34,10 +34,17 @@ interface MessageRepositoryInterface
 
     /**
      * @param  string  $conversationId
+     * @param  int|null  $beforeTimestamp  只获取此时间戳之前的消息（不包含此时间戳）
      *
      * @return ChannelMessage[]
      */
-    public function getPendingMessages(string $conversationId) : array;
+    public function getPendingMessages(string $conversationId, ?int $beforeTimestamp = null) : array;
 
-    public function removePendingInputMessages(string $conversationId) : void;
+    /**
+     * @param  string  $conversationId
+     * @param  int|null  $beforeTimestamp  只删除此时间戳之前的消息（不包含此时间戳）
+     *
+     * @return void
+     */
+    public function removePendingInputMessages(string $conversationId, ?int $beforeTimestamp = null) : void;
 }

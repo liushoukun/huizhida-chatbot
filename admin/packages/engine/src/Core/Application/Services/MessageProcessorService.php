@@ -53,9 +53,13 @@ class MessageProcessorService
             'eventId'        => $event->id,
         ]);
 
+
+
         try {
-            // 1. 获取未处理消息
-            $messages = $this->conversationApplicationService->getPendingInputMessages($conversationId);
+            // 开始处理的时间
+            $time = time();
+            // 1. 获取未处理消息（只获取此时间之前的消息）
+            $messages = $this->conversationApplicationService->getPendingInputMessages($conversationId, $time);
             if (empty($messages)) {
                 Log::info('No PendingInputMessages');
                 return;
@@ -88,8 +92,8 @@ class MessageProcessorService
                 $this->processChatMessages($conversation, $chatMessages);
             }
 
-            // 5. 移除已处理的消息
-            $this->removeProcessedMessages($conversationId);
+            // 5. 移除已处理的消息（只删除开始处理时间之前的消息）
+            $this->removeProcessedMessages($conversationId, $time);
 
         } catch (Exception $e) {
             Log::error('处理会话事件失败', [
@@ -273,10 +277,15 @@ class MessageProcessorService
 
     /**
      * 移除已处理的消息
+     *
+     * @param  string  $conversationId
+     * @param  int  $beforeTimestamp  只删除此时间戳之前的消息（不包含此时间戳）
+     *
+     * @return void
      */
-    protected function removeProcessedMessages(string $conversationId) : void
+    protected function removeProcessedMessages(string $conversationId, int $beforeTimestamp) : void
     {
-        $this->conversationApplicationService->removePendingInputMessages($conversationId);
+        $this->conversationApplicationService->removePendingInputMessages($conversationId, $beforeTimestamp);
     }
 
     /**
