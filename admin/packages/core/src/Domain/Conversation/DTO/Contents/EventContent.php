@@ -14,4 +14,10 @@ class EventContent extends Content
      */
     #[WithCast(EnumCast::class, EventType::class)]
     public EventType $event;
+
+    /**
+     * 接待人员
+     * @var string|null
+     */
+    public ?string $servicer = null;
 }

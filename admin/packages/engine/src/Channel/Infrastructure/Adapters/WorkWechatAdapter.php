@@ -73,8 +73,8 @@ class WorkWechatAdapter implements ChannelAdapterInterface
             'body'   => $request->getContent(),
             'params' => $request->query()
         ]);
-        $server  = $this->workWechatApp->getServer();
-  dd($server->getRequestMessage());
+        $server = $this->workWechatApp->getServer();
+        dd($server->getRequestMessage());
         $message = $server->getDecryptedMessage();
 
         if ($message->Event !== 'kf_msg_or_event') {
@@ -192,6 +192,12 @@ class WorkWechatAdapter implements ChannelAdapterInterface
                 Log::info('跳过不支持的消息类型', $msgData);
                 continue;
             }
+            // 过滤 接待人员的消息
+            if (!in_array((int) $msgData['origin'], [3, 4], true)) {
+                Log::info('跳过不支持的消息发送者', $msgData);
+                continue;
+            }
+
 
             $message    = $this->convertToChannelMessage($msgData, $openKfId);
             $messages[] = $message;
@@ -211,7 +217,7 @@ class WorkWechatAdapter implements ChannelAdapterInterface
      */
     protected function convertToChannelMessage(array $msgData, string $openKfId) : ChannelMessage
     {
-        $external_userid = $msgData['external_userid']??$msgData['event']['external_userid'];
+        $external_userid                = $msgData['external_userid'] ?? $msgData['event']['external_userid'];
         $message                        = new ChannelMessage();
         $message->messageId             = $message->getMessageId();
         $message->channelConversationId = $external_userid;// 企业微信是一个用户是一个会话,会话状态支持 轮换，结束后，可以重新接入
@@ -278,7 +284,7 @@ class WorkWechatAdapter implements ChannelAdapterInterface
      * @return EventContent|FileContent|ImageContent|TextContent|VideoContent|VoiceContent|null
      * @throws Exception
      */
-    protected function parseMessageContent(array $msgData, ContentType $contentType)
+    protected function parseMessageContent(array $msgData, ContentType $contentType) : TextContent|EventContent|FileContent|ImageContent|VoiceContent|VideoContent|null
     {
         $msgType = $msgData['msgtype'] ?? 'text';
 
@@ -550,13 +556,12 @@ class WorkWechatAdapter implements ChannelAdapterInterface
      *
      * @param  array  $msgData  消息数据
      *
-     * @return EventContent
-     * @throws Exception
+     * @return EventContent|null
      */
-    protected function parseEventContent(array $msgData) : EventContent
+    protected function parseEventContent(array $msgData) : ?EventContent
     {
-        $content = new EventContent();
-        $eventData = $msgData['event']??[];
+        $content   = new EventContent();
+        $eventData = $msgData['event'] ?? [];
         // 获取事件类型，可能直接在顶层或 event 字段中
         $eventType = $eventData['event_type'];
 
@@ -564,42 +569,41 @@ class WorkWechatAdapter implements ChannelAdapterInterface
 
 
         // 根据企业微信事件类型映射到 EventType 枚举
-        if ($eventType === 'session_status_change' || isset($eventData['service_state'])) {
+        if ($eventType === 'session_status_change') {
             // 会话状态变更事件
-            $serviceState = $eventData['service_state'] ?? null;
+            $serviceState = (int) ($eventData['change_type'] ?? 0);
 
-            // 根据 service_state 映射到相应的事件类型
-            // service_state: 2 表示转人工排队
-            // service_state: 3 或 4 表示会话结束
-            // service_state: 1 表示已转人工（有客服接入）
-            if ($serviceState === 2) {
-                $content->event = EventType::TransferToHumanQueue;
-            } elseif ($serviceState === 1) {
-                $content->event = EventType::TransferToHuman;
-            } elseif ($serviceState === 3 || $serviceState === 4) {
-                $content->event = EventType::Closed;
-            } else {
-                // 未知状态，记录日志并使用默认值
-                Log::warning('未知的会话状态', [
-                    'service_state' => $serviceState,
-                    'event_data'    => $eventData,
-                    'msg_data'      => $msgData,
-                ]);
-                // 默认使用 Closed
-                $content->event = EventType::Closed;
+
+            // 1-从接待池接入会话 2-转接会话 3-结束会话 4-重新接入已结束/已转接会话
+            switch ($serviceState) {
+                case 2:
+                case 4:
+                case 1:
+                    $content->event    = EventType::TransferToHuman;
+                    $servicer          = $eventData['new_servicer_userid'];
+                    $content->servicer = $servicer;
+                    break;
+                case 3: // 结束会话
+                    $content->event = EventType::Closed;
+                    break;
             }
+
+            return $content;
         } else {
+
+
             // 其他事件类型，记录日志
             Log::warning('未知的事件类型', [
                 'event'      => $eventType,
                 'event_data' => $eventData,
                 'msg_data'   => $msgData,
             ]);
-            // 默认使用 Closed
-            $content->event = EventType::Closed;
-        }
 
-        return $content;
+
+        }
+        return null;
+
+
     }
 
     /**

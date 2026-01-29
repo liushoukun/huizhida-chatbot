@@ -19,7 +19,6 @@ return new class extends Migration {
             $table->string('agent_type', 20)->default('tencent_yuanqi')->comment('智能体类型');
             $table->string('provider', 20)->nullable()->comment('提供者(ollama/openai/qwen/coze等)');
             $table->json('config')->nullable()->comment('配置信息(加密)');
-            $table->unsignedBigInteger('fallback_agent_id')->nullable()->comment('降级智能体ID');
             $table->tinyInteger('status')->default(AgentStatus::ENABLED->value)->comment('状态');
             $table->operator();
             $table->softDeletes();

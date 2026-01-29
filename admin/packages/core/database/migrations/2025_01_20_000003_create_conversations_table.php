@@ -37,7 +37,7 @@ return new class extends Migration {
             $table->string('transfer_reason', 100)->nullable()->comment('转接原因');
             $table->string('transfer_source', 20)->nullable()->comment('转接来源: rule, agent');
             $table->timestamp('transfer_time')->nullable()->comment('转接时间');
-            $table->string('assigned_human', 64)->nullable()->comment('分配的人工客服');
+            $table->string('servicer', 64)->nullable()->comment('客服');
 
             $table->timestamps();
             $table->timestamp('closed_at')->nullable()->comment('关闭时间');
