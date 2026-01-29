@@ -74,11 +74,13 @@ class WorkWechatAdapter implements ChannelAdapterInterface
             'params' => $request->query()
         ]);
         $server  = $this->workWechatApp->getServer();
+  dd($server->getRequestMessage());
         $message = $server->getDecryptedMessage();
 
         if ($message->Event !== 'kf_msg_or_event') {
             throw new Exception('Invalid message event');
         }
+
 
         return CallbackPayload::from([
             'channelId' => $channelId,
@@ -209,9 +211,10 @@ class WorkWechatAdapter implements ChannelAdapterInterface
      */
     protected function convertToChannelMessage(array $msgData, string $openKfId) : ChannelMessage
     {
+        $external_userid = $msgData['external_userid']??$msgData['event']['external_userid'];
         $message                        = new ChannelMessage();
         $message->messageId             = $message->getMessageId();
-        $message->channelConversationId = $msgData['external_userid'];// 企业微信是一个用户是一个会话,会话状态支持 轮换，结束后，可以重新接入
+        $message->channelConversationId = $external_userid;// 企业微信是一个用户是一个会话,会话状态支持 轮换，结束后，可以重新接入
         $message->channelMessageId      = $msgData['msgid'] ?? '';
         $message->messageType           = $this->mapMessageType($msgData['msgtype'] ?? 'text');
         $message->contentType           = $this->mapContentType($msgData['msgtype'] ?? 'text');
@@ -223,7 +226,7 @@ class WorkWechatAdapter implements ChannelAdapterInterface
         // 解析发送者信息
         $message->sender = UserData::from([
             'type'     => 'user',
-            'id'       => $msgData['external_userid'],
+            'id'       => $external_userid,
             'nickname' => $msgData['nickname'] ?? '',
         ]);
 
@@ -553,15 +556,15 @@ class WorkWechatAdapter implements ChannelAdapterInterface
     protected function parseEventContent(array $msgData) : EventContent
     {
         $content = new EventContent();
-
+        $eventData = $msgData['event']??[];
         // 获取事件类型，可能直接在顶层或 event 字段中
-        $eventType = $msgData['event'] ?? '';
+        $eventType = $eventData['event_type'];
 
         // 获取事件数据，可能在 event_data 字段中，也可能直接在顶层
-        $eventData = $msgData['event_data'] ?? $msgData;
+
 
         // 根据企业微信事件类型映射到 EventType 枚举
-        if ($eventType === 'status_change_event' || isset($eventData['service_state'])) {
+        if ($eventType === 'session_status_change' || isset($eventData['service_state'])) {
             // 会话状态变更事件
             $serviceState = $eventData['service_state'] ?? null;
 

@@ -72,6 +72,7 @@ class GatewayApplicationService extends ApplicationService
 
             // 3. 尝试提取回调载荷并入队（异步路径）
             $dto = $adapter->extractCallbackPayload($request, (string) $id);
+
             if ($dto !== null) {
                 $this->mq->publish(ConversationQueueType::Callback, $dto);
                 Log::info('Callback payload enqueued', $dto->toArray());
