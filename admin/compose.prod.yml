@@ -18,7 +18,24 @@ services:
       - ./storage/app:/var/www/html/storage/app
       - ./storage/logs:/var/www/html/storage/logs
 
-  processor:
+  callback:
+    image: huizhida:latest
+    command: ["php", "/var/www/html/artisan", "gateway:callback:consume"]
+    stop_signal: SIGTERM
+    networks:
+      - 1panel-network
+    depends_on:
+      - web
+    env_file:
+      - 1panel.env
+    deploy:
+      replicas: 1  # 可根据负载调整 processor 实例数量
+    volumes:
+      # 持久化存储目录（上传文件、日志、会话、视图缓存等）
+      - ./storage/app:/var/www/html/storage/app
+      - ./storage/logs:/var/www/html/storage/logs
+
+  inputs:
     image: huizhida:latest
     command: ["php", "/var/www/html/artisan", "conversation:inputs:consume"]
     stop_signal: SIGTERM
@@ -35,7 +52,7 @@ services:
       - ./storage/app:/var/www/html/storage/app
       - ./storage/logs:/var/www/html/storage/logs
 
-  gateway:
+  outputs:
     image: huizhida:latest
     command: ["php", "/var/www/html/artisan", "conversation:outputs:consume"]
     stop_signal: SIGTERM
