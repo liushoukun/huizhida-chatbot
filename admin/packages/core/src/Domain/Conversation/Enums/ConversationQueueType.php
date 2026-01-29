@@ -22,4 +22,19 @@ enum ConversationQueueType: string
     {
         return "conversations:queue:{$this->value}";
     }
+
+    /**
+     * 获取延时队列的延时秒数
+     * 返回 null 表示不使用延时队列，立即处理
+     *
+     * @return int|null
+     */
+    public function getDelaySeconds() : ?int
+    {
+        return match ($this) {
+            self::Inputs => config('huizhida.inputs_delay', 30), // 输入队列延时30秒，用于防抖处理
+            self::Outputs, self::Callback => null, // 输出队列立即处理
+            // 回调队列立即处理
+        };
+    }
 }

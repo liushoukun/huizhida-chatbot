@@ -50,8 +50,15 @@ class RedisQueue implements ConversationQueueInterface
     {
         $data = $message->toJson();
         try {
+            $delaySeconds = $queueType->getDelaySeconds();
 
-            Redis::connection($this->connection)->lpush($queueType->getQueueName(), $data);
+            // 如果配置了延时队列，使用延时队列
+            if ($delaySeconds !== null) {
+                $this->publishDelayed($queueType, $message, $delaySeconds);
+            } else {
+                // 立即发布到普通队列
+                Redis::connection($this->connection)->lpush($queueType->getQueueName(), $data);
+            }
         } catch (Exception $e) {
             Log::error('Queue publish failed', [
                 'queue' => $queueType->getQueueName(),
@@ -61,15 +68,50 @@ class RedisQueue implements ConversationQueueInterface
         }
     }
 
+    /**
+     * 发布延时消息到延时队列
+     *
+     * @param  ConversationQueueType  $queueType  队列类型
+     * @param  Data  $message  消息数据
+     * @param  int  $delaySeconds  延时秒数
+     *
+     * @return void
+     */
+    protected function publishDelayed(ConversationQueueType $queueType, Data $message, int $delaySeconds) : void
+    {
+        $redis = Redis::connection($this->connection);
+        $delayedQueueKey = "{$queueType->getQueueName()}:delayed";
+        $executeTime = time() + $delaySeconds; // 执行时间戳
+        $data = $message->toJson();
+
+        // 添加延时消息到 ZSET，score 为执行时间戳
+        // 防抖逻辑由消费端的 isLastEvent 方法处理，无需在此删除旧消息
+        $redis->zadd($delayedQueueKey, $executeTime, $data);
+
+        Log::debug('Published delayed message', [
+            'queue'         => $queueType->getQueueName(),
+            'delay_seconds' => $delaySeconds,
+            'execute_time'  => $executeTime,
+        ]);
+    }
+
     public function subscribe(ConversationQueueType $queueType, callable $callback) : void
     {
         $queue                     = $queueType->getQueueName();
         $this->subscribers[$queue] = $callback;
+        $delayedQueueKey           = "{$queue}:delayed";
+        $hasDelay                  = $queueType->getDelaySeconds() !== null;
 
         // 在 Laravel 中，通常使用队列 worker 来处理
         // 这里提供一个简单的阻塞订阅实现
         while (true) {
             try {
+                // 如果配置了延时队列，先处理到期的延时消息
+                if ($hasDelay) {
+                    $this->processDelayedMessages($queueType, $delayedQueueKey, $queue);
+                }
+
+                // 从普通队列中取消息
                 $data = Redis::connection($this->connection)->brpop($queue, 5);
 
                 if ($data && isset($data[1])) {
@@ -85,6 +127,45 @@ class RedisQueue implements ConversationQueueInterface
                 ]);
                 sleep(1);
             }
+        }
+    }
+
+    /**
+     * 处理延时队列中到期的消息
+     *
+     * @param  ConversationQueueType  $queueType  队列类型
+     * @param  string  $delayedQueueKey  延时队列的 Redis key
+     * @param  string  $targetQueue  目标队列名称
+     *
+     * @return void
+     */
+    protected function processDelayedMessages(ConversationQueueType $queueType, string $delayedQueueKey, string $targetQueue) : void
+    {
+        try {
+            $redis       = Redis::connection($this->connection);
+            $currentTime = time();
+
+            // 获取所有到期的消息（score <= 当前时间）
+            $expiredMessages = $redis->zrangebyscore($delayedQueueKey, '-inf', $currentTime, ['limit' => [0, 100]]);
+
+            if (!empty($expiredMessages)) {
+                foreach ($expiredMessages as $messageJson) {
+                    // 从延时队列中移除
+                    $redis->zrem($delayedQueueKey, $messageJson);
+
+                    // 推送到普通队列
+                    $redis->lpush($targetQueue, $messageJson);
+
+                    Log::debug('Moved expired delayed message to queue', [
+                        'queue' => $queueType->getQueueName(),
+                    ]);
+                }
+            }
+        } catch (Exception $e) {
+            Log::error('Process delayed messages error', [
+                'queue' => $queueType->getQueueName(),
+                'error' => $e->getMessage(),
+            ]);
         }
     }
 
