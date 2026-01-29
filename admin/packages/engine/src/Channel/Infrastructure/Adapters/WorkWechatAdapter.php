@@ -74,7 +74,6 @@ class WorkWechatAdapter implements ChannelAdapterInterface
             'params' => $request->query()
         ]);
         $server = $this->workWechatApp->getServer();
-        dd($server->getRequestMessage());
         $message = $server->getDecryptedMessage();
 
         if ($message->Event !== 'kf_msg_or_event') {
