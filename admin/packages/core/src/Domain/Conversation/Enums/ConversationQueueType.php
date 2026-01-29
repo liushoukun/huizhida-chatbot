@@ -11,8 +11,8 @@ enum ConversationQueueType: string
 
     case Inputs = 'inputs'; // 输入队列
     case Outputs = 'outputs'; // 输出队列
-    // 转人工
-    case Transfer = 'transfer'; // 转换会话状态
+    case Callback = 'callback'; // 回调处理队列
+
 
     /**
      * 获取队列名称

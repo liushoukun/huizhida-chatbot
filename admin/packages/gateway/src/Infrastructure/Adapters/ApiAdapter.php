@@ -11,6 +11,7 @@ use HuiZhiDa\Core\Domain\Conversation\DTO\ConversationData;
 use HuiZhiDa\Core\Domain\Conversation\Enums\ContentType;
 use HuiZhiDa\Core\Domain\Conversation\Enums\MessageType;
 use HuiZhiDa\Gateway\Domain\Contracts\ChannelAdapterInterface;
+use HuiZhiDa\Gateway\Domain\DTO\CallbackPayload;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Http;
@@ -68,6 +69,16 @@ class ApiAdapter implements ChannelAdapterInterface
         }
 
         return hash_equals($expectedSignature, $signature);
+    }
+
+    public function extractCallbackPayload(Request $request, string $channelId) : ?CallbackPayload
+    {
+        return null;
+    }
+
+    public function fetchAndParseMessages(CallbackPayload $payload) : array
+    {
+        return [];
     }
 
     public function parseMessages(Request $request) : array

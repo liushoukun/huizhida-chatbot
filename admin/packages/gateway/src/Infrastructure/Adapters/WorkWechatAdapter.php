@@ -17,6 +17,7 @@ use HuiZhiDa\Core\Domain\Conversation\DTO\ConversationData;
 use HuiZhiDa\Core\Domain\Conversation\Enums\ContentType;
 use HuiZhiDa\Core\Domain\Conversation\Enums\MessageType;
 use HuiZhiDa\Gateway\Domain\Contracts\ChannelAdapterInterface;
+use HuiZhiDa\Gateway\Domain\DTO\CallbackPayload;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
@@ -61,6 +62,54 @@ class WorkWechatAdapter implements ChannelAdapterInterface
     }
 
     /**
+     * 从回调请求中提取最小载荷（仅解密 + 提取），不做 sync_msg、不下载。
+     */
+    public function extractCallbackPayload(Request $request, string $channelId) : ?CallbackPayload
+    {
+        Log::debug('workWechat extractCallbackPayload', [
+            'body'   => $request->getContent(),
+            'params' => $request->query()
+        ]);
+        $server  = $this->workWechatApp->getServer();
+        $message = $server->getDecryptedMessage();
+
+        if ($message->Event !== 'kf_msg_or_event') {
+            throw new Exception('Invalid message event');
+        }
+
+        return CallbackPayload::from([
+            'channelId' => $channelId,
+            'payload'   => [
+                'token'      => $message->Token,
+                'open_kf_id' => $message->OpenKfId,
+            ],
+        ]);
+    }
+
+    /**
+     * 根据 CallbackPayload 拉取并解析消息（含 sync_msg、下载媒体等），仅 Worker 调用。
+     *
+     * @param  CallbackPayload  $payload
+     *
+     * @return ChannelMessage[]
+     * @throws Exception
+     */
+    public function fetchAndParseMessages(CallbackPayload $payload) : array
+    {
+        $token    = $payload->payload['token'] ?? '';
+        $openKfId = $payload->payload['open_kf_id'] ?? '';
+        if ($token === '' || $openKfId === '') {
+            Log::warning('WorkWechat fetchAndParseMessages: missing token or open_kf_id', [
+                'payload' => $payload->payload,
+            ]);
+            return [];
+        }
+        return $this->doSyncAndParseMessages($token, $openKfId);
+    }
+
+    /**
+     * 解析渠道消息格式（同步路径），转换为统一格式。
+     *
      * @param  Request  $request
      *
      * @return array|ChannelMessage[]
@@ -76,68 +125,69 @@ class WorkWechatAdapter implements ChannelAdapterInterface
             'body'   => $request->getContent(),
             'params' => $request->query()
         ]);
-        // 获取推送的事件
         $server  = $this->workWechatApp->getServer();
-        $api     = $this->workWechatApp->getClient();
         $message = $server->getDecryptedMessage();
 
-        // 消息应该固定为 kf_msg_or_event
         if ($message->Event !== 'kf_msg_or_event') {
             throw new Exception('Invalid message event');
         }
 
-        $token    = $message->Token;
-        $openKfId = $message->OpenKfId;
+        return $this->doSyncAndParseMessages($message->Token, $message->OpenKfId);
+    }
 
-        // 获取上次的cursor，实现增量获取
+    /**
+     * 执行 sync_msg 并解析 msg_list 为 ChannelMessage[]（含 cursor、downloadMedia）。
+     * 空 msg_list 时返回 []。
+     *
+     * @param  string  $token
+     * @param  string  $openKfId
+     *
+     * @return ChannelMessage[]
+     * @throws ClientExceptionInterface
+     * @throws RedirectionExceptionInterface
+     * @throws ServerExceptionInterface
+     * @throws TransportExceptionInterface
+     */
+    protected function doSyncAndParseMessages(string $token, string $openKfId) : array
+    {
+        $api = $this->workWechatApp->getClient();
+
         $cacheKey = "workwechat:sync_cursor:{$openKfId}";
         $cursor   = Cache::get($cacheKey);
 
-        // 调用sync_msg接口获取消息
         $response = $api->postJson('/cgi-bin/kf/sync_msg', [
             'token'     => $token,
             'open_kfid' => $openKfId,
-            'cursor'    => $cursor, // 使用上次的cursor实现增量获取
-            'limit'     => 1000, // 每次最多获取1000条
+            'cursor'    => $cursor,
+            'limit'     => 1000,
         ]);
 
-        // 解析返回数据
         $responseData = json_decode($response->getContent(), true);
         Log::info('sync_msg response', $responseData);
 
-        // 检查错误
         if (isset($responseData['errcode']) && $responseData['errcode'] !== 0) {
             throw new Exception('Sync message failed: '.($responseData['errmsg'] ?? 'Unknown error'));
         }
 
-        // 保存新的cursor
         if (isset($responseData['next_cursor']) && !empty($responseData['next_cursor'])) {
-            Cache::put($cacheKey, $responseData['next_cursor'], now()->addDays(30));
+            Cache::put($cacheKey, $responseData['next_cursor'], now()->addDays(10));
         }
 
-        // 获取消息列表
         $msgList = $responseData['msg_list'] ?? [];
         if (empty($msgList)) {
-            throw new Exception('No messages in response');
+            return [];
         }
-        // 支持的消息类型
-        $supportedMsgTypes = ['text', 'image', 'voice', 'video', 'file', 'event'];
 
-        // 处理消息列表，返回最后一条消息（最新的）
-        $messages = [];
+        $supportedMsgTypes = ['text', 'image', 'voice', 'video', 'file', 'event'];
+        $messages          = [];
         foreach ($msgList as $msgData) {
             $msgType = $msgData['msgtype'] ?? 'text';
 
-            // 过滤不支持的消息类型
             if (!in_array($msgType, $supportedMsgTypes, true)) {
-                Log::debug('跳过不支持的消息类型', [
-                    'msgtype' => $msgType,
-                    'msgid'   => $msgData['msgid'] ?? '',
-                ]);
+                Log::info('跳过不支持的消息类型', $msgData);
                 continue;
             }
 
-            // 转换消息
             $message    = $this->convertToChannelMessage($msgData, $openKfId);
             $messages[] = $message;
         }

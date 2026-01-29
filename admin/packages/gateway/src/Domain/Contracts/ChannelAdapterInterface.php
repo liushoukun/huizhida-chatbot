@@ -2,6 +2,7 @@
 
 namespace HuiZhiDa\Gateway\Domain\Contracts;
 
+use HuiZhiDa\Gateway\Domain\DTO\CallbackPayload;
 use HuiZhiDa\Processor\Domain\Data\AgentChatResponse;
 use HuiZhiDa\Core\Domain\Conversation\DTO\ConversationOutputQueue;
 use HuiZhiDa\Core\Domain\Conversation\DTO\ConversationData;
@@ -19,6 +20,19 @@ interface ChannelAdapterInterface
      */
     public function verifySignature(Request $request) : bool;
 
+    /**
+     * 从回调请求中提取最小载荷（仅解密 + 提取），不入队时返回 null
+     *
+     * @return CallbackPayload|null 含 channel_id 与渠道 payload，或 null 表示走同步逻辑
+     */
+    public function extractCallbackPayload(Request $request, string $channelId) : ?CallbackPayload;
+
+    /**
+     * 根据 CallbackPayload 拉取并解析消息（含 sync_msg、下载媒体等），仅 Worker 调用
+     *
+     * @return ChannelMessage[]
+     */
+    public function fetchAndParseMessages(CallbackPayload $payload) : array;
 
     /**
      * 解析渠道消息格式，转换为统一格式

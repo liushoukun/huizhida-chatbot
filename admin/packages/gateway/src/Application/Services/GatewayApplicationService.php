@@ -5,11 +5,14 @@ namespace HuiZhiDa\Gateway\Application\Services;
 use HuiZhiDa\Core\Application\Services\ConversationApplicationService;
 use HuiZhiDa\Core\Domain\Channel\Models\Channel;
 use HuiZhiDa\Core\Domain\Channel\Repositories\ChannelRepositoryInterface;
+use HuiZhiDa\Core\Domain\Conversation\Contracts\ConversationQueueInterface;
 use HuiZhiDa\Core\Domain\Conversation\DTO\ChannelMessage;
 use HuiZhiDa\Core\Domain\Conversation\DTO\Events\ConversationEvent;
+use HuiZhiDa\Core\Domain\Conversation\Enums\ConversationQueueType;
 use HuiZhiDa\Core\Domain\Conversation\Models\Conversation;
 use HuiZhiDa\Gateway\Applications\Services\Exception;
 use HuiZhiDa\Gateway\Applications\Services\InvalidArgumentException;
+use HuiZhiDa\Gateway\Domain\DTO\CallbackPayload;
 use HuiZhiDa\Gateway\Infrastructure\Adapters\AdapterFactory;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -24,7 +27,7 @@ class GatewayApplicationService extends ApplicationService
         protected ChannelRepositoryInterface $channelRepository,
         protected AdapterFactory $channelAdapterFactory,
         protected ConversationApplicationService $conversationApplicationService,
-
+        protected ConversationQueueInterface $mq,
     ) {
     }
 
@@ -56,29 +59,31 @@ class GatewayApplicationService extends ApplicationService
                 return response()->json(['error' => 'invalid signature'], 403);
             }
 
-            // 解析消息
-            $messages = $adapter->parseMessages($request);
-            // 对消息进行分组
+            // 3. 尝试提取回调载荷并入队（异步路径）
+            $dto = $adapter->extractCallbackPayload($request, (string) $id);
+            if ($dto !== null) {
+                $this->mq->publish(ConversationQueueType::Callback, $dto);
+                Log::info('Callback payload enqueued', $dto->toArray());
+                return $adapter->getSuccessResponse();
+            }
 
+            // 4. 同步路径：解析消息、分组、处理
+            $messages = $adapter->parseMessages($request);
             collect($messages)->each(function (ChannelMessage $channelMessage) use ($channelModel) {
                 $channelMessage->channelId = $channelModel->id;
                 $channelMessage->appId     = $channelModel->app_id;
             });
             $messageGroups = $this->groupMessagesByUser($messages);
 
-            // 按分组处理消息
             foreach ($messageGroups as $messages) {
                 $this->handleMessages($channelModel, [...$messages]);
             }
 
-            // 9. 快速响应渠道
             $response = $adapter->getSuccessResponse();
-
             Log::info('Callback processed successfully', [
                 'channel'    => $channel,
                 'channel_id' => $id,
             ]);
-
             return response()->json($response, 200);
         } catch (InvalidArgumentException $e) {
             throw $e;
@@ -160,6 +165,30 @@ class GatewayApplicationService extends ApplicationService
         $this->conversationApplicationService->triggerEvent(new ConversationEvent($conversation->conversation_id));
 
 
+    }
+
+    /**
+     * 处理回调队列任务（Worker 调用）：拉取并解析消息，分组后 handleMessages。
+     */
+    public function processCallbackJob(CallbackPayload $payload) : void
+    {
+        $channelModel = $this->channelRepository->find($payload->channelId);
+        $adapter      = $this->channelAdapterFactory->get($channelModel->channel, $channelModel->config);
+
+        $messages = $adapter->fetchAndParseMessages($payload);
+        if (empty($messages)) {
+            return;
+        }
+
+        collect($messages)->each(function (ChannelMessage $channelMessage) use ($channelModel) {
+            $channelMessage->channelId = $channelModel->id;
+            $channelMessage->appId     = $channelModel->app_id;
+        });
+
+        $messageGroups = $this->groupMessagesByUser($messages);
+        foreach ($messageGroups as $messages) {
+            $this->handleMessages($channelModel, [...$messages]);
+        }
     }
 
     protected function createConversation(ChannelMessage $message)

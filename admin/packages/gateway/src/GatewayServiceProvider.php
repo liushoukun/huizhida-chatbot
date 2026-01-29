@@ -48,6 +48,7 @@ class GatewayServiceProvider extends ServiceProvider
         if ($this->app->runningInConsole()) {
             $this->commands([
                 UI\Consoles\Commands\ConversationOutputQueueCommand::class,
+                UI\Consoles\Commands\CallbackQueueCommand::class,
             ]);
         }
     }
