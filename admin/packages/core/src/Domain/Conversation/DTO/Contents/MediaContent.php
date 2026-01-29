@@ -26,4 +26,7 @@ class MediaContent extends Content
      * @var string|null
      */
     public ?string $type = null;
+
+
+    public ?string $url;
 }

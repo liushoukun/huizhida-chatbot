@@ -7,11 +7,6 @@ namespace HuiZhiDa\Core\Domain\Conversation\DTO\Contents;
  */
 class ImageContent extends MediaContent
 {
-    /**
-     * 图片URL
-     * @var string
-     */
-    public string $url = '';
 
     /**
      * 图片宽度（像素）

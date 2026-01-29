@@ -96,6 +96,8 @@ class Message extends Data
     {
         // TODO 格式验证
 
+        $this->contentType = $contentType;
+
 
         $this->content = $content;
 
@@ -123,6 +125,12 @@ class Message extends Data
         };
     }
 
+
+    public function newMessageId()
+    {
+        $this->messageId = static::buildID();
+        return $this;
+    }
 
     public function getMessageId() : string
     {

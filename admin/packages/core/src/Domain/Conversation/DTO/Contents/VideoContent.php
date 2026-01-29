@@ -7,11 +7,7 @@ namespace HuiZhiDa\Core\Domain\Conversation\DTO\Contents;
  */
 class VideoContent extends MediaContent
 {
-    /**
-     * 视频文件URL
-     * @var string
-     */
-    public string $url = '';
+
 
     /**
      * 视频缩略图URL

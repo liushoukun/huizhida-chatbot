@@ -186,6 +186,7 @@ class CozeAdapter implements AgentAdapterInterface
                     // 如果有媒体对象 需要解析媒体对象
                     $agentMessage              = new AgentMessage();
                     $agentMessage->messageType = MessageType::Chat;
+
                     $agentMessage->setContentData(ContentType::Markdown, [
                         'text' => $responseMessage['content'] ?? '',
                     ]);

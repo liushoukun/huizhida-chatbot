@@ -23,8 +23,10 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
+use GuzzleHttp\Client as GuzzleClient;
 use Illuminate\Support\Str;
 use RedJasmine\Support\Domain\Data\UserData;
+use Symfony\Component\HttpClient\HttpClient;
 use Symfony\Contracts\HttpClient\Exception\ClientExceptionInterface;
 use Symfony\Contracts\HttpClient\Exception\RedirectionExceptionInterface;
 use Symfony\Contracts\HttpClient\Exception\ServerExceptionInterface;
@@ -658,20 +660,22 @@ class WorkWechatAdapter implements ChannelAdapterInterface
      */
     protected function sendChatMessage($api, ChannelMessage $message, ConversationOutputQueue $conversationAnswer) : void
     {
-        $workWechatMessage = $this->convertToWorkWechatMessage($message);
+        $workWechatMessages = $this->convertToWorkWechatMessage($message);
 
-        $workWechatMessage['touser']    = $conversationAnswer->user->getID();
-        $workWechatMessage['open_kfid'] = $conversationAnswer->channelAppId;
-        $workWechatMessage['msgid']     = $message->getMessageId();
-        Log::debug('发送消息到企业微信', $workWechatMessage);
-        $response = $api->postJson(
-            '/cgi-bin/kf/send_msg',
-            $workWechatMessage,
-        );
-        Log::debug('发送结果', [
-            'status' => $response->getStatusCode(),
-            'body'   => json_decode($response->getContent(), true)
-        ]);
+        foreach ($workWechatMessages as $index => $workWechatMessage) {
+            $workWechatMessage['touser']    = $conversationAnswer->user->getID();
+            $workWechatMessage['open_kfid'] = $conversationAnswer->channelAppId;
+            $workWechatMessage['msgid']     = $message->getMessageId()."-{$index}";
+            Log::debug('发送消息到企业微信', $workWechatMessage);
+            $response = $api->postJson(
+                '/cgi-bin/kf/send_msg',
+                $workWechatMessage,
+            );
+            Log::debug('发送结果', [
+                'status' => $response->getStatusCode(),
+                'body'   => json_decode($response->getContent(), true)
+            ]);
+        }
     }
 
     /**
@@ -734,31 +738,246 @@ class WorkWechatAdapter implements ChannelAdapterInterface
         ]);
     }
 
+    /**
+     * 转换为企业微信消息格式（可能返回多条消息）
+     *
+     * @return array 企业微信消息数组
+     */
     protected function convertToWorkWechatMessage(ChannelMessage $channelMessage) : array
     {
-        $message            = [];
-        $message['msgtype'] = $channelMessage->contentType->value;
-        if ($channelMessage->contentType === ContentType::Text) {
-            $content = $channelMessage->getContent();
-            // TODO 对返回消息进行转换
-            if ($content instanceof TextContent) {
-                $message['text'] = [
-                    'content' => $content->text,
-                ];
-            }
-            // 解析 Markdown
-            if ($content instanceof MarkdownContent) {
-                $message['text'] = [
-                    'content' => $content->getPlainText(),
-                ];
-            }
+        $messages = [];
 
+        // 处理 MarkdownContent：提取纯文本和媒体附件
+        if ($channelMessage->contentType === ContentType::Markdown) {
+            $content = $channelMessage->getContent();
+            if ($content instanceof MarkdownContent) {
+                // 1. 创建文本消息（纯文本）
+                $plainText = $content->getPlainText();
+                if ($plainText !== '') {
+                    $messages[] = [
+                        'msgtype' => 'text',
+                        'text'    => [
+                            'content' => mb_substr($plainText, 0, 2048), // 企业微信限制2048字节
+                        ],
+                    ];
+                }
+
+                // 2. 处理媒体附件（图片、视频、音频）
+                $attachments = $content->getMediaAttachments();
+                foreach ($attachments as $attachment) {
+                    // 企业微信的媒体类型映射：audio -> voice
+                    $wechatType = $attachment['type'] === 'audio' ? 'voice' : $attachment['type'];
+                    $mediaId    = $this->uploadMediaFromUrl($attachment['url'], $wechatType);
+
+                    if ($mediaId) {
+                        $message = [
+                            'msgtype' => $wechatType,
+                        ];
+
+                        switch ($attachment['type']) {
+                            case 'image':
+                                $message['image'] = [
+                                    'media_id' => $mediaId,
+                                ];
+                                break;
+                            case 'video':
+                                $message['video'] = [
+                                    'media_id' => $mediaId,
+                                ];
+                                break;
+                            case 'audio':
+                                $message['voice'] = [
+                                    'media_id' => $mediaId,
+                                ];
+                                break;
+                        }
+
+                        $messages[] = $message;
+
+                    } else {
+                        Log::warning('上传媒体附件失败', [
+                            'url'  => $attachment['url'],
+                            'type' => $attachment['type'],
+                        ]);
+                    }
+                }
+
+                return $messages;
+            }
         }
 
-        // TODO 转换更多消息
+        // 处理普通文本消息
+        if ($channelMessage->contentType === ContentType::Text) {
+            $content = $channelMessage->getContent();
+            if ($content instanceof TextContent) {
+                $messages[] = [
+                    'msgtype' => 'text',
+                    'text'    => [
+                        'content' => mb_substr($content->text, 0, 2048),
+                    ],
+                ];
+            }
+        }
 
-        return $message;
+        // TODO 转换更多消息类型
 
+        return $messages;
+    }
+
+    /**
+     * 从 URL 下载文件并上传到企业微信临时素材
+     *
+     * @param  string  $url  媒体文件 URL
+     * @param  string  $type  媒体类型：image, video, voice
+     *
+     * @return string|null 返回 media_id，失败返回 null
+     */
+    protected function uploadMediaFromUrl(string $url, string $type) : ?string
+    {
+        if (empty($url)) {
+            return null;
+        }
+
+        try {
+            // 1. 下载文件到临时目录
+            $tempFile = $this->downloadFileFromUrl($url);
+            if (!$tempFile) {
+                Log::error('下载媒体文件失败', ['url' => $url]);
+                return null;
+            }
+
+            // 2. 上传到企业微信
+            $mediaId = $this->uploadMediaToWorkWechat($tempFile, $type);
+
+            // 3. 清理临时文件
+            @unlink($tempFile);
+
+            return $mediaId;
+        } catch (Exception $e) {
+            Log::error('上传媒体文件异常', [
+                'url'   => $url,
+                'type'  => $type,
+                'error' => $e->getMessage(),
+            ]);
+            return null;
+        }
+    }
+
+    /**
+     * 从 URL 下载文件到 Laravel 文件系统临时目录
+     *
+     * @param  string  $url  文件 URL
+     *
+     * @return string|null 临时文件完整路径（供 fopen 使用），失败返回 null
+     */
+    protected function downloadFileFromUrl(string $url) : ?string
+    {
+        try {
+            $client   = new GuzzleClient(['http_errors' => false]);
+            $response = $client->get($url);
+
+            if ($response->getStatusCode() !== 200) {
+                return null;
+            }
+
+            $content = $response->getBody()->getContents();
+            if (empty($content)) {
+                return null;
+            }
+
+            // 使用 Laravel 文件系统保存到临时目录
+            $relativePath = 'workwechat/temp/'.Str::uuid().'.tmp';
+            Storage::disk('local')->put($relativePath, $content);
+
+            return Storage::disk('local')->path($relativePath);
+        } catch (Exception $e) {
+            Log::error('下载文件异常', [
+                'url'   => $url,
+                'error' => $e->getMessage(),
+            ]);
+            return null;
+        }
+    }
+
+    /**
+     * 上传媒体文件到企业微信临时素材
+     *
+     * @param  string  $filePath  本地文件路径
+     * @param  string  $type  媒体类型：image, video, voice
+     *
+     * @return string|null 返回 media_id，失败返回 null
+     */
+    protected function uploadMediaToWorkWechat(string $filePath, string $type) : ?string
+    {
+        if (!file_exists($filePath)) {
+            return null;
+        }
+
+        try {
+            // 获取 access_token
+            $accessToken = $this->workWechatApp->getAccessToken()->getToken();
+
+            // 根据文档：https://developer.work.weixin.qq.com/document/path/90253
+            // POST /cgi-bin/media/upload?access_token=ACCESS_TOKEN&type=TYPE
+            // 使用 multipart/form-data，字段名为 "media"
+
+            $client   = new GuzzleClient(['base_uri' => 'https://qyapi.weixin.qq.com']);
+            $filename  = basename($filePath);
+
+            $response = $client->post('/cgi-bin/media/upload', [
+                'query' => [
+                    'access_token' => $accessToken,
+                    'type'         => $type,
+                ],
+                'multipart' => [
+                    [
+                        'name'     => 'media',
+                        'contents' => fopen($filePath, 'r'),
+                        'filename' => $filename,
+                    ],
+                ],
+                'http_errors' => false,
+            ]);
+
+            if ($response->getStatusCode() !== 200) {
+                Log::error('上传媒体文件失败', [
+                    'file'   => $filePath,
+                    'type'   => $type,
+                    'status' => $response->getStatusCode(),
+                ]);
+                return null;
+            }
+
+            $data = json_decode($response->getBody()->getContents(), true);
+            if (isset($data['errcode']) && $data['errcode'] !== 0) {
+                Log::error('上传媒体文件API错误', [
+                    'file'    => $filePath,
+                    'type'    => $type,
+                    'errcode' => $data['errcode'] ?? 0,
+                    'errmsg'  => $data['errmsg'] ?? 'Unknown error',
+                ]);
+                return null;
+            }
+
+            $mediaId = $data['media_id'] ?? null;
+            if ($mediaId) {
+                Log::info('上传媒体文件成功', [
+                    'file'     => $filePath,
+                    'type'     => $type,
+                    'media_id' => $mediaId,
+                ]);
+            }
+
+            return $mediaId;
+        } catch (Exception $e) {
+            Log::error('上传媒体文件异常', [
+                'file'   => $filePath,
+                'type'   => $type,
+                'error'  => $e->getMessage(),
+                'trace'  => $e->getTraceAsString(),
+            ]);
+            return null;
+        }
     }
 
     public function transferToHumanQueuing(ConversationData $conversation) : void

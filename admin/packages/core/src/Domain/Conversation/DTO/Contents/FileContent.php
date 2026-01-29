@@ -7,11 +7,7 @@ namespace HuiZhiDa\Core\Domain\Conversation\DTO\Contents;
  */
 class FileContent extends MediaContent
 {
-    /**
-     * 文件URL
-     * @var string
-     */
-    public string $url = '';
+
 
     /**
      * 文件名

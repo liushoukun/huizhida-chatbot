@@ -7,11 +7,7 @@ namespace HuiZhiDa\Core\Domain\Conversation\DTO\Contents;
  */
 class VoiceContent extends MediaContent
 {
-    /**
-     * 语音文件URL
-     * @var string
-     */
-    public string $url = '';
+
 
     /**
      * 语音时长（秒）
