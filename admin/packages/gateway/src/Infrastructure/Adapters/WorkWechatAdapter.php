@@ -8,6 +8,7 @@ use HuiZhiDa\Core\Domain\Conversation\DTO\ChannelMessage;
 use HuiZhiDa\Core\Domain\Conversation\DTO\Contents\EventContent;
 use HuiZhiDa\Core\Domain\Conversation\DTO\Contents\FileContent;
 use HuiZhiDa\Core\Domain\Conversation\DTO\Contents\ImageContent;
+use HuiZhiDa\Core\Domain\Conversation\DTO\Contents\MarkdownContent;
 use HuiZhiDa\Core\Domain\Conversation\DTO\Contents\TextContent;
 use HuiZhiDa\Core\Domain\Conversation\DTO\Contents\VideoContent;
 use HuiZhiDa\Core\Domain\Conversation\DTO\Contents\VoiceContent;
@@ -269,7 +270,7 @@ class WorkWechatAdapter implements ChannelAdapterInterface
      * @param  array  $msgData  消息数据
      * @param  ContentType  $contentType  内容类型
      *
-     * @return TextContent|ImageContent|VoiceContent|FileContent|VideoContent|EventContent|null
+     * @return EventContent|FileContent|ImageContent|TextContent|VideoContent|VoiceContent|null
      * @throws Exception
      */
     protected function parseMessageContent(array $msgData, ContentType $contentType)
@@ -739,11 +740,19 @@ class WorkWechatAdapter implements ChannelAdapterInterface
         $message['msgtype'] = $channelMessage->contentType->value;
         if ($channelMessage->contentType === ContentType::Text) {
             $content = $channelMessage->getContent();
+            // TODO 对返回消息进行转换
             if ($content instanceof TextContent) {
                 $message['text'] = [
                     'content' => $content->text,
                 ];
             }
+            // 解析 Markdown
+            if ($content instanceof MarkdownContent) {
+                $message['text'] = [
+                    'content' => $content->getPlainText(),
+                ];
+            }
+
         }
 
         // TODO 转换更多消息

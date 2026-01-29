@@ -12,6 +12,8 @@ enum ContentType: string
     case Combination = 'combination';
 
     // 文本
+
+
     case Text = 'text';
     // 图片
     case Image = 'image';
@@ -21,6 +23,9 @@ enum ContentType: string
     case Video = 'video';
     // 文件
     case File = 'file';
+
+    // Markdown 格式
+    case Markdown = 'markdown';
 
 
     // 卡片

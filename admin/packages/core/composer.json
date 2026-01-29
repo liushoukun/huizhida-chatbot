@@ -10,6 +10,7 @@
         }
     ],
     "require": {
+        "league/commonmark": "^2.8",
         "red-jasmine/support": "^1.0"
     },
     "require-dev": {

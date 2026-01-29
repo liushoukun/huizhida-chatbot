@@ -186,7 +186,7 @@ class CozeAdapter implements AgentAdapterInterface
                     // 如果有媒体对象 需要解析媒体对象
                     $agentMessage              = new AgentMessage();
                     $agentMessage->messageType = MessageType::Chat;
-                    $agentMessage->setContentData(ContentType::Text, [
+                    $agentMessage->setContentData(ContentType::Markdown, [
                         'text' => $responseMessage['content'] ?? '',
                     ]);
 
@@ -225,13 +225,7 @@ class CozeAdapter implements AgentAdapterInterface
         return true;
     }
 
-    protected function shouldTransfer(string $reply, AgentChatRequest $request) : bool
-    {
-        if (empty($reply) || mb_strlen($reply) < 5) {
-            return true;
-        }
-        return false;
-    }
+
 
     /**
      * 将消息转换为 Coze 格式
