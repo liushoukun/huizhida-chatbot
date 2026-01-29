@@ -24,9 +24,11 @@ class CallbackQueueCommand extends Command
 
     public function handle() : int
     {
-        $this->info('Callback queue consumer started');
+        $this->info('回调队列开始消费');
+        $this->info(date('Y-m-d H:i:s'));
 
         $this->mq->subscribe(ConversationQueueType::Callback, function ($data) {
+            $this->info('收到回调消息'.json_encode($data));
             try {
                 $payload = CallbackPayload::from($data);
                 $this->gatewayApplicationService->processCallbackJob($payload);

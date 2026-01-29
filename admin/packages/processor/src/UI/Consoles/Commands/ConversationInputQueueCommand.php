@@ -49,10 +49,8 @@ class ConversationInputQueueCommand extends Command
     public function handle() : int
     {
 
-        $timeout       = (int) 10;
-        $this->maxJobs = (int) 100;
-        $this->info("阻塞超时: {$timeout}秒");
 
+        $this->maxJobs = (int) 100;
 
         // 订阅队列
         $this->mq->subscribe(ConversationQueueType::Inputs, function ($eventData) {
