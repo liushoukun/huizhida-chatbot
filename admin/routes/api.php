@@ -1,6 +1,6 @@
 <?php
 
-use HuiZhiDa\Gateway\Http\Controllers\CallbackController;
+use HuiZhiDa\Engine\Channel\Http\Controllers\CallbackController;
 use Illuminate\Support\Facades\Route;
 
 
