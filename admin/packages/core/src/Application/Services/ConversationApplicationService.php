@@ -42,13 +42,14 @@ class ConversationApplicationService extends ApplicationService
      *
      * @param  string  $conversationId
      * @param  ConversationStatus  $status
+     * @param  string|null  $servicer
      *
      * @return void
      */
-    public function transfer(string $conversationId, ConversationStatus $status) : void
+    public function transfer(string $conversationId, ConversationStatus $status,?string  $servicer = null) : void
     {
         $conversation = $this->conversationRepository->findByConversationId($conversationId);
-        $conversation->updateStatus($status);
+        $conversation->transferHuman($servicer);
         $this->conversationRepository->update($conversation);
     }
 

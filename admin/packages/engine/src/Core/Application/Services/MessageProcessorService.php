@@ -136,7 +136,7 @@ class MessageProcessorService
             // 根据事件类型更新会话状态
             match ($eventType) {
                 EventType::TransferToHumanQueue => $this->handleTransferToHumanQueue($conversationId),
-                EventType::TransferToHuman => $this->handleTransferToHuman($conversationId),
+                EventType::TransferToHuman => $this->handleTransferToHuman($conversationId, $content->servicer),
                 EventType::Closed => $this->handleClosed($conversationId),
                 default => Log::debug('未处理的事件类型', [
                     'conversation_id' => $conversationId,
@@ -163,13 +163,14 @@ class MessageProcessorService
      * 处理已转人工事件
      *
      * @param  string  $conversationId
+     * @param  string|null  $servicer
      *
      * @return void
      */
-    protected function handleTransferToHuman(string $conversationId) : void
+    protected function handleTransferToHuman(string $conversationId, ?string $servicer = null) : void
     {
         Log::info('处理已转人工事件', ['conversation_id' => $conversationId]);
-        $this->conversationApplicationService->transfer($conversationId, ConversationStatus::Human);
+        $this->conversationApplicationService->transfer($conversationId, ConversationStatus::Human, $servicer);
     }
 
     /**
