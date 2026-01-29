@@ -7,6 +7,7 @@ use HuiZhiDa\Core\Application\Services\ConversationApplicationService;
 use HuiZhiDa\Core\Domain\Conversation\Contracts\ConversationQueueInterface;
 use HuiZhiDa\Core\Domain\Conversation\DTO\ChannelMessage;
 use HuiZhiDa\Core\Domain\Conversation\DTO\Contents\EventContent;
+use HuiZhiDa\Core\Domain\Conversation\DTO\Contents\TextContent;
 use HuiZhiDa\Core\Domain\Conversation\DTO\ConversationData;
 use HuiZhiDa\Core\Domain\Conversation\DTO\ConversationOutputQueue;
 use HuiZhiDa\Core\Domain\Conversation\DTO\Events\ConversationEvent;
@@ -132,17 +133,29 @@ class MessageProcessorService
             }
 
             $eventType = $content->event;
-
             // 根据事件类型更新会话状态
-            match ($eventType) {
-                EventType::TransferToHumanQueue => $this->handleTransferToHumanQueue($conversationId),
-                EventType::TransferToHuman => $this->handleTransferToHuman($conversationId, $content->servicer),
-                EventType::Closed => $this->handleClosed($conversationId),
-                default => Log::debug('未处理的事件类型', [
-                    'conversation_id' => $conversationId,
-                    'event_type'      => $eventType->value,
-                ]),
-            };
+            switch ($eventType) {
+                case EventType::TransferToHumanQueue:
+                    $conversation->status = ConversationStatus::HumanQueuing;
+                    $this->changeToHumanQueueing($conversationId);
+                    break;
+                case EventType::TransferToHuman:
+                    $conversation->status = ConversationStatus::Human;
+                    $this->changeToToHuman($conversationId, $content->servicer);
+                    break;
+                case EventType::Closed:
+                    $conversation->status = ConversationStatus::Closed;
+                    $this->changeToClosed($conversationId);
+                    break;
+                default:
+                    Log::debug('未处理的事件类型', [
+                        'conversation_id' => $conversationId,
+                        'event_type'      => $eventType->value,
+                    ]);
+                    break;
+            }
+
+
         }
     }
 
@@ -153,10 +166,10 @@ class MessageProcessorService
      *
      * @return void
      */
-    protected function handleTransferToHumanQueue(string $conversationId) : void
+    protected function changeToHumanQueueing(string $conversationId) : void
     {
         Log::info('处理转入人工处理队列事件', ['conversation_id' => $conversationId]);
-        $this->conversationApplicationService->transfer($conversationId, ConversationStatus::HumanQueuing);
+        $this->conversationApplicationService->humanQueuing($conversationId);
     }
 
     /**
@@ -167,10 +180,10 @@ class MessageProcessorService
      *
      * @return void
      */
-    protected function handleTransferToHuman(string $conversationId, ?string $servicer = null) : void
+    protected function changeToToHuman(string $conversationId, ?string $servicer = null) : void
     {
         Log::info('处理已转人工事件', ['conversation_id' => $conversationId]);
-        $this->conversationApplicationService->transfer($conversationId, ConversationStatus::Human, $servicer);
+        $this->conversationApplicationService->human($conversationId, $servicer);
     }
 
     /**
@@ -180,10 +193,10 @@ class MessageProcessorService
      *
      * @return void
      */
-    protected function handleClosed(string $conversationId) : void
+    protected function changeToClosed(string $conversationId) : void
     {
         Log::info('处理关闭会话事件', ['conversation_id' => $conversationId]);
-        $this->conversationApplicationService->transfer($conversationId, ConversationStatus::Closed);
+        $this->conversationApplicationService->close($conversationId);
     }
 
     /**
@@ -210,7 +223,7 @@ class MessageProcessorService
 
         if ($checkResult->actionType === ActionType::TransferHuman) {
             // 转人工，推入转人工队列
-            $this->requestTransferHuman($conversation, $checkResult);
+            $this->requestTransferHuman($conversation);
             return;
         }
 
@@ -218,14 +231,14 @@ class MessageProcessorService
         $channelId = $conversation->channelId;
         if (!$conversation->channelId) {
             Log::warning('Conversation missing channel_id', ['conversation_id' => $conversationId]);
-            $this->requestTransferHuman($conversation, $checkResult);
+            $this->requestTransferHuman($conversation);
             return;
         }
 
         $agentId = $this->getAgentIdForChannel($channelId);
         if (!$agentId) {
             Log::warning('No agent found for channel', ['channel_id' => $channelId, 'conversation_id' => $conversationId]);
-            $this->requestTransferHuman($conversation, $checkResult);
+            $this->requestTransferHuman($conversation);
             return;
         }
 
@@ -282,11 +295,11 @@ class MessageProcessorService
     /**
      * 请求转人工
      */
-    protected function requestTransferHuman(ConversationData $conversation, ?PreCheckResult $checkResult = null) : void
+    protected function requestTransferHuman(ConversationData $conversation) : void
     {
-        $conversationId = $conversation->conversationId;
 
-        $this->conversationApplicationService->transfer($conversation->conversationId, ConversationStatus::HumanQueuing);
+        // 转入人工处理队列
+        $this->conversationApplicationService->humanQueuing($conversation->conversationId);
 
         $outputQueue = new ConversationOutputQueue();
 
@@ -301,15 +314,22 @@ class MessageProcessorService
         $channelMessage->channelId             = $conversation->channelId;
         $channelMessage->channelConversationId = $conversation->channelConversationId;
         $channelMessage->channelAppId          = $conversation->channelAppId;
-        $channelMessage->messageType           = MessageType::Event;
-        $channelMessage->contentType           = ContentType::Event;
+        $textChannelMessage                    = clone $channelMessage;
+
+        $channelMessage->messageType = MessageType::Event;
+        $channelMessage->contentType = ContentType::Event;
         $channelMessage->setContentData(ContentType::Event,
             EventContent::from([
                 'event' => EventType::TransferToHumanQueue,
             ])->toArray()
         );
 
-        $outputQueue->messages = [$channelMessage];
+        $textChannelMessage->messageType = MessageType::Chat;
+        $textChannelMessage->setContentData(ContentType::Text, TextContent::from([
+            'text' => '转人工处理中，请稍候...'
+        ])->toArray());
+
+        $outputQueue->messages = [$textChannelMessage, $channelMessage];
         //
 
         $this->messageQueue->publish(ConversationQueueType::Outputs, $outputQueue);

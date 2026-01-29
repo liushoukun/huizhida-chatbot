@@ -12,7 +12,7 @@ use Illuminate\Support\Facades\Log;
 
 class CallbackQueueCommand extends Command
 {
-    protected $signature   = 'gateway:callback:consume';
+    protected $signature   = 'huizhida:callback:queue';
     protected $description = 'Consume callback queue: fetch messages and handle (sync_msg, download media, handleMessages)';
 
     public function __construct(

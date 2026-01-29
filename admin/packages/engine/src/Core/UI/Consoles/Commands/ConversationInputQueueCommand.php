@@ -22,7 +22,7 @@ class ConversationInputQueueCommand extends Command
      *
      * @var string
      */
-    protected $signature = 'conversation:inputs:consume';
+    protected $signature = 'huizhida:inputs:queue';
 
     /**
      * The console command description.

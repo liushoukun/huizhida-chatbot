@@ -15,8 +15,8 @@ use RedJasmine\Support\Domain\Queries\FindQuery;
 
 class ConversationOutputQueueCommand extends Command
 {
-    protected $signature   = 'conversation:outputs:consume';
-    protected $description = 'Start message sender consumer';
+    protected $signature   = 'huizhida:outputs:queue';
+    protected $description = 'Start message outputs queue';
 
     public function __construct(
         protected AdapterFactory $adapterFactory,

@@ -37,16 +37,31 @@ class ConversationApplicationService extends ApplicationService
         $this->mq->publish($conversationEvent->queue, $conversationEvent);
     }
 
+    public function close(string $conversationId) : void
+    {
+        $conversation = $this->conversationRepository->findByConversationId($conversationId);
+        $conversation->updateStatus(ConversationStatus::Closed);
+        $this->conversationRepository->update($conversation);
+    }
+
+
+    public function humanQueuing(string $conversationId, ?string $servicer = null) : void
+    {
+        $conversation = $this->conversationRepository->findByConversationId($conversationId);
+        $conversation->updateStatus(ConversationStatus::HumanQueuing);
+        $this->conversationRepository->update($conversation);
+    }
+
+
     /**
      * 转换状态
      *
      * @param  string  $conversationId
-     * @param  ConversationStatus  $status
      * @param  string|null  $servicer
      *
      * @return void
      */
-    public function transfer(string $conversationId, ConversationStatus $status,?string  $servicer = null) : void
+    public function human(string $conversationId, ?string $servicer = null) : void
     {
         $conversation = $this->conversationRepository->findByConversationId($conversationId);
         $conversation->transferHuman($servicer);
@@ -109,7 +124,6 @@ class ConversationApplicationService extends ApplicationService
         $this->messageRepository->pendingInputMessages($conversationId, $messages);
 
     }
-
 
 
     /**
