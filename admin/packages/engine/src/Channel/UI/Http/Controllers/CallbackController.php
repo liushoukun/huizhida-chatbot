@@ -1,6 +1,6 @@
 <?php
 
-namespace HuiZhiDa\Engine\Channel\Http\Controllers;
+namespace HuiZhiDa\Engine\Channel\UI\Http\Controllers;
 
 use HuiZhiDa\Core\Application\Services\ConversationApplicationService;
 use HuiZhiDa\Core\Domain\Channel\Repositories\ChannelRepositoryInterface;

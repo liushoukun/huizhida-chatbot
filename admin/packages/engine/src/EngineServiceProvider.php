@@ -5,7 +5,7 @@ namespace HuiZhiDa\Engine;
 use HuiZhiDa\Core\Domain\Agent\Repositories\AgentRepositoryInterface;
 use HuiZhiDa\Core\Domain\Conversation\Contracts\ConversationQueueInterface;
 use HuiZhiDa\Engine\Channel\Application\Services\GatewayApplicationService;
-use HuiZhiDa\Engine\Channel\Http\Controllers\CallbackController;
+use HuiZhiDa\Engine\Channel\UI\Http\Controllers\CallbackController;
 use HuiZhiDa\Engine\Channel\Infrastructure\Adapters\AdapterFactory as ChannelAdapterFactory;
 use HuiZhiDa\Engine\Channel\UI\Consoles\Commands\CallbackQueueCommand;
 use HuiZhiDa\Engine\Channel\UI\Consoles\Commands\ConversationOutputQueueCommand;
@@ -21,9 +21,9 @@ use Illuminate\Support\ServiceProvider;
 
 class EngineServiceProvider extends ServiceProvider
 {
-    public function register(): void
+    public function register() : void
     {
-        $this->mergeConfigFrom(__DIR__ . '/../config/engine.php', 'engine');
+        $this->mergeConfigFrom(__DIR__.'/../config/engine.php', 'engine');
 
         // Core: 队列唯一实现
         $this->app->singleton(ConversationQueueInterface::class, function ($app) {
@@ -58,10 +58,10 @@ class EngineServiceProvider extends ServiceProvider
         });
     }
 
-    public function boot(): void
+    public function boot() : void
     {
         $this->publishes([
-            __DIR__ . '/../config/engine.php' => config_path('engine.php'),
+            __DIR__.'/../config/engine.php' => config_path('engine.php'),
         ], 'engine-config');
 
         $this->loadRoutes();
@@ -75,12 +75,13 @@ class EngineServiceProvider extends ServiceProvider
         }
     }
 
-    protected function loadRoutes(): void
+    protected function loadRoutes() : void
     {
         Route::middleware('api')
-            ->prefix('api/gateway')
-            ->group(function () {
-                Route::post('/callback/{channel}/{appId}', [CallbackController::class, 'handle']);
-            });
+             ->prefix('api/gateway')
+             ->group(function () {
+                 Route::get('{channel}/{appId}', [CallbackController::class, 'health']);
+                 Route::post('{channel}/{appId}', [CallbackController::class, 'handle']);
+             });
     }
 }

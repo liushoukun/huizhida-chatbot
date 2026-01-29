@@ -3,6 +3,7 @@
 namespace HuiZhiDa\Engine\Channel\Application\Services;
 
 use Exception;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 use InvalidArgumentException;
 use HuiZhiDa\Core\Application\Services\ConversationApplicationService;
 use HuiZhiDa\Core\Domain\Channel\Models\Channel;
@@ -31,10 +32,20 @@ class GatewayApplicationService extends ApplicationService
     ) {
     }
 
+    protected function getChannel($id):Channel
+    {
+        $channelModel  = $this->channelRepository->find($id);
+        if(!$channelModel){
+            throw new ModelNotFoundException();
+        }
+
+        return $channelModel;
+    }
+
 
     public function health(Request $request, $id)
     {
-        $channelModel  = $this->channelRepository->find($id);
+        $channelModel  = $this->getChannel($id);
         $channelConfig = $channelModel->config; // 实际应从数据库读取
         $channel       = $channelModel->channel;
         $adapter       = $this->channelAdapterFactory->get($channel, $channelConfig);
@@ -48,7 +59,7 @@ class GatewayApplicationService extends ApplicationService
         try {
             // 1. 获取渠道适配器
 
-            $channelModel = $this->channelRepository->find($id);
+            $channelModel  = $this->getChannel($id);
             $channel      = $channelModel->channel;
 
             $adapter = $this->channelAdapterFactory->get($channelModel->channel, $channelModel->config);
