@@ -4,6 +4,7 @@ namespace HuiZhiDa\Engine\Channel\Infrastructure\Adapters;
 
 use EasyWeChat\Work\Application;
 use Exception;
+use GuzzleHttp\Client as GuzzleClient;
 use HuiZhiDa\Core\Domain\Conversation\DTO\ChannelMessage;
 use HuiZhiDa\Core\Domain\Conversation\DTO\Contents\EventContent;
 use HuiZhiDa\Core\Domain\Conversation\DTO\Contents\FileContent;
@@ -12,10 +13,10 @@ use HuiZhiDa\Core\Domain\Conversation\DTO\Contents\MarkdownContent;
 use HuiZhiDa\Core\Domain\Conversation\DTO\Contents\TextContent;
 use HuiZhiDa\Core\Domain\Conversation\DTO\Contents\VideoContent;
 use HuiZhiDa\Core\Domain\Conversation\DTO\Contents\VoiceContent;
-use HuiZhiDa\Core\Domain\Conversation\Enums\EventType;
-use HuiZhiDa\Core\Domain\Conversation\DTO\ConversationOutputQueue;
 use HuiZhiDa\Core\Domain\Conversation\DTO\ConversationData;
+use HuiZhiDa\Core\Domain\Conversation\DTO\ConversationOutputQueue;
 use HuiZhiDa\Core\Domain\Conversation\Enums\ContentType;
+use HuiZhiDa\Core\Domain\Conversation\Enums\EventType;
 use HuiZhiDa\Core\Domain\Conversation\Enums\MessageType;
 use HuiZhiDa\Engine\Channel\Domain\Contracts\ChannelAdapterInterface;
 use HuiZhiDa\Engine\Channel\Domain\DTO\CallbackPayload;
@@ -23,10 +24,9 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
-use GuzzleHttp\Client as GuzzleClient;
 use Illuminate\Support\Str;
 use RedJasmine\Support\Domain\Data\UserData;
-use Symfony\Component\HttpClient\HttpClient;
+use Symfony\Component\HttpFoundation\Response;
 use Symfony\Contracts\HttpClient\Exception\ClientExceptionInterface;
 use Symfony\Contracts\HttpClient\Exception\RedirectionExceptionInterface;
 use Symfony\Contracts\HttpClient\Exception\ServerExceptionInterface;
@@ -922,14 +922,14 @@ class WorkWechatAdapter implements ChannelAdapterInterface
             // 使用 multipart/form-data，字段名为 "media"
 
             $client   = new GuzzleClient(['base_uri' => 'https://qyapi.weixin.qq.com']);
-            $filename  = basename($filePath);
+            $filename = basename($filePath);
 
             $response = $client->post('/cgi-bin/media/upload', [
-                'query' => [
+                'query'       => [
                     'access_token' => $accessToken,
                     'type'         => $type,
                 ],
-                'multipart' => [
+                'multipart'   => [
                     [
                         'name'     => 'media',
                         'contents' => fopen($filePath, 'r'),
@@ -971,10 +971,10 @@ class WorkWechatAdapter implements ChannelAdapterInterface
             return $mediaId;
         } catch (Exception $e) {
             Log::error('上传媒体文件异常', [
-                'file'   => $filePath,
-                'type'   => $type,
-                'error'  => $e->getMessage(),
-                'trace'  => $e->getTraceAsString(),
+                'file'  => $filePath,
+                'type'  => $type,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
             ]);
             return null;
         }
@@ -1003,11 +1003,11 @@ class WorkWechatAdapter implements ChannelAdapterInterface
         ]);
     }
 
-    public function getSuccessResponse() : array
+    public function getSuccessResponse() : Response
     {
-        return [
+        return response()->json([
             'errcode' => 0,
             'errmsg'  => 'ok',
-        ];
+        ]);
     }
 }

@@ -3,12 +3,12 @@
 namespace HuiZhiDa\Engine\Channel\Domain\Contracts;
 
 use HuiZhiDa\Engine\Channel\Domain\DTO\CallbackPayload;
-use HuiZhiDa\Engine\Agent\Domain\Data\AgentChatResponse;
 use HuiZhiDa\Core\Domain\Conversation\DTO\ConversationOutputQueue;
 use HuiZhiDa\Core\Domain\Conversation\DTO\ConversationData;
 use Illuminate\Http\Request;
 use HuiZhiDa\Core\Domain\Conversation\DTO\ChannelMessage;
-use Illuminate\Http\Response;
+use Symfony\Component\HttpFoundation\Response;
+
 
 interface ChannelAdapterInterface
 {
@@ -59,5 +59,5 @@ interface ChannelAdapterInterface
     /**
      * 获取成功响应
      */
-    public function getSuccessResponse() : array;
+    public function getSuccessResponse() : Response;
 }

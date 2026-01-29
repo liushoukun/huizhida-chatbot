@@ -3,11 +3,10 @@
 namespace HuiZhiDa\Engine\Channel\Infrastructure\Adapters;
 
 use Exception;
-use HuiZhiDa\Engine\Agent\Domain\Data\AgentChatResponse;
 use HuiZhiDa\Core\Domain\Conversation\DTO\ChannelMessage;
 use HuiZhiDa\Core\Domain\Conversation\DTO\Contents\TextContent;
-use HuiZhiDa\Core\Domain\Conversation\DTO\ConversationOutputQueue;
 use HuiZhiDa\Core\Domain\Conversation\DTO\ConversationData;
+use HuiZhiDa\Core\Domain\Conversation\DTO\ConversationOutputQueue;
 use HuiZhiDa\Core\Domain\Conversation\Enums\ContentType;
 use HuiZhiDa\Core\Domain\Conversation\Enums\MessageType;
 use HuiZhiDa\Engine\Channel\Domain\Contracts\ChannelAdapterInterface;
@@ -17,7 +16,6 @@ use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
-use InvalidArgumentException;
 use RedJasmine\Support\Domain\Data\UserData;
 use RuntimeException;
 
@@ -114,8 +112,8 @@ class ApiAdapter implements ChannelAdapterInterface
     public function sendMessages(ConversationOutputQueue $conversationOutputQueue) : void
     {
 
-        foreach ($conversationOutputQueue->messages as $message){
-            Log::debug('输出消息',$message->toArray());
+        foreach ($conversationOutputQueue->messages as $message) {
+            Log::debug('输出消息', $message->toArray());
         }
     }
 
@@ -218,14 +216,14 @@ class ApiAdapter implements ChannelAdapterInterface
         }
     }
 
-    public function getSuccessResponse() : array
+    public function getSuccessResponse() : \Symfony\Component\HttpFoundation\Response
     {
-        return [
+        return response()->json([
             'success'   => true,
             'code'      => 200,
             'message'   => 'ok',
             'timestamp' => time(),
-        ];
+        ]);
     }
 
     /**
