@@ -20,7 +20,7 @@ use RuntimeException;
  * 智能体服务
  * 负责调用智能体处理消息
  */
-class AgentService
+class AgentApplicationService
 {
     public function __construct(
         protected AgentRepositoryInterface $agentRepository,

@@ -4,7 +4,7 @@ namespace HuiZhiDa\Engine\Channel\UI\Http\Controllers;
 
 use HuiZhiDa\Core\Application\Services\ConversationApplicationService;
 use HuiZhiDa\Core\Domain\Channel\Repositories\ChannelRepositoryInterface;
-use HuiZhiDa\Engine\Channel\Application\Services\GatewayApplicationService;
+use HuiZhiDa\Engine\Channel\Application\Services\ChannelApplicationService;
 use HuiZhiDa\Engine\Channel\Infrastructure\Adapters\AdapterFactory;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -15,7 +15,7 @@ class CallbackController
         protected AdapterFactory $adapterFactory,
         protected ConversationApplicationService $conversationApplicationService,
         protected ChannelRepositoryInterface $channelRepository,
-        protected GatewayApplicationService $gatewayApplicationService,
+        protected ChannelApplicationService $gatewayApplicationService,
     ) {
     }
 

@@ -5,7 +5,7 @@ namespace HuiZhiDa\Engine\Channel\UI\Consoles\Commands;
 use Exception;
 use HuiZhiDa\Core\Domain\Conversation\Contracts\ConversationQueueInterface;
 use HuiZhiDa\Core\Domain\Conversation\Enums\ConversationQueueType;
-use HuiZhiDa\Engine\Channel\Application\Services\GatewayApplicationService;
+use HuiZhiDa\Engine\Channel\Application\Services\ChannelApplicationService;
 use HuiZhiDa\Engine\Channel\Domain\DTO\CallbackPayload;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Log;
@@ -17,7 +17,7 @@ class CallbackQueueCommand extends Command
 
     public function __construct(
         protected ConversationQueueInterface $mq,
-        protected GatewayApplicationService $gatewayApplicationService,
+        protected ChannelApplicationService $gatewayApplicationService,
     ) {
         parent::__construct();
     }

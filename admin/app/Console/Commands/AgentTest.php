@@ -6,10 +6,10 @@ use HuiZhiDa\Core\Domain\Agent\Models\Agent;
 use HuiZhiDa\Core\Domain\Conversation\DTO\AgentMessage;
 use HuiZhiDa\Core\Domain\Conversation\DTO\Contents\MarkdownContent;
 use HuiZhiDa\Core\Domain\Conversation\Enums\MessageType;
-use HuiZhiDa\Engine\Agent\Application\Services\AgentService;
+use HuiZhiDa\Engine\Agent\Application\Services\AgentApplicationService;
 use HuiZhiDa\Engine\Agent\Domain\Data\AgentChatRequest;
 use HuiZhiDa\Engine\Agent\Infrastructure\Adapters\AgentAdapterFactory;
-use HuiZhiDa\Engine\Core\Application\Services\MessageProcessorService;
+use HuiZhiDa\Engine\Core\Application\Services\EngineCoreService;
 use HuiZhiDa\Core\Application\Services\ConversationApplicationService;
 use HuiZhiDa\Core\Domain\Conversation\DTO\ChannelMessage;
 use HuiZhiDa\Core\Domain\Conversation\DTO\ConversationData;
@@ -74,7 +74,7 @@ DOC;
 
     public function handle233()
     {
-        $service = app(MessageProcessorService::class);
+        $service = app(EngineCoreService::class);
         $event   = new ConversationEvent('68a19eb3-3713-4183-afc3-c45785484e10');
 
         $service->processConversationEvent($event);
@@ -91,7 +91,7 @@ DOC;
 
         $message = $conversationApplicationService->getPendingInputMessages('f3c13f68-f39b-4174-b88d-7439f8af0d1a');
         dd($message);
-        $this->agentService     = app(AgentService::class);
+        $this->agentService     = app(AgentApplicationService::class);
         $channelMessage         = new ChannelMessage();
         $channelMessage->sender = UserData::from(['type' => 'user', 'id' => '1111']);
         $channelMessage->setContentData(ContentType::Text, [

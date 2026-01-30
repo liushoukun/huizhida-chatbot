@@ -16,7 +16,7 @@ use HuiZhiDa\Core\Domain\Conversation\Enums\ConversationQueueType;
 use HuiZhiDa\Core\Domain\Conversation\Enums\ConversationStatus;
 use HuiZhiDa\Core\Domain\Conversation\Enums\EventType;
 use HuiZhiDa\Core\Domain\Conversation\Enums\MessageType;
-use HuiZhiDa\Engine\Agent\Application\Services\AgentService;
+use HuiZhiDa\Engine\Agent\Application\Services\AgentApplicationService;
 use HuiZhiDa\Engine\Core\Domain\Enums\ActionType;
 use HuiZhiDa\Engine\Core\Domain\Services\PreCheckService;
 use Illuminate\Support\Facades\DB;
@@ -32,7 +32,7 @@ class EngineCoreService
         protected ConversationApplicationService $conversationApplicationService,
         protected ConversationQueueInterface $messageQueue,
         protected PreCheckService $preCheckService,
-        protected AgentService $agentService
+        protected AgentApplicationService $agentService
     ) {
     }
 

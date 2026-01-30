@@ -23,7 +23,7 @@ use Illuminate\Support\Facades\Log;
 use RedJasmine\Support\Application\ApplicationService;
 use function Laravel\Prompts\number;
 
-class GatewayApplicationService extends ApplicationService
+class ChannelApplicationService extends ApplicationService
 {
 
     public function __construct(

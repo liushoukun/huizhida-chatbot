@@ -4,7 +4,7 @@ namespace HuiZhiDa\Engine;
 
 use HuiZhiDa\Core\Domain\Agent\Repositories\AgentRepositoryInterface;
 use HuiZhiDa\Core\Domain\Conversation\Contracts\ConversationQueueInterface;
-use HuiZhiDa\Engine\Channel\Application\Services\GatewayApplicationService;
+use HuiZhiDa\Engine\Channel\Application\Services\ChannelApplicationService;
 use HuiZhiDa\Engine\Channel\UI\Http\Controllers\CallbackController;
 use HuiZhiDa\Engine\Channel\Infrastructure\Adapters\AdapterFactory as ChannelAdapterFactory;
 use HuiZhiDa\Engine\Channel\UI\Consoles\Commands\CallbackQueueCommand;
@@ -13,11 +13,13 @@ use HuiZhiDa\Engine\Core\Application\Services\EngineCoreService;
 use HuiZhiDa\Engine\Core\Domain\Services\PreCheckService;
 use HuiZhiDa\Engine\Core\Infrastructure\Queue\RedisQueue;
 use HuiZhiDa\Engine\Core\UI\Consoles\Commands\ConversationInputQueueCommand;
-use HuiZhiDa\Engine\Agent\Application\Services\AgentService;
+use HuiZhiDa\Engine\Agent\Application\Services\AgentApplicationService;
 use HuiZhiDa\Engine\Agent\Infrastructure\Adapters\AgentAdapterFactory;
 use HuiZhiDa\Core\Application\Services\ConversationApplicationService;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\ServiceProvider;
+use function Pest\Laravel\swap;
+use function Psy\debug;
 
 class EngineServiceProvider extends ServiceProvider
 {
@@ -27,8 +29,18 @@ class EngineServiceProvider extends ServiceProvider
 
         // Core: 队列唯一实现
         $this->app->singleton(ConversationQueueInterface::class, function ($app) {
-            $config = config('engine.queue', []);
-            return new RedisQueue($config);
+            $queue = config('huizhida.queue_default', 'redis');
+            switch ($queue) {
+                case 'redis':
+                    $config = config('huizhida.queue_connections.redis');
+                    return new RedisQueue($config);
+                    break;
+                default:
+                    return null;
+                    break;
+
+            }
+
         });
 
         // Core: 预检服务
@@ -40,18 +52,18 @@ class EngineServiceProvider extends ServiceProvider
                 $app->make(ConversationApplicationService::class),
                 $app->make(ConversationQueueInterface::class),
                 $app->make(PreCheckService::class),
-                $app->make(AgentService::class)
+                $app->make(AgentApplicationService::class)
             );
         });
 
         // Channel: 渠道适配器与应用服务
         $this->app->singleton(ChannelAdapterFactory::class);
-        $this->app->singleton(GatewayApplicationService::class);
+        $this->app->singleton(ChannelApplicationService::class);
 
         // Agent: 智能体适配器与服务
         $this->app->singleton(AgentAdapterFactory::class);
-        $this->app->singleton(AgentService::class, function ($app) {
-            return new AgentService(
+        $this->app->singleton(AgentApplicationService::class, function ($app) {
+            return new AgentApplicationService(
                 $app->make(AgentRepositoryInterface::class),
                 $app->make(AgentAdapterFactory::class)
             );
