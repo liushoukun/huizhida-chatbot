@@ -3,6 +3,7 @@
 namespace HuiZhiDa\Engine\Channel\Application\Services;
 
 use Exception;
+use HuiZhiDa\Core\Domain\Conversation\Enums\MessageType;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use InvalidArgumentException;
 use HuiZhiDa\Core\Application\Services\ConversationApplicationService;
@@ -20,6 +21,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Log;
 use RedJasmine\Support\Application\ApplicationService;
+use function Laravel\Prompts\number;
 
 class GatewayApplicationService extends ApplicationService
 {
@@ -156,6 +158,8 @@ class GatewayApplicationService extends ApplicationService
          */
         $conversation = null;
 
+        $hasEvent = false;
+
         foreach ($messages as $message) {
 
             // 设置渠道和应用信息
@@ -168,13 +172,22 @@ class GatewayApplicationService extends ApplicationService
             }
             // 获取 系统会话ID
             $message->conversationId = $conversation->conversation_id;
+            if($message->messageType === MessageType::Event){
+                $hasEvent = true;
+            }
         }
 
         // 7. 存储会话待处理消息
         $this->conversationApplicationService->savePendingInputMessages($conversation->conversation_id, $messages);
 
         // 8. 第二步：推送事件消息到队列，包含会话ID
-        $this->conversationApplicationService->triggerEvent(new ConversationEvent($conversation->conversation_id));
+        $event = new ConversationEvent($conversation->conversation_id);
+        // 如果有事件类型，那么就立即处理
+        if($hasEvent){
+            $event->setDelaySeconds(null);
+        }
+
+        $this->conversationApplicationService->publishInputEvent($event);
 
 
     }

@@ -30,12 +30,12 @@ class ConversationApplicationService extends ApplicationService
     }
 
     // 触发事件 等待处理
-    public function triggerEvent(ConversationEvent $conversationEvent) : void
+    public function publishInputEvent(ConversationEvent $conversationEvent) : void
     {
         // 记录最后一次事件
         $this->mq->recordLastEvent($conversationEvent);
 
-        $this->mq->publish($conversationEvent->queue, $conversationEvent);
+        $this->mq->publish($conversationEvent->queue, $conversationEvent,$conversationEvent->getDelaySeconds());
     }
 
     public function close(string $conversationId) : void

@@ -167,7 +167,7 @@ class WorkWechatAdapter implements ChannelAdapterInterface
         ]);
 
         $responseData = json_decode($response->getContent(), true);
-        Log::info('sync_msg response', $responseData);
+        Log::info('获取微信消息', $responseData);
 
         if (isset($responseData['errcode']) && $responseData['errcode'] !== 0) {
             throw new Exception('Sync message failed: '.($responseData['errmsg'] ?? 'Unknown error'));
@@ -198,9 +198,11 @@ class WorkWechatAdapter implements ChannelAdapterInterface
             }
 
 
-            $message    = $this->convertToChannelMessage($msgData, $openKfId);
-            $messages[] = $message;
+
+            $messages[] = $this->convertToChannelMessage($msgData, $openKfId);
         }
+        Log::debug('格式化后微信消息',$messages);
+
 
         return $messages;
     }

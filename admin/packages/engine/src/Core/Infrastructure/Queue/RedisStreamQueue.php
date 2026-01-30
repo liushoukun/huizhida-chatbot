@@ -48,10 +48,9 @@ class RedisStreamQueue implements ConversationQueueInterface
     }
 
 
-    public function publish(ConversationQueueType $queueType, Data $message) : void
+    public function publish(ConversationQueueType $queueType, Data $message, ?int $delaySeconds = null) : void
     {
         try {
-            $delaySeconds = $queueType->getDelaySeconds();
 
             // 如果配置了延时队列，使用延时队列
             if ($delaySeconds !== null) {

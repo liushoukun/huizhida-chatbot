@@ -17,7 +17,7 @@ interface ConversationQueueInterface
     /**
      * 发布会话MQ
      */
-    public function publish(ConversationQueueType $queueType, Data $message) : void;
+    public function publish(ConversationQueueType $queueType, Data $message,?int $delaySeconds = null) : void;
 
     /**
      * 订阅队列消息

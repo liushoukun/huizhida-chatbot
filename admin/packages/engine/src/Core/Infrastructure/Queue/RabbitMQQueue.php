@@ -194,17 +194,18 @@ class RabbitMQQueue implements ConversationQueueInterface
      *
      * @param  ConversationQueueType  $queueType
      * @param  Data  $message
+     * @param  int|null  $delaySeconds
      *
      * @return void
      * @throws Exception
      */
-    public function publish(ConversationQueueType $queueType, Data $message): void
+    public function publish(ConversationQueueType $queueType, Data $message, ?int $delaySeconds = null): void
     {
         try {
             $this->declareQueue($queueType);
 
             $queueName = $queueType->getQueueName();
-            $delaySeconds = $queueType->getDelaySeconds();
+
             $messageBody = $message->toJson();
 
             // 创建消息属性
