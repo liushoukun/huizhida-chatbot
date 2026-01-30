@@ -10,6 +10,14 @@
 ARG BASE_IMAGE=liushoukun/php:8.2-fpm-nginx
 FROM ${BASE_IMAGE} AS base
 
+
+
+USER root
+
+# 安装 PHP 扩展（去重并优化）
+# 注意：原 Dockerfile 中有重复的 bcmath 和 gd，已去重
+RUN install-php-extensions \
+    sockets
 ############################################
 # Development Image
 ############################################
