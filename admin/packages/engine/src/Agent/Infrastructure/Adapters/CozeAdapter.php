@@ -4,19 +4,20 @@ namespace HuiZhiDa\Engine\Agent\Infrastructure\Adapters;
 
 use Exception;
 use GuzzleHttp\Client;
+use HuiZhiDa\Core\Domain\Conversation\DTO\AgentMessage;
+use HuiZhiDa\Core\Domain\Conversation\DTO\ChannelMessage;
+use HuiZhiDa\Core\Domain\Conversation\DTO\Contents\FileContent;
+use HuiZhiDa\Core\Domain\Conversation\DTO\Contents\ImageContent;
+use HuiZhiDa\Core\Domain\Conversation\DTO\Contents\MediaContent;
+use HuiZhiDa\Core\Domain\Conversation\Enums\ContentType;
+use HuiZhiDa\Core\Domain\Conversation\Enums\MessageType;
 use HuiZhiDa\Engine\Agent\Domain\Contracts\AgentAdapterInterface;
 use HuiZhiDa\Engine\Agent\Domain\Data\AgentChatRequest;
 use HuiZhiDa\Engine\Agent\Domain\Data\AgentChatResponse;
-use HuiZhiDa\Core\Domain\Conversation\DTO\AgentMessage;
-use HuiZhiDa\Core\Domain\Conversation\DTO\ChannelMessage;
-use HuiZhiDa\Core\Domain\Conversation\Enums\ContentType;
-use HuiZhiDa\Core\Domain\Conversation\Enums\MessageType;
-use HuiZhiDa\Core\Domain\Conversation\DTO\Contents\MediaContent;
-use HuiZhiDa\Core\Domain\Conversation\DTO\Contents\ImageContent;
-use HuiZhiDa\Core\Domain\Conversation\DTO\Contents\FileContent;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use InvalidArgumentException;
+use Psr\Http\Message\StreamInterface;
 use RuntimeException;
 
 /**
@@ -102,98 +103,41 @@ class CozeAdapter implements AgentAdapterInterface
         }
 
 
-
         try {
 
-            // 发起对话
+            // 发起对话（流式响应，参考 https://docs.coze.cn/developer_guides/chat_v3）
             $response = $this->client->post('v3/chat', [
-                'query' => [
+                'query'   => [
                     'conversation_id' => $agentConversationId,
                 ],
-                'json'  => [
+                'json'    => [
                     'bot_id'              => $botId,
-                    'user_id'             => $request->user->getID(),// TODO 需要替换
+                    'user_id'             => $request->user->getID(),
                     'additional_messages' => $messages,
-                    'stream'              => false,
+                    'stream'              => true,
                 ],
+                'timeout' => $this->config['stream_timeout'] ?? 120,
             ]);
 
-            // 流式读取响应
-            $chatResponseData = json_decode($response->getBody()->getContents(), true);
-            // 获取对话ID
-            $chatId = $chatResponseData['data']['id'];
+            $bodyStream = $response->getBody();
+            $parsed     = static::parse($bodyStream);
+            Log::info('解析响应', $parsed);
 
-            $queryIndex = 0;
-
+            $messages = $parsed['messages'] ?? [];
 
             $agentMessages = [];
-
-            while (true) {
-                sleep(2);
-                $queryIndex++;
-                // 查询对话状态
-                $chatRetrieveResponse     = $this->client->post('v3/chat/retrieve', [
-                    'query' => [
-                        'conversation_id' => $agentConversationId,
-                        'chat_id'         => $chatId,
-                    ],
-                    'json'  => [
-                        'bot_id'              => $botId,
-                        'user_id'             => 'user_id',// TODO 需要替换
-                        'additional_messages' => $messages,
-                        'stream'              => false,
-                    ],
-                    // 'stream' => true, // 启用流式响应
+            foreach ($messages as $msg) {
+                $type    = $msg['type'] ?? '';
+                $content = trim((string) ($msg['content'] ?? ''));
+                if ($type !== 'answer' || $content === '') {
+                    continue;
+                }
+                $agentMessage              = new AgentMessage();
+                $agentMessage->messageType = MessageType::Chat;
+                $agentMessage->setContentData(ContentType::Markdown, [
+                    'text' => $content,
                 ]);
-                $chatRetrieveResponseData = json_decode($chatRetrieveResponse->getBody()->getContents(), true);
-
-                // 如果 最终状态
-                $finalStatusList = [
-                    'completed',
-                    'failed',
-                    'requires_action',
-                    'canceled'
-                ];
-
-                if (in_array($chatRetrieveResponseData['data']['status'], $finalStatusList)) {
-                    $chatRetrieveStatus = $chatRetrieveResponseData['data']['status'];
-                    break;
-                }
-                if ($queryIndex > 100) {
-                    throw new RuntimeException("Coze API error: Query timeout");
-                }
-            }
-            // 3.  获取回复结果
-            if ($chatRetrieveStatus === 'completed') {
-                Log::debug('Coze 获取回复结果',
-                    ['agentConversationId' => $agentConversationId, 'conversationId' => $request->conversationId]);
-                $chatResultResponse     = $this->client->post('v3/chat/message/list', [
-                    'query' => [
-                        'conversation_id' => $agentConversationId,
-                        'chat_id'         => $chatId,
-                    ],
-                ]);
-                $chatResultResponseData = json_decode($chatResultResponse->getBody()->getContents(), true);
-
-                Log::debug('Coze 获取回复结果', ['chatResultResponseData' => $chatResultResponseData]);
-                $responseMessages = collect($chatResultResponseData['data'] ?? [])->filter(function ($message) {
-                    return $message['role'] === 'assistant'
-                           && $message['type'] === 'answer';
-                })->values();
-
-                foreach ($responseMessages as $responseMessage) {
-                    // TODO 解析Message 根据类型解析
-                    // 如果有媒体对象 需要解析媒体对象
-                    $agentMessage              = new AgentMessage();
-                    $agentMessage->messageType = MessageType::Chat;
-
-                    $agentMessage->setContentData(ContentType::Markdown, [
-                        'text' => $responseMessage['content'] ?? '',
-                    ]);
-
-                    $agentMessages[] = $agentMessage;
-                }
-
+                $agentMessages[] = $agentMessage;
             }
 
             // 回复结果不要 markdown 格式 TODO
@@ -225,7 +169,6 @@ class CozeAdapter implements AgentAdapterInterface
         // Coze 没有专门的健康检查接口
         return true;
     }
-
 
 
     /**
@@ -286,7 +229,7 @@ class CozeAdapter implements AgentAdapterInterface
         // 根据媒体类型确定 type
         $mediaType = match ($message->contentType) {
             ContentType::Image => 'image',
-            default            => 'file',
+            default => 'file',
         };
 
         // 构建内容数组
@@ -346,18 +289,19 @@ class CozeAdapter implements AgentAdapterInterface
 
             // 处理媒体类型
             if (in_array($itemType, ['image', 'file', 'video', 'voice']) ||
-                in_array($itemType, [ContentType::Image->value, ContentType::File->value, ContentType::Video->value, ContentType::Voice->value])) {
+                in_array($itemType,
+                    [ContentType::Image->value, ContentType::File->value, ContentType::Video->value, ContentType::Voice->value])) {
                 // 从 item 构建 MediaContent 对象
                 $mediaContent = $this->buildMediaContentFromItem($item);
                 if ($mediaContent) {
                     $fileId = $this->uploadFileToCoze($mediaContent);
                     if ($fileId) {
-                        $mediaType = match ($itemType) {
+                        $mediaType      = match ($itemType) {
                             'image', ContentType::Image->value => 'image',
-                            'file', ContentType::File->value   => 'file',
-                            'video', ContentType::Video->value  => 'video',
-                            'voice', ContentType::Voice->value  => 'voice',
-                            default                             => 'file',
+                            'file', ContentType::File->value => 'file',
+                            'video', ContentType::Video->value => 'video',
+                            'voice', ContentType::Voice->value => 'voice',
+                            default => 'file',
                         };
                         $contentArray[] = [
                             'type'    => $mediaType,
@@ -448,25 +392,22 @@ class CozeAdapter implements AgentAdapterInterface
             $filename = $this->getFilename($mediaContent);
 
 
-
-
             // 上传文件到 Coze
             // 注意：需要移除默认的 Content-Type header，使用 multipart/form-data
             $response = $this->client->post('v1/files/upload', [
-                'multipart' => [
+                'multipart'   => [
                     [
                         'name'     => 'file',
                         'contents' => $stream,
                         'filename' => $filename,
                     ],
                 ],
-                'headers'   => [
+                'headers'     => [
                     'Authorization' => 'Bearer '.$this->config['token'],
                     // 不设置 Content-Type，让 Guzzle 自动设置为 multipart/form-data
                 ],
                 'http_errors' => false,
             ]);
-
 
 
             if ($response->getStatusCode() !== 200) {
@@ -478,7 +419,7 @@ class CozeAdapter implements AgentAdapterInterface
                 return null;
             }
 
-            $data = json_decode($response->getBody()->getContents(), true);
+            $data   = json_decode($response->getBody()->getContents(), true);
             $fileId = $data['data']['id'] ?? $data['data']['file_id'] ?? null;
 
             if (!$fileId) {
@@ -585,5 +526,202 @@ class CozeAdapter implements AgentAdapterInterface
         };
 
         return 'file_'.time().'.'.$extension;
+    }
+
+
+    /**
+     * 第一步：读取完整流，解析所有 event + data，写入 events。
+     * 第二步（待实现）：对 events 进行数据处理（如提取 content、conversation_id、chat_id）。
+     *
+     * @param  StreamInterface  $stream  响应流
+     *
+     * @return array 返回 ['events' => [{event: string, data: array}, ...], ...]
+     */
+    public static function parse(StreamInterface $stream) : array
+    {
+        $events       = [];
+        $buffer       = '';
+        $currentEvent = null;
+
+        while (!$stream->eof()) {
+            $chunk = $stream->read(1024);
+            if ($chunk === '') {
+                break;
+            }
+
+            $buffer .= $chunk;
+            $lines  = explode("\n", $buffer);
+            $buffer = array_pop($lines);
+
+            foreach ($lines as $line) {
+                $line = trim($line);
+                if ($line === '') {
+                    continue;
+                }
+
+                if (str_starts_with($line, 'event:')) {
+                    $currentEvent = trim(substr($line, 6));
+                    continue;
+                }
+
+                if (str_starts_with($line, 'data:')) {
+                    $jsonStr = trim(substr($line, 5));
+                    if ($jsonStr === '[DONE]') {
+                        break 2;
+                    }
+
+                    $data = json_decode($jsonStr, true);
+                    if (json_last_error() === JSON_ERROR_NONE && is_array($data)) {
+                        $events[] = [
+                            'event' => $currentEvent,
+                            'data'  => $data,
+                        ];
+                        if ($currentEvent === 'done' || $currentEvent === 'conversation.chat.failed') {
+                            break 2;
+                        }
+                    }
+                    $currentEvent = null;
+                }
+            }
+        }
+
+        if ($buffer !== '') {
+            $line = trim($buffer);
+            if (str_starts_with($line, 'event:')) {
+                $currentEvent = trim(substr($line, 6));
+            } elseif (str_starts_with($line, 'data:')) {
+                $jsonStr = trim(substr($line, 5));
+                if ($jsonStr !== '[DONE]') {
+                    $data = json_decode($jsonStr, true);
+                    if (json_last_error() === JSON_ERROR_NONE && is_array($data)) {
+                        $events[] = [
+                            'event' => $currentEvent,
+                            'data'  => $data,
+                        ];
+                    }
+                }
+            }
+        }
+
+        $processed = self::processEvents($events);
+
+        return [
+            'events'          => $events,
+            'messages'        => $processed['messages'],
+            'chat_id'         => $processed['chat_id'],
+            'conversation_id' => $processed['conversation_id'],
+            'usage'           => $processed['usage'],
+            'last_error'      => $processed['last_error'],
+            'status'          => $processed['status'],
+        ];
+    }
+
+    /**
+     * 第二步：处理 events，解析出 messages 及 chat/conversation/usage/error。
+     *
+     * messages 来自 conversation.message.completed（knowledge/function_call/tool_output/answer/verbose/follow_up），
+     * 以及 conversation.message.delta 中 type=answer 的拼接结果（同一 id 的 delta 拼成一条，completed 时用 completed 的完整 content）。
+     *
+     * @param  array  $events  [['event' => string, 'data' => array], ...]
+     *
+     * @return array { messages: array, chat_id: ?string, conversation_id: ?string, usage: ?array, last_error: ?array, status: ?string }
+     */
+    public static function processEvents(array $events) : array
+    {
+        $messages       = [];
+        $chatId         = null;
+        $conversationId = null;
+        $usage          = null;
+        $lastError      = null;
+        $status         = null;
+
+        // 同一 answer 消息 id 的 delta 内容拼接（未收到 completed 时用）
+        $answerDeltaByMsgId = [];
+
+        foreach ($events as $item) {
+            $event = $item['event'] ?? '';
+            $data  = $item['data'] ?? [];
+            if (!is_array($data)) {
+                continue;
+            }
+
+            switch ($event) {
+                case 'conversation.chat.created':
+                case 'conversation.chat.in_progress':
+                    $chatId         = $data['id'] ?? $data['chat_id'] ?? $chatId;
+                    $conversationId = $data['conversation_id'] ?? $conversationId;
+                    break;
+
+                case 'conversation.chat.completed':
+                    $chatId         = $data['id'] ?? $data['chat_id'] ?? $chatId;
+                    $conversationId = $data['conversation_id'] ?? $conversationId;
+                    $status         = $data['status'] ?? 'completed';
+                    $usage          = $data['usage'] ?? null;
+                    break;
+
+                case 'conversation.chat.failed':
+                    $status    = 'failed';
+                    $lastError = [
+                        'code' => $data['code'] ?? null,
+                        'msg'  => $data['msg'] ?? null,
+                    ];
+                    break;
+
+                case 'conversation.message.delta':
+                    $msgType = $data['type'] ?? '';
+                    if ($msgType === 'answer') {
+                        $msgId = $data['id'] ?? '';
+                        if ($msgId !== '') {
+                            $content                    = $data['content'] ?? '';
+                            $answerDeltaByMsgId[$msgId] = ($answerDeltaByMsgId[$msgId] ?? '').$content;
+                        }
+                    }
+                    break;
+
+                case 'conversation.message.completed':
+                    $msgId = $data['id'] ?? '';
+                    $type  = $data['type'] ?? '';
+                    if ($type === 'answer') {
+                        unset($answerDeltaByMsgId[$msgId]);
+                    }
+                    $messages[] = [
+                        'id'              => $msgId,
+                        'role'            => $data['role'] ?? 'assistant',
+                        'type'            => $type,
+                        'content'         => $data['content'] ?? '',
+                        'content_type'    => $data['content_type'] ?? 'text',
+                        'chat_id'         => $data['chat_id'] ?? null,
+                        'conversation_id' => $data['conversation_id'] ?? null,
+                        'bot_id'          => $data['bot_id'] ?? null,
+                    ];
+                    break;
+            }
+        }
+
+        // 仅有 delta、未收到 completed 的 answer，用拼接结果补一条
+        foreach ($answerDeltaByMsgId as $msgId => $content) {
+            $content = trim($content);
+            if ($content !== '') {
+                $messages[] = [
+                    'id'              => $msgId,
+                    'role'            => 'assistant',
+                    'type'            => 'answer',
+                    'content'         => $content,
+                    'content_type'    => 'text',
+                    'chat_id'         => $chatId,
+                    'conversation_id' => $conversationId,
+                    'bot_id'          => null,
+                ];
+            }
+        }
+
+        return [
+            'messages'        => $messages,
+            'chat_id'         => $chatId,
+            'conversation_id' => $conversationId,
+            'usage'           => $usage,
+            'last_error'      => $lastError,
+            'status'          => $status,
+        ];
     }
 }
