@@ -20,8 +20,8 @@ enum ConversationStatus: string
 
 
     case Pending = 'pending';
-    case Agent = 'agent'; // 智能体接待中
-    case HumanQueuing = 'humanQueuing'; // 人工排队中
+    case Agenting = 'agenting'; // 智能体接待中
+    case Queuing = 'queuing'; // 人工排队中
     case Human = 'human'; // 人工接待中
     case Closed = 'closed'; // 已结束
 
@@ -29,11 +29,11 @@ enum ConversationStatus: string
     public static function labels() : array
     {
         return [
-            self::Pending->value      => '待处理',
-            self::Agent->value        => '智能体处理中',
-            self::HumanQueuing->value => '人工排队中',
-            self::Human->value        => '人工接待',
-            self::Closed->value       => '已结束',
+            self::Pending->value  => '待处理',
+            self::Agenting->value => '智能体处理中',
+            self::Queuing->value  => '人工排队中',
+            self::Human->value    => '人工接待',
+            self::Closed->value   => '已结束',
 
         ];
     }

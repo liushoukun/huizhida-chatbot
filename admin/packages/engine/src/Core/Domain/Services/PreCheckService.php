@@ -69,7 +69,7 @@ class PreCheckService
     {
 
         if (in_array($conversation->status, [
-            ConversationStatus::HumanQueuing,
+            ConversationStatus::Queuing,
             ConversationStatus::Human,
             ConversationStatus::Closed,
         ])) {

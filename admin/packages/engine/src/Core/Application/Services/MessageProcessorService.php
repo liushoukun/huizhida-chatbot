@@ -53,21 +53,21 @@ class MessageProcessorService
             'eventId'        => $event->id,
         ]);
 
-
-
         try {
             // 开始处理的时间
             $time = time();
             // 1. 获取未处理消息（只获取此时间之前的消息）
             $messages = $this->conversationApplicationService->getPendingInputMessages($conversationId, $time);
+            Log::debug('获取未处理消息', ['messages_count' => count($messages)]);
             if (empty($messages)) {
                 Log::info('No PendingInputMessages');
                 return;
             }
 
+            // 获取当前会话信息
             $conversation = $this->conversationApplicationService->get($conversationId);
 
-            Log::debug('获取未处理消息', ['messages_count' => count($messages)]);
+
 
             // 2. 分离事件消息和对话消息
             $eventMessages = [];
@@ -140,7 +140,7 @@ class MessageProcessorService
             // 根据事件类型更新会话状态
             switch ($eventType) {
                 case EventType::TransferToHumanQueue:
-                    $conversation->status = ConversationStatus::HumanQueuing;
+                    $conversation->status = ConversationStatus::Queuing;
                     $this->changeToHumanQueueing($conversationId);
                     break;
                 case EventType::TransferToHuman:
@@ -173,7 +173,7 @@ class MessageProcessorService
     protected function changeToHumanQueueing(string $conversationId) : void
     {
         Log::info('处理转入人工处理队列事件', ['conversation_id' => $conversationId]);
-        $this->conversationApplicationService->humanQueuing($conversationId);
+        $this->conversationApplicationService->queuing($conversationId);
     }
 
     /**
@@ -250,6 +250,8 @@ class MessageProcessorService
         Log::debug('调用智能体处理消息', ['conversation_id' => $conversationId, 'agent_id' => $agentId]);
 
         try {
+            // 标记为智能体处理中
+            $this->conversationApplicationService->agenting($conversation->conversationId);
             $awnerData = $this->agentService->processMessages($chatMessages, $conversation, $agentId);
 
             // 保存智能体会话ID
@@ -308,7 +310,7 @@ class MessageProcessorService
     {
 
         // 转入人工处理队列
-        $this->conversationApplicationService->humanQueuing($conversation->conversationId);
+        $this->conversationApplicationService->queuing($conversation->conversationId);
 
         $outputQueue = new ConversationOutputQueue();
 

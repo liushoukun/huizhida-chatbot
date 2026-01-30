@@ -35,7 +35,21 @@ class ConversationApplicationService extends ApplicationService
         // 记录最后一次事件
         $this->mq->recordLastEvent($conversationEvent);
 
-        $this->mq->publish($conversationEvent->queue, $conversationEvent,$conversationEvent->getDelaySeconds());
+        $this->mq->publish($conversationEvent->queue, $conversationEvent, $conversationEvent->getDelaySeconds());
+    }
+
+    /**
+     * 整体处理中
+     *
+     * @param  string  $conversationId
+     *
+     * @return void
+     */
+    public function agenting(string $conversationId)
+    {
+        $conversation = $this->conversationRepository->findByConversationId($conversationId);
+        $conversation->updateStatus(ConversationStatus::Agenting);
+        $this->conversationRepository->update($conversation);
     }
 
     public function close(string $conversationId) : void
@@ -46,16 +60,16 @@ class ConversationApplicationService extends ApplicationService
     }
 
 
-    public function humanQueuing(string $conversationId, ?string $servicer = null) : void
+    public function queuing(string $conversationId, ?string $servicer = null) : void
     {
         $conversation = $this->conversationRepository->findByConversationId($conversationId);
-        $conversation->updateStatus(ConversationStatus::HumanQueuing);
+        $conversation->updateStatus(ConversationStatus::Queuing);
         $this->conversationRepository->update($conversation);
     }
 
 
     /**
-     * 转换状态
+     * 转人工处理
      *
      * @param  string  $conversationId
      * @param  string|null  $servicer
@@ -92,15 +106,6 @@ class ConversationApplicationService extends ApplicationService
         ]) : null;
     }
 
-    /**
-     * @param  string  $conversationId
-     *
-     * @return Conversation
-     */
-    public function findConversation(string $conversationId) : Conversation
-    {
-        return Conversation::where('conversation_id', $conversationId)->firstOrFail();
-    }
 
     public function updateAgentConversationId(string $conversationId, string $agentConversationId) : void
     {
