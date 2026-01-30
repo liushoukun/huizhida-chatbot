@@ -7,7 +7,7 @@ export default withMermaid(defineConfig({
   themeConfig: {
     // https://vitepress.dev/reference/default-theme-config
     nav: [
-      { text: '需求文档', link: '/requirements' }
+      { text: '系统架构', link: '/architecture' }
     ],
 
     sidebar: [

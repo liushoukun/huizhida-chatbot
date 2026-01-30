@@ -1,11 +1,9 @@
 # 汇智答 (HuiZhiDa) - 智能客服平台
 
-> 汇聚智能，有问必答
-
-[![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
-[![Go Version](https://img.shields.io/badge/Go-1.21+-00ADD8.svg)](https://go.dev/)
-[![Python Version](https://img.shields.io/badge/Python-3.10+-3776AB.svg)](https://www.python.org/)
-[![PHP Version](https://img.shields.io/badge/PHP-8.2+-777BB4.svg)](https://www.php.net/)
+[![License](https://p0-xtjj-private.juejin.cn/tos-cn-i-73owjymdk6/a077ccddff454e81800cd16f55637853~tplv-73owjymdk6-jj-mark-v1:0:0:0:0:5o6Y6YeR5oqA5pyv56S-5Yy6IEAg55qu54mZ5a2Q:q75.awebp?policy=eyJ2bSI6MywidWlkIjoiMzgzMTAwNTM4MDgyNTc0In0%3D&rk3s=f64ab15b&x-orig-authkey=f32326d3454f2ac7e96d3d06cdbb035152127018&x-orig-expires=1770384663&x-orig-sign=pjVTX37ztSVQdqN4wDmmj5CyJLA%3D)](LICENSE)
+[![PHP Version](https://p0-xtjj-private.juejin.cn/tos-cn-i-73owjymdk6/34d3bcd913834ebbadb259ea158762a5~tplv-73owjymdk6-jj-mark-v1:0:0:0:0:5o6Y6YeR5oqA5pyv56S-5Yy6IEAg55qu54mZ5a2Q:q75.awebp?policy=eyJ2bSI6MywidWlkIjoiMzgzMTAwNTM4MDgyNTc0In0%3D&rk3s=f64ab15b&x-orig-authkey=f32326d3454f2ac7e96d3d06cdbb035152127018&x-orig-expires=1770384663&x-orig-sign=2wAmMpQ8UlMrpJc5VjJYOUAvif0%3D)](https://www.php.net/)
+[![Laravel](https://p0-xtjj-private.juejin.cn/tos-cn-i-73owjymdk6/85529b06eb87415394639853d6c6f0c2~tplv-73owjymdk6-jj-mark-v1:0:0:0:0:5o6Y6YeR5oqA5pyv56S-5Yy6IEAg55qu54mZ5a2Q:q75.awebp?policy=eyJ2bSI6MywidWlkIjoiMzgzMTAwNTM4MDgyNTc0In0%3D&rk3s=f64ab15b&x-orig-authkey=f32326d3454f2ac7e96d3d06cdbb035152127018&x-orig-expires=1770384663&x-orig-sign=IIpKu%2BoycroXoTYl%2Fwih8dzQ1uQ%3D)](https://laravel.com/)
+[![Filament](https://p0-xtjj-private.juejin.cn/tos-cn-i-73owjymdk6/e6568be17f3c429da8ef7098d7c387c4~tplv-73owjymdk6-jj-mark-v1:0:0:0:0:5o6Y6YeR5oqA5pyv56S-5Yy6IEAg55qu54mZ5a2Q:q75.awebp?policy=eyJ2bSI6MywidWlkIjoiMzgzMTAwNTM4MDgyNTc0In0%3D&rk3s=f64ab15b&x-orig-authkey=f32326d3454f2ac7e96d3d06cdbb035152127018&x-orig-expires=1770384663&x-orig-sign=ih2ZVP%2FVEDSBDV5%2Bx0b%2BgysXb04%3D)](https://filamentphp.com/)
 
 ## 📖 项目简介
 
@@ -13,327 +11,143 @@
 
 ### 核心特性
 
-- 🚀 **统一接入**：支持企业微信、淘宝、抖音等多个主流客服渠道
-- 🤖 **智能处理**：集成多种 AI 智能体（本地/远程/组合模式）
-- 🔌 **插件化架构**：易于扩展新渠道和智能体
-- 👥 **人机协作**：支持智能体与人工客服无缝切换
-- 📊 **可视化管理**：提供完善的管理后台进行配置和监控
-- ⚡ **高性能**：支持高并发消息处理，吞吐量 > 1000 msg/s
+*   🚀 **统一接入**：支持企业微信、淘宝、抖音等多个主流客服渠道
+*   🤖 **智能处理**：集成多种 AI 智能体平台（Coze、Dify、元器 等）
+*   🔌 **插件化架构**：基于适配器模式，易于扩展新渠道和智能体
+*   👥 **人机协作**：支持智能体与人工客服无缝切换
+*   📊 **可视化管理**：基于 Filament 构建的管理后台
+*   ⚡ **高性能**：双队列驱动，支持高并发消息处理
 
 ## 🏗️ 系统架构
 
-系统采用 **三层微服务架构**，将不同职责分离到独立的服务中：
+系统采用 **三层架构 + 双队列驱动** 模式，通过 `inputs` 和 `outputs` 两个消息队列实现层与层之间的解耦：
 
 ```mermaid
 flowchart TB
-    subgraph Clients["客户端渠道"]
-        WeChat["企业微信"]
-        Taobao["淘宝"]
-        Douyin["抖音"]
+    subgraph Layer1["1️⃣ 渠道接入层"]
+        direction LR
+        WeChat["企业微信"] ~~~ Taobao["淘宝"] ~~~ Douyin["抖音"] ~~~ OtherChannel["其他渠道..."]
     end
 
-    subgraph GatewayService["消息网关服务 (Golang)"]
-        Adapters["渠道适配器"]
-        Transformer["消息格式转换"]
-        MsgSender["消息发送器"]
+    subgraph Layer2["2️⃣ 消息处理引擎"]
+        direction LR
+        InputsQueue[["📥 inputs"]] --> Engine["⚙️ Engine"] --> OutputsQueue[["📤 outputs"]]
     end
 
-    subgraph MessageQueue["消息队列 (MQ)"]
-        InQueue["incoming_messages"]
-        OutQueue["outgoing_messages"]
-        TransferQueue["transfer_requests"]
+    subgraph Layer3["3️⃣ 智能体接入层"]
+        direction LR
+        Coze["Coze"] ~~~ OpenAI["OpenAI"] ~~~ Qwen["通义千问"] ~~~ Dify["Dify"]
     end
 
-    subgraph ProcessorService["消息处理器服务 (Python)"]
-        Processor["消息处理器"]
-        AgentLayer["智能体层"]
-    end
-
-    subgraph AdminService["管理后台服务 (PHP Laravel)"]
-        Filament["Filament Admin"]
-    end
-
-    subgraph Storage["数据存储层"]
-        MySQL[("MySQL")]
-        Redis[("Redis")]
-    end
-
-    WeChat --> Adapters
-    Taobao --> Adapters
-    Douyin --> Adapters
-    
-    Adapters --> InQueue
-    InQueue --> Processor
-    Processor --> AgentLayer
-    Processor --> OutQueue
-    OutQueue --> MsgSender
-    MsgSender --> Clients
+    Layer1 <-->|"消息收发"| Layer2
+    Layer2 <-->|"智能体调用"| Layer3
 ```
 
-### 服务职责
+### 层级职责
 
-| 服务 | 技术栈 | 核心职责 |
-|------|--------|----------|
-| **消息网关** | Golang (Gin/Fiber) | 渠道回调接收、签名验证、消息格式转换、消息发送 |
-| **消息处理器** | Python (FastAPI) | 消息消费、规则预判断、智能体调用、AI能力集成 |
-| **管理后台** | PHP Laravel + Filament | 应用管理、渠道配置、智能体配置、数据统计 |
+| 层级                  | 核心职责                                                                          |
+| ------------------- | ----------------------------------------------------------------------------- |
+| **渠道接入层 (Channel)** | 对接各客服渠道（企业微信、淘宝、抖音等），负责渠道回调接收、签名验证、消息格式转换、消息入队 (inputs)、消费输出队列 (outputs)、消息发送 |
+| **消息处理引擎 (Engine)** | 核心处理层，消费 inputs 队列、事件处理、规则预校验、调用智能体、回复预处理、发布到 outputs 队列                      |
+| **智能体接入层 (Agent)**  | 对接各 AI 平台（OpenAI、通义千问、Coze、Dify 等），提供统一的智能体适配器接口                              |
+| **管理端 (Admin)**     | 应用管理、渠道配置、智能体配置、数据统计、系统监控                                                     |
+
+### 双队列说明
+
+| 队列        | 方向        | 作用              |
+| --------- | --------- | --------------- |
+| `inputs`  | 渠道层 → 引擎层 | 传递用户输入消息，触发消息处理 |
+| `outputs` | 引擎层 → 渠道层 | 传递智能体回复，触发消息发送  |
 
 ## 🛠️ 技术栈
 
-### 后端服务
+系统通过消息队列解耦各层，**支持按需拆分为独立服务，使用不同技术栈实现**：
 
-- **消息网关**: Go + Gin/Fiber
-- **消息处理器**: Python + FastAPI
-- **管理后台**: PHP Laravel + Filament
+| 层级         | 当前实现                   | 可选方案             | 说明                            |
+| ---------- | ---------------------- | ---------------- | ----------------------------- |
+| **渠道接入层**  | PHP Laravel            | Go (Gin/Fiber)   | 高并发场景下可使用 Go 处理大量渠道回调         |
+| **消息处理引擎** | PHP Laravel            | Python (FastAPI) | 可使用 Python 接入本地大模型，实现智能预校验和分流 |
+| **智能体接入层** | PHP Laravel            | Python           | 本地模型推理场景可使用 Python 生态         |
+| **管理端**    | PHP Laravel + Filament | -                | 管理后台，保持 PHP 实现                |
 
 ### 基础设施
 
-- **消息队列**: Redis Streams / RabbitMQ / Kafka
-- **数据库**: MySQL 8.0
-- **缓存**: Redis
-- **向量数据库**: Chroma / Milvus (FAQ语义检索)
-- **本地模型**: Ollama
+*   **消息队列**: Redis Streams / Redis List / RabbitMQ
+*   **数据库**: MySQL 8.0
+*   **缓存**: Redis
 
-### AI 框架
+### 支持的智能体平台
 
-- **LangChain / LlamaIndex**: RAG、对话编排
-- **支持的智能体平台**:
-  - 本地: Ollama, llama.cpp, vLLM
-  - 远程: OpenAI, 通义千问, Coze, Dify
+| 平台       | 状态     | 说明             |
+|----------| ------ | -------------- |
+| **Coze** | ✅ 已实现  | 字节跳动智能体平台      |
+| **Dify** | 🚧 规划中 | 开源 LLM 应用平台    |
 
-## 🚀 快速开始
+### 支持的客服渠道
 
-### 前置要求
+| 渠道          | 状态     | 说明           |
+| ----------- | ------ | ------------ |
+| **企业微信客服**  | ✅ 已实现  | 企业微信客服 API   |
+| **自定义 API** | ✅ 已实现  | Webhook 回调方式 |
+| **淘宝/天猫客服** | 🚧 规划中 | 淘宝开放平台       |
+| **抖音客服**    | 🚧 规划中 | 抖音开放平台       |
 
-- Docker & Docker Compose
-- Go 1.21+ (开发网关服务)
-- Python 3.10+ (开发处理器服务)
-- PHP 8.2+ (开发管理后台)
+### 防抖机制
 
-### 使用 Docker Compose 启动
+系统支持消息防抖，聚合同一会话的连续消息后统一处理，避免重复调用智能体：
 
-```bash
-# 克隆项目
-git clone https://github.com/your-org/huizhida-chatbot.git
-cd huizhida-chatbot
-
-# 启动所有服务
-docker-compose up -d
-
-# 查看服务状态
-docker-compose ps
-
-# 查看日志
-docker-compose logs -f
-```
-
-服务启动后：
-
-- 消息网关: http://localhost:8080
-- 消息处理器: http://localhost:8081
-- 管理后台: http://localhost:8082
-- Ollama: http://localhost:11434
-
-### 配置说明
-
-1. **创建应用**: 在管理后台创建应用并绑定智能体
-2. **配置渠道**: 为应用添加渠道配置（企业微信、淘宝等）
-3. **配置智能体**: 创建本地/远程/组合智能体
-4. **设置回调**: 在各渠道配置回调地址 `http://your-domain/api/callback/{channel}/{app_id}`
-
-## 📁 项目结构
-
-```
-huizhida-chatbot/
-├── gateway/                    # 消息网关 (Go)
-│   ├── cmd/
-│   ├── internal/
-│   │   ├── adapter/           # 渠道适配器
-│   │   ├── handler/           # HTTP处理器
-│   │   ├── service/           # 业务服务
-│   │   └── queue/             # 队列操作
-│   └── go.mod
-│
-├── processor/                  # 消息处理器 (Python)
-│   ├── app/
-│   │   ├── main.py            # FastAPI入口
-│   │   ├── core/              # 核心处理逻辑
-│   │   ├── agent/             # 智能体实现
-│   │   └── ai/                # AI能力集成
-│   └── requirements.txt
-│
-├── admin/                      # 管理后台 (Laravel + Filament)
-│   ├── app/
-│   │   ├── Filament/          # Filament资源
-│   │   └── Models/
-│   └── composer.json
-│
-├── docs/                       # 文档
-│   └── requirements.md         # 需求文档
-│
-├── docker-compose.yml          # 开发环境
-└── README.md
-```
-
-## 🔧 开发指南
-
-### 本地开发
-
-#### 1. 消息网关 (Go)
-
-```bash
-cd gateway
-go mod download
-go run cmd/main.go
-```
-
-#### 2. 消息处理器 (Python)
-
-```bash
-cd processor
-python -m venv venv
-source venv/bin/activate  # Windows: venv\Scripts\activate
-pip install -r requirements.txt
-uvicorn app.main:app --reload --port 8081
-```
-
-#### 3. 管理后台 (Laravel)
-
-```bash
-cd admin
-composer install
-cp .env.example .env
-php artisan key:generate
-php artisan migrate
-php artisan serve --port=8082
-```
-
-### 添加新渠道适配器
-
-1. 在 `gateway/internal/adapter/` 创建新的适配器文件
-2. 实现 `ChannelAdapter` 接口
-3. 在 `factory.go` 中注册新适配器
-
-### 添加新智能体
-
-1. 在 `processor/app/agent/` 创建新的智能体实现
-2. 继承 `IAgentAdapter` 接口
-3. 在 `factory.py` 中注册新智能体
-
-## 📊 功能特性
-
-### 智能体类型
-
-- **本地智能体**: 基于 Ollama/llama.cpp 的本地模型
-- **远程智能体**: 对接 OpenAI、通义千问等远程 API
-- **组合智能体**: 本地分类 + 远程处理，智能路由
-
-### 转人工机制
-
-- **规则预判断**: 关键词匹配、VIP策略等快速转人工
-- **智能体建议**: 基于置信度、情绪分析等智能判断
-- **统一执行**: 由消息网关统一调用渠道转人工 API
-
-### 消息处理流程
-
-1. 渠道回调 → 消息网关接收
-2. 格式转换 → 统一消息格式
-3. 消息入队 → 推入待处理队列
-4. 规则预判断 → 快速处理明确请求
-5. 智能体处理 → AI 生成回复
-6. 回复入队 → 推入发送队列
-7. 消息发送 → 调用渠道 API 发送
-
-## 📈 性能指标
-
-| 指标 | 要求 |
-|------|------|
-| 消息接收延迟 | < 100ms |
-| 本地智能体响应 | < 1s (P95) |
-| 远程智能体响应 | < 5s (P95) |
-| 消息发送延迟 | < 200ms |
-| 系统吞吐量 | > 1000 msg/s |
-| 并发会话数 | > 10000 |
+*   消息发布时设置延时（如 3 秒）
+*   只有最后一条消息会触发实际处理
+*   通过 Redis 记录最后事件 ID 实现判断
 
 ## 🔐 安全特性
 
-- HTTPS 加密传输
-- 敏感数据加密存储（API密钥等）
-- 基于角色的权限管理
-- 渠道回调签名验证
-- 操作审计日志
+*   HTTPS 加密传输
+*   敏感数据加密存储（API 密钥等）
+*   基于角色的权限管理
+*   渠道回调签名验证
 
 ## 📝 API 文档
 
-### 回调接口
+### 渠道回调接口
 
-```
-POST /api/callback/{channel}/{app_id}
-```
+    GET  /api/gateway/{channel}/{id}    # 健康检查/URL验证
+    POST /api/gateway/{channel}/{id}    # 接收渠道消息回调
 
-支持的渠道: `wecom`, `taobao`, `douyin`, `jd`, `pdd`, `webhook`
+*   `{channel}`: 渠道类型，如 `wecom`（企业微信）、`api`（自定义API）等
+*   `{id}`: 渠道 ID
+*   GET 请求用于渠道验证（如企业微信 URL 验证）
+*   POST 请求接收渠道消息回调，自动进行签名验证
 
-### 管理接口
+### 管理后台
 
-```
-POST   /api/admin/apps              # 创建应用
-GET    /api/admin/apps              # 应用列表
-POST   /api/admin/agents            # 创建智能体
-GET    /api/admin/agents            # 智能体列表
-```
+基于 Filament 构建，提供以下功能：
 
-详细 API 文档请参考 [需求文档](docs/requirements.md)
+*   **智能体管理**: 创建、编辑、删除智能体配置
+*   **渠道管理**: 配置各渠道接入参数
+*   **会话查看**: 查看会话记录和消息详情（规划中）
+*   **数据统计**: 消息量、会话量统计（规划中）
 
-## 🐳 部署
-
-### Docker Compose 部署
-
-适用于开发测试和小规模使用：
-
-```bash
-docker-compose up -d
-```
-
-### Kubernetes 部署
-
-适用于生产环境，支持水平扩展：
-
-```bash
-kubectl apply -f k8s/
-```
-
-详细部署说明请参考 [需求文档 - 部署架构](docs/requirements.md#8-部署架构)
-
-## 🤝 贡献指南
-
-欢迎贡献代码！请遵循以下步骤：
-
-1. Fork 本仓库
-2. 创建特性分支 (`git checkout -b feature/AmazingFeature`)
-3. 提交更改 (`git commit -m 'Add some AmazingFeature'`)
-4. 推送到分支 (`git push origin feature/AmazingFeature`)
-5. 开启 Pull Request
-
-## 📄 许可证
-
-本项目采用 MIT 许可证 - 查看 [LICENSE](LICENSE) 文件了解详情
 
 ## 📚 相关文档
 
-- [需求文档](docs/requirements.md) - 完整的系统设计文档
-- [企业微信客服API](https://developer.work.weixin.qq.com/document/path/94638)
-- [OpenAI API文档](https://platform.openai.com/docs/)
-- [Ollama官方文档](https://ollama.ai/)
+*   [架构文档](docs/architecture.md) - 完整的系统设计文档
 
-## 👥 团队
+**渠道对接**：
 
-- 项目代号: HZD
-- 文档版本: v2.2.0
+*   [企业微信客服 API](https://developer.work.weixin.qq.com/document/path/94638)
+*   [淘宝开放平台](https://open.taobao.com/)
 
-## 📞 联系方式
+**智能体平台**：
+
+*   [Coze 开放平台](https://www.coze.cn/docs/)
+*   [OpenAI API](https://platform.openai.com/docs/)
+*   [通义千问 API](https://help.aliyun.com/document_detail/2400395.html)
+*   [Dify 文档](https://docs.dify.ai/)
+
 
 如有问题或建议，请提交 Issue 或联系项目维护者。
 
----
+***
 
 **汇智答** - 汇聚智能，有问必答 🚀
