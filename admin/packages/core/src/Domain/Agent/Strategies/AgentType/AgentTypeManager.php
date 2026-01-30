@@ -14,7 +14,7 @@ class AgentTypeManager extends EnumManager
      * @var array<string, class-string<AgentTypeInterface>>
      */
     protected const DRIVERS = [
-        'tencent_yuanqi' => TencentYuanqiAgentType::class,
+
         'coze' => CozeAgentType::class,
     ];
 

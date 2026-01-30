@@ -58,7 +58,7 @@ class AgentApplicationService
         Log::debug('Building chat request', ['conversation_id' => $conversation->conversationId]);
 
         // 4. 调用智能体
-        $timeout = config('engine.agent.timeout', 30);
+        $timeout = config('huizhida.agent.timeout', 30);
         Log::debug('Agent processing completed', ['conversation_id' => $conversation->conversationId]);
         // 5. 格式化响应，返回数据
         $agentChatResponse = $this->agentChat($adapter, $request, $timeout);

@@ -37,10 +37,10 @@ class AgentResource extends Resource
         return '智能体';
     }
 
-    public static function getNavigationGroup(): ?string
-    {
-        return '汇智答';
-    }
+    // public static function getNavigationGroup(): ?string
+    // {
+    //     return '汇智答';
+    // }
 
     public static function form(Schema $schema): Schema
     {

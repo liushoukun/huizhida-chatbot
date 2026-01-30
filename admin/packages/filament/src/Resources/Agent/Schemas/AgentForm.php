@@ -72,12 +72,7 @@ class AgentForm
                         ->reactive()
                         ->helperText('选择智能体类型'),
 
-                    Select::make('fallback_agent_id')
-                        ->label('降级智能体')
-                        ->relationship('fallbackAgent', 'name')
-                        ->searchable()
-                        ->preload()
-                        ->helperText('当当前智能体不可用时的降级方案'),
+
 
                     Toggle::make('status')
                         ->label('启用状态')

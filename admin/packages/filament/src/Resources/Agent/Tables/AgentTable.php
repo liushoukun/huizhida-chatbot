@@ -102,17 +102,6 @@ class AgentTable
                     }
                 }),
 
-            TextColumn::make('provider')
-                ->label('提供者')
-                ->searchable()
-                ->sortable()
-                ->placeholder('未设置'),
-
-            TextColumn::make('fallbackAgent.name')
-                ->label('降级智能体')
-                ->searchable()
-                ->sortable()
-                ->placeholder('无'),
 
             TextColumn::make('status')
                 ->label('状态')

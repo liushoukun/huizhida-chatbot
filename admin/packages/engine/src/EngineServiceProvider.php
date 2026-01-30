@@ -25,7 +25,7 @@ class EngineServiceProvider extends ServiceProvider
 {
     public function register() : void
     {
-        $this->mergeConfigFrom(__DIR__.'/../config/engine.php', 'engine');
+
 
         // Core: 队列唯一实现
         $this->app->singleton(ConversationQueueInterface::class, function ($app) {
@@ -72,9 +72,7 @@ class EngineServiceProvider extends ServiceProvider
 
     public function boot() : void
     {
-        $this->publishes([
-            __DIR__.'/../config/engine.php' => config_path('engine.php'),
-        ], 'engine-config');
+
 
         $this->loadRoutes();
 

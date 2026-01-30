@@ -24,7 +24,7 @@ class PreCheckService
 
     public function __construct()
     {
-        $config                  = config('engine.pre_check', []);
+        $config                  = config('huizhida.pre_check', []);
         $keywords                = $config['transfer_keywords'] ?? '转人工,人工客服,找人工,真人客服,投诉';
         $this->transferKeywords  = is_string($keywords) ? explode(',', $keywords) : $keywords;
         $this->vipDirectTransfer = $config['vip_direct_transfer'] ?? false;
