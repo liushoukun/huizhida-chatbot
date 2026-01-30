@@ -16,10 +16,9 @@ use HuiZhiDa\Core\Domain\Conversation\Enums\ConversationQueueType;
 use HuiZhiDa\Core\Domain\Conversation\Enums\ConversationStatus;
 use HuiZhiDa\Core\Domain\Conversation\Enums\EventType;
 use HuiZhiDa\Core\Domain\Conversation\Enums\MessageType;
-use HuiZhiDa\Engine\Core\Domain\Data\PreCheckResult;
+use HuiZhiDa\Engine\Agent\Application\Services\AgentService;
 use HuiZhiDa\Engine\Core\Domain\Enums\ActionType;
 use HuiZhiDa\Engine\Core\Domain\Services\PreCheckService;
-use HuiZhiDa\Engine\Agent\Application\Services\AgentService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
@@ -27,7 +26,7 @@ use Illuminate\Support\Facades\Log;
  * 消息处理器服务
  * 核心服务，负责处理会话事件
  */
-class MessageProcessorService
+class EngineCoreService
 {
     public function __construct(
         protected ConversationApplicationService $conversationApplicationService,
@@ -66,7 +65,6 @@ class MessageProcessorService
 
             // 获取当前会话信息
             $conversation = $this->conversationApplicationService->get($conversationId);
-
 
 
             // 2. 分离事件消息和对话消息

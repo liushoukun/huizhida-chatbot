@@ -9,7 +9,7 @@ use HuiZhiDa\Engine\Channel\UI\Http\Controllers\CallbackController;
 use HuiZhiDa\Engine\Channel\Infrastructure\Adapters\AdapterFactory as ChannelAdapterFactory;
 use HuiZhiDa\Engine\Channel\UI\Consoles\Commands\CallbackQueueCommand;
 use HuiZhiDa\Engine\Channel\UI\Consoles\Commands\ConversationOutputQueueCommand;
-use HuiZhiDa\Engine\Core\Application\Services\MessageProcessorService;
+use HuiZhiDa\Engine\Core\Application\Services\EngineCoreService;
 use HuiZhiDa\Engine\Core\Domain\Services\PreCheckService;
 use HuiZhiDa\Engine\Core\Infrastructure\Queue\RedisQueue;
 use HuiZhiDa\Engine\Core\UI\Consoles\Commands\ConversationInputQueueCommand;
@@ -35,8 +35,8 @@ class EngineServiceProvider extends ServiceProvider
         $this->app->singleton(PreCheckService::class);
 
         // Core: 消息处理编排
-        $this->app->singleton(MessageProcessorService::class, function ($app) {
-            return new MessageProcessorService(
+        $this->app->singleton(EngineCoreService::class, function ($app) {
+            return new EngineCoreService(
                 $app->make(ConversationApplicationService::class),
                 $app->make(ConversationQueueInterface::class),
                 $app->make(PreCheckService::class),

@@ -3,7 +3,7 @@
 namespace HuiZhiDa\Engine\Core\UI\Consoles\Commands;
 
 use Exception;
-use HuiZhiDa\Engine\Core\Application\Services\MessageProcessorService;
+use HuiZhiDa\Engine\Core\Application\Services\EngineCoreService;
 use HuiZhiDa\Core\Application\Services\ConversationApplicationService;
 use HuiZhiDa\Core\Domain\Conversation\Contracts\ConversationQueueInterface;
 use HuiZhiDa\Core\Domain\Conversation\DTO\Events\ConversationEvent;
@@ -38,7 +38,7 @@ class ConversationInputQueueCommand extends Command
         protected ConversationApplicationService $conversationApplicationService,
 
         protected ConversationQueueInterface $mq,
-        protected MessageProcessorService $processorService
+        protected EngineCoreService $processorService
     ) {
         parent::__construct();
     }
