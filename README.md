@@ -1,9 +1,7 @@
 # 汇智答 (HuiZhiDa) - 智能客服平台
 
-[![License](https://p0-xtjj-private.juejin.cn/tos-cn-i-73owjymdk6/a077ccddff454e81800cd16f55637853~tplv-73owjymdk6-jj-mark-v1:0:0:0:0:5o6Y6YeR5oqA5pyv56S-5Yy6IEAg55qu54mZ5a2Q:q75.awebp?policy=eyJ2bSI6MywidWlkIjoiMzgzMTAwNTM4MDgyNTc0In0%3D&rk3s=f64ab15b&x-orig-authkey=f32326d3454f2ac7e96d3d06cdbb035152127018&x-orig-expires=1770384663&x-orig-sign=pjVTX37ztSVQdqN4wDmmj5CyJLA%3D)](LICENSE)
-[![PHP Version](https://p0-xtjj-private.juejin.cn/tos-cn-i-73owjymdk6/34d3bcd913834ebbadb259ea158762a5~tplv-73owjymdk6-jj-mark-v1:0:0:0:0:5o6Y6YeR5oqA5pyv56S-5Yy6IEAg55qu54mZ5a2Q:q75.awebp?policy=eyJ2bSI6MywidWlkIjoiMzgzMTAwNTM4MDgyNTc0In0%3D&rk3s=f64ab15b&x-orig-authkey=f32326d3454f2ac7e96d3d06cdbb035152127018&x-orig-expires=1770384663&x-orig-sign=2wAmMpQ8UlMrpJc5VjJYOUAvif0%3D)](https://www.php.net/)
-[![Laravel](https://p0-xtjj-private.juejin.cn/tos-cn-i-73owjymdk6/85529b06eb87415394639853d6c6f0c2~tplv-73owjymdk6-jj-mark-v1:0:0:0:0:5o6Y6YeR5oqA5pyv56S-5Yy6IEAg55qu54mZ5a2Q:q75.awebp?policy=eyJ2bSI6MywidWlkIjoiMzgzMTAwNTM4MDgyNTc0In0%3D&rk3s=f64ab15b&x-orig-authkey=f32326d3454f2ac7e96d3d06cdbb035152127018&x-orig-expires=1770384663&x-orig-sign=IIpKu%2BoycroXoTYl%2Fwih8dzQ1uQ%3D)](https://laravel.com/)
-[![Filament](https://p0-xtjj-private.juejin.cn/tos-cn-i-73owjymdk6/e6568be17f3c429da8ef7098d7c387c4~tplv-73owjymdk6-jj-mark-v1:0:0:0:0:5o6Y6YeR5oqA5pyv56S-5Yy6IEAg55qu54mZ5a2Q:q75.awebp?policy=eyJ2bSI6MywidWlkIjoiMzgzMTAwNTM4MDgyNTc0In0%3D&rk3s=f64ab15b&x-orig-authkey=f32326d3454f2ac7e96d3d06cdbb035152127018&x-orig-expires=1770384663&x-orig-sign=ih2ZVP%2FVEDSBDV5%2Bx0b%2BgysXb04%3D)](https://filamentphp.com/)
+[![PHP Version](https://img.shields.io/badge/PHP-8.2+-777BB4.svg)](https://www.php.net/)
+[![Laravel](https://img.shields.io/badge/Laravel-v12.x-FF2D20?&logo=laravel)](https://www.php.net/)
 
 ## 📖 项目简介
 
