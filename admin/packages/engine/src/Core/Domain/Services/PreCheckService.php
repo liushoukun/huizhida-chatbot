@@ -15,9 +15,7 @@ use Illuminate\Support\Facades\Log;
  */
 class PreCheckService
 {
-    public const ACTION_CALL_AGENT     = 'call_agent';
-    public const ACTION_TRANSFER_HUMAN = 'transfer_human';
-    public const ACTION_SKIP           = 'skip';
+
 
     protected array $transferKeywords;
     protected bool  $vipDirectTransfer;
